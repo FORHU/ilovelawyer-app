@@ -39,6 +39,7 @@ import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useDateLocale } from "@/lib/i18n/date-locale";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { EmptyState } from "@workspace/ui/components/empty-state";
@@ -232,9 +233,18 @@ function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: s
   );
 }
 
-/** "6 November 2026" */
-function validUntil(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+/** "6 November 2026", in the app's language. */
+function useLongDate() {
+  const locale = useDateLocale();
+  return (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
+}
+
+/** A quote amount the form can send: a fixed fee needs more than £0, a first consultation may be
+ * free (£0). Never left blank, which Number() would read as 0. */
+function quoteAmountOk(amount: string, type: QuoteType): boolean {
+  const value = Number(amount);
+  if (amount.trim() === "" || !Number.isFinite(value)) return false;
+  return type === "FIRST_CONSULTATION" ? value >= 0 : value > 0;
 }
 
 function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawyer; conflictChecked: boolean }) {
@@ -255,8 +265,9 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   const [expiryError, setExpiryError] = useState(false);
 
   const [conflictBlocked, setConflictBlocked] = useState(false);
+  const validUntil = useLongDate();
   const previewAmount = Number(amount);
-  const hasPreviewAmount = Number.isFinite(previewAmount) && previewAmount > 0;
+  const hasPreviewAmount = quoteAmountOk(amount, type);
   const serviceFeeMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
   const platformFeeMinor = platformFeeOf(serviceFeeMinor, request.quoteTerms);
   const expiresAt = endOfDayIso(expiry);
@@ -270,8 +281,8 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
       return;
     }
     const value = Number(amount);
-    // Every quote type needs a real amount: what the preview shows is what the client is sent.
-    if (!Number.isFinite(value) || value <= 0) return setAmountError(true);
+    // What the preview shows is what the client is sent: a real amount, or £0 for a free first consultation.
+    if (!quoteAmountOk(amount, type)) return setAmountError(true);
     if (!expiresAt || expiry < dateInputValue(0) || expiry > dateInputValue(QUOTE_MAX_VALIDITY_DAYS)) return setExpiryError(true);
     const amountMinor = Math.round(value * 100);
     quote.mutate(
@@ -327,7 +338,7 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
             />
             <span className={LABEL}>{t("detail.quote.incVat")}</span>
           </div>
-          {amountError && <p className="text-xs text-red-600">{t("detail.quote.amountInvalid")}</p>}
+          {amountError && <p className="text-xs text-red-600">{t(type === "FIRST_CONSULTATION" ? "detail.quote.amountInvalidConsultation" : "detail.quote.amountInvalid")}</p>}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -450,6 +461,9 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
 function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   const withdraw = useWithdrawQuotationMutation(request.id);
+  const validUntil = useLongDate();
+  // Withdrawing ends the lawyer's claim for good, so it's confirmed first.
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
   if (!request.quote) return null;
   const quotation = request.quotation;
   return (
@@ -465,16 +479,39 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
       {request.quote.message && <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{request.quote.message}</p>}
       <p className="mt-3 text-[13px] text-muted-foreground">{t("detail.quote.sentDescription")}</p>
       {quotation?.status === "SENT" && request.status === "QUOTED" && (
-        <Button
-          type="button"
-          variant="outline"
-          className="mt-3"
-          isPending={withdraw.isPending}
-          onClick={() => withdraw.mutate(undefined, { onSuccess: () => toast.success(t("detail.quote.withdrawn")), onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")) })}
-        >
+        <Button type="button" variant="outline" className="mt-3" onClick={() => setConfirmingWithdraw(true)}>
           {t("detail.quote.withdraw")}
         </Button>
       )}
+      <Dialog open={confirmingWithdraw} onOpenChange={(next) => !next && !withdraw.isPending && setConfirmingWithdraw(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("detail.quote.withdrawTitle")}</DialogTitle>
+            <DialogDescription>{t("detail.quote.withdrawConfirm")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmingWithdraw(false)} disabled={withdraw.isPending}>
+              {t("detail.quote.keepQuote")}
+            </Button>
+            <Button
+              type="button"
+              variant="accent"
+              isPending={withdraw.isPending}
+              onClick={() =>
+                withdraw.mutate(undefined, {
+                  onSuccess: () => {
+                    setConfirmingWithdraw(false);
+                    toast.success(t("detail.quote.withdrawn"));
+                  },
+                  onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")),
+                })
+              }
+            >
+              {t("detail.quote.withdraw")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -482,16 +519,21 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
 function ConfirmedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   const retry = useRetryClientRequestChargeMutation(request.id);
+  const validUntil = useLongDate();
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const failed = request.charge?.status === "FAILED";
-  // Quotation payments: the client accepted and is paying; nothing is charged to the lawyer.
-  if (!request.charge && request.quotation?.status === "ACCEPTED") {
+  // Quotation payments: the client accepted and is paying, or has just paid; nothing is charged to
+  // the lawyer. Only a request accepted before quotation payments has a per-case fee (a charge).
+  if (!request.charge && request.quotation) {
     const quotation = request.quotation;
+    const total = formatMoney((quotation.acceptedAmount ?? quotation.total).amountMinor);
     return (
       <section className={CARD}>
         <div className={LABEL}>{t("detail.confirmed.acceptedTitle")}</div>
         <p className="mt-2 text-[13px] text-muted-foreground">
-          {t("detail.confirmed.awaitingPayment", { total: formatMoney((quotation.acceptedAmount ?? quotation.total).amountMinor), date: validUntil(quotation.expiresAt) })}
+          {quotation.status === "PAID"
+            ? t("detail.confirmed.paid", { total })
+            : t("detail.confirmed.awaitingPayment", { total, date: validUntil(quotation.expiresAt) })}
         </p>
       </section>
     );

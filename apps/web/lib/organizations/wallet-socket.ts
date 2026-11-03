@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query"
 import type { Socket } from "socket.io-client"
-import { walletKeys } from "@/lib/query-keys"
+import { clientRequestKeys, walletKeys } from "@/lib/query-keys"
 import { CLIENT_HANDOFF_SOCKET_EVENTS } from "@/lib/client-handoff"
 
 export const WALLET_UPDATED = CLIENT_HANDOFF_SOCKET_EVENTS.WALLET_UPDATED
@@ -14,7 +14,11 @@ export const WALLET_UPDATED = CLIENT_HANDOFF_SOCKET_EVENTS.WALLET_UPDATED
 /** Subscribes wallet:updated on the shared socket, plus a refetch on reconnect for events missed
  * while it was down. Called once, from useNotificationSocket. Returns the cleanup. */
 export function registerWalletSocketHandlers(socket: Socket, queryClient: QueryClient): () => void {
-  const refetch = () => void queryClient.invalidateQueries({ queryKey: walletKeys.root })
+  // An engagement's invoice shows its refunds and disputes, which also change the wallet.
+  const refetch = () => {
+    void queryClient.invalidateQueries({ queryKey: walletKeys.root })
+    void queryClient.invalidateQueries({ queryKey: clientRequestKeys.invoices() })
+  }
   socket.on(WALLET_UPDATED, refetch)
   socket.on("connect", refetch)
   return () => {

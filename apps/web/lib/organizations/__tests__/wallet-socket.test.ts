@@ -21,6 +21,7 @@ function seeded() {
   queryClient.setQueryData(walletKeys.withdrawals("org-1", 1), { total: 0, data: [] })
   queryClient.setQueryData(walletKeys.wallet(OWN_WORKSPACE_ID), { id: "w2" })
   queryClient.setQueryData(clientRequestKeys.all, [])
+  queryClient.setQueryData(clientRequestKeys.invoice("req-1"), { invoice: null })
   return queryClient
 }
 
@@ -36,6 +37,8 @@ describe("registerWalletSocketHandlers", () => {
     expect(stale(queryClient, walletKeys.earnings("org-1", 1))).toBe(true)
     expect(stale(queryClient, walletKeys.withdrawals("org-1", 1))).toBe(true)
     expect(stale(queryClient, walletKeys.wallet(OWN_WORKSPACE_ID))).toBe(true)
+    // A refund or dispute shows on the engagement's invoice too.
+    expect(stale(queryClient, clientRequestKeys.invoice("req-1"))).toBe(true)
     expect(stale(queryClient, clientRequestKeys.all)).toBe(false)
   })
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Landmark } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -77,20 +77,23 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
   const [amountError, setAmountError] = useState("")
   // The amount (pence) waiting on the lawyer's confirmation, or null when no withdrawal is being confirmed.
   const [confirming, setConfirming] = useState<number | null>(null)
-  // One key per withdrawal the lawyer means to make: kept across a retry of the same request, new
-  // once it has gone through.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => generateId())
+  // One key per withdrawal the lawyer means to make, tied to its amount: a retry of the same amount
+  // keeps it (so a lost response can't pay out twice), a different amount gets a new one (so it isn't
+  // answered with the earlier withdrawal), and it's new once one has gone through.
+  const [idempotency, setIdempotency] = useState<{ key: string; amountMinor: number | null }>(() => ({ key: generateId(), amountMinor: null }))
 
-  // Back from Stripe's onboarding pages: read the account again, then drop the marker from the URL.
+  // Back from Stripe's onboarding pages: read the account again, once, then drop the marker from the URL.
   const returned = searchParams.get(PAYOUTS_RETURN) === "return"
   const { mutate: refreshAccount } = refresh
+  const handledReturn = useRef(false)
   useEffect(() => {
-    if (!returned) return
-    refreshAccount()
+    if (!returned || handledReturn.current) return
+    handledReturn.current = true
+    refreshAccount(undefined, { onError: (err) => toast.error(err instanceof Error ? err.message : t("wallet.error")) })
     const params = new URLSearchParams(searchParams.toString())
     params.delete(PAYOUTS_RETURN)
     router.replace(params.size ? `${pathname}?${params.toString()}` : pathname)
-  }, [returned, refreshAccount, searchParams, router, pathname])
+  }, [returned, refreshAccount, searchParams, router, pathname, t])
 
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
 
@@ -120,15 +123,19 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
 
   function confirmWithdrawal() {
     if (confirming === null) return
+    const key = idempotency.amountMinor === confirming ? idempotency.key : generateId()
+    setIdempotency({ key, amountMinor: confirming })
     withdraw.mutate(
-      { amountMinor: confirming, idempotencyKey },
+      { amountMinor: confirming, idempotencyKey: key },
       {
         onSuccess: (result) => {
           setConfirming(null)
           setAmount("")
-          setIdempotencyKey(generateId())
+          setIdempotency({ key: generateId(), amountMinor: null })
+          // The amount the API says it withdrew, which is what happened even if it isn't what was typed.
+          const amount = formatMoney(result.amount.amountMinor)
           if (result.status === "FAILED") toast.error(result.failureReason ?? t("wallet.withdraw.failed"))
-          else toast.success(result.status === "PAID" ? t("wallet.withdraw.paid") : t("wallet.withdraw.processing"))
+          else toast.success(result.status === "PAID" ? t("wallet.withdraw.paid", { amount }) : t("wallet.withdraw.processing", { amount }))
         },
         onError: (err) => {
           setConfirming(null)

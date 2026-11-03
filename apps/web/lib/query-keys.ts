@@ -141,7 +141,10 @@ export const clientRequestKeys = {
   parties: (id: string) => [...clientRequestKeys.all, "parties", id] as const,
   messages: (id: string) => [...clientRequestKeys.detail(id), "messages"] as const,
   aiBudget: (id: string) => [...clientRequestKeys.detail(id), "ai-budget"] as const,
-  invoice: (id: string) => [...clientRequestKeys.detail(id), "invoice"] as const,
+  // Not under detail(id) either: a message or status refresh doesn't change the payment. Refetched on
+  // client-request:* (through `all`) and on wallet:updated (a refund or dispute), via invoices().
+  invoices: () => [...clientRequestKeys.all, "invoice"] as const,
+  invoice: (id: string) => [...clientRequestKeys.invoices(), id] as const,
   intakePackage: (id: string) => [...clientRequestKeys.detail(id), "intake-package"] as const,
   topUpPacks: () => [...clientRequestKeys.all, "top-up-packs"] as const,
 }

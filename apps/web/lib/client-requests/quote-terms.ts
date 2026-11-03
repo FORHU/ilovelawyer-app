@@ -25,10 +25,13 @@ export function dateInputValue(days: number, from: Date = new Date()): string {
 }
 
 /** The end of the chosen day, in the lawyer's own time zone, as the API's expiresAt. Null for an
- * empty or unreadable value. */
-export function endOfDayIso(value: string): string | null {
+ * empty or unreadable value. Never more than QUOTE_MAX_VALIDITY_DAYS × 24h from `now`, the limit the
+ * API checks: the end of the picker's last day is later than that by however much of today is left. */
+export function endOfDayIso(value: string, now: Date = new Date()): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return null
   const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 23, 59, 59)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  if (Number.isNaN(d.getTime())) return null
+  const latest = now.getTime() + QUOTE_MAX_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+  return new Date(Math.min(d.getTime(), latest)).toISOString()
 }

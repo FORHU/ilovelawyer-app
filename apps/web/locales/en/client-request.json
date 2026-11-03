@@ -168,6 +168,7 @@
       "sendTooltip": "Send this quote to the client",
       "needsConflictCheck": "Confirm you’ve checked for conflicts first",
       "amountInvalid": "Enter an amount greater than £0.",
+      "amountInvalidConsultation": "Enter an amount, or £0 for a free first consultation.",
       "sent": "Quote sent.",
       "sentTitle": "Quote sent",
       "sentDescription": "Waiting for the client to accept and pay, or decline.",
@@ -186,7 +187,10 @@
       "validUntil": "Valid until {{date}}",
       "clientPays": "The client pays {{total}}, with the {{fee}} platform fee.",
       "withdraw": "Withdraw quote",
-      "withdrawn": "Quote withdrawn. The request went back to other lawyers."
+      "withdrawn": "Quote withdrawn. The request went back to other lawyers.",
+      "withdrawTitle": "Withdraw this quote?",
+      "withdrawConfirm": "The client can no longer accept it, and you give this request back: you lose the party names and can't take it on again.",
+      "keepQuote": "Keep quote"
     },
     "confirmed": {
       "title": "Confirmed",
@@ -195,7 +199,8 @@
       "retry": "Retry the charge",
       "addCard": "Add or change card",
       "acceptedTitle": "Quote accepted",
-      "awaitingPayment": "The client accepted your quote and is paying {{total}} through ilovelawyer. You'll be engaged as soon as it's paid. They have until {{date}}."
+      "awaitingPayment": "The client accepted your quote and is paying {{total}} through ilovelawyer. You'll be engaged as soon as it's paid. They have until {{date}}.",
+      "paid": "The client has paid {{total}}. Your engagement is being set up and starts in a moment."
     },
     "engaged": {
       "title": "Engaged",
