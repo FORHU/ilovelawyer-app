@@ -10,6 +10,7 @@ import { CLOSING_SOON_HOURS, hoursLeft, readiness } from "@/lib/client-requests/
 import { useNow } from "@/lib/client-requests/use-countdown";
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { RequestTags } from "./request-tags";
+import { claimEndedKey } from "@/lib/client-requests/claim-ended";
 
 interface RequestCardProps {
   request: ClientRequestForLawyer;
@@ -57,8 +58,9 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
 
       {!actionable ? (
         <Badge shape="pill" className="self-start py-1 tracking-[1px] md:self-center">
-          {/* Several lawyers: the request moved on for the lawyer the client hired, not for this one. */}
-          {request.claim?.outcome === "NOT_CHOSEN" ? t("detail.notChosen.badge") : request.status}
+          {/* Several lawyers: once this lawyer's claim has ended, the request's own status is how it
+              looks to the others (still ROUTED, say), so the badge says how it ended for them. */}
+          {claimEndedKey(request.claim) ? t(`${claimEndedKey(request.claim)}.badge`) : t(`detail.status.${request.status}`)}
         </Badge>
       ) : (
         <div className="flex shrink-0 items-center gap-2">
