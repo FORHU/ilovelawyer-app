@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import { ErrorState } from "@/components/error-state"
@@ -74,6 +75,8 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
 
   const [amount, setAmount] = useState("")
   const [amountError, setAmountError] = useState("")
+  // The amount (pence) waiting on the lawyer's confirmation, or null when no withdrawal is being confirmed.
+  const [confirming, setConfirming] = useState<number | null>(null)
   // One key per withdrawal the lawyer means to make: kept across a retry of the same request, new
   // once it has gone through.
   const [idempotencyKey, setIdempotencyKey] = useState(() => generateId())
@@ -102,6 +105,7 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
     })
   }
 
+  // Checks the amount, then asks the lawyer to confirm it before anything moves.
   function submitWithdrawal(e: React.FormEvent) {
     e.preventDefault()
     const data = wallet.data
@@ -111,16 +115,25 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
     if (!Number.isFinite(value) || amountMinor <= 0) return setAmountError(t("wallet.withdraw.invalid"))
     if (amountMinor < data.minWithdrawal.amountMinor) return setAmountError(t("wallet.withdraw.belowMinimum", { min: formatMoney(data.minWithdrawal.amountMinor) }))
     if (amountMinor > data.balances.available.amountMinor) return setAmountError(t("wallet.withdraw.tooMuch", { available: formatMoney(data.balances.available.amountMinor) }))
+    setConfirming(amountMinor)
+  }
+
+  function confirmWithdrawal() {
+    if (confirming === null) return
     withdraw.mutate(
-      { amountMinor, idempotencyKey },
+      { amountMinor: confirming, idempotencyKey },
       {
         onSuccess: (result) => {
+          setConfirming(null)
           setAmount("")
           setIdempotencyKey(generateId())
           if (result.status === "FAILED") toast.error(result.failureReason ?? t("wallet.withdraw.failed"))
           else toast.success(result.status === "PAID" ? t("wallet.withdraw.paid") : t("wallet.withdraw.processing"))
         },
-        onError: (err) => toast.error(err instanceof Error ? err.message : t("wallet.error")),
+        onError: (err) => {
+          setConfirming(null)
+          toast.error(err instanceof Error ? err.message : t("wallet.error"))
+        },
       }
     )
   }
@@ -211,6 +224,34 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
               {amountError || (account?.payoutsEnabled ? t("wallet.withdraw.hint", { min: formatMoney(data.minWithdrawal.amountMinor) }) : t("wallet.withdraw.needsPayouts"))}
             </p>
           </form>
+
+          <Dialog open={confirming !== null} onOpenChange={(open) => !open && !withdraw.isPending && setConfirming(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("wallet.withdraw.confirmTitle", { amount: formatMoney(confirming ?? 0) })}</DialogTitle>
+                <DialogDescription>{t("wallet.withdraw.confirmDescription")}</DialogDescription>
+              </DialogHeader>
+              <dl className="flex flex-col divide-y divide-border rounded-2xl border border-border text-[13px]">
+                <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+                  <dt className="text-muted-foreground">{t("wallet.withdraw.confirmAmount")}</dt>
+                  <dd className="font-semibold text-foreground tabular-nums">{formatMoney(confirming ?? 0)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+                  <dt className="text-muted-foreground">{t("wallet.withdraw.confirmLeft")}</dt>
+                  <dd className="text-foreground tabular-nums">{formatMoney(data.balances.available.amountMinor - (confirming ?? 0))}</dd>
+                </div>
+              </dl>
+              {confirming === data.balances.available.amountMinor && <p className="text-[13px] text-muted-foreground">{t("wallet.withdraw.confirmAll")}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setConfirming(null)} disabled={withdraw.isPending}>
+                  {t("wallet.withdraw.confirmCancel")}
+                </Button>
+                <Button type="button" variant="accent" isPending={withdraw.isPending} onClick={confirmWithdrawal}>
+                  {t("wallet.withdraw.confirmSubmit", { amount: formatMoney(confirming ?? 0) })}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <div className="flex flex-col gap-2">
             <h3 className="text-[13px] font-semibold text-foreground">{t("wallet.earnings.heading")}</h3>

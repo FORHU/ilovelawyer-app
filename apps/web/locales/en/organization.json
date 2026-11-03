@@ -322,7 +322,14 @@
       "tooMuch": "That's more than your available balance of {{available}}.",
       "paid": "Withdrawal paid.",
       "processing": "Withdrawal on its way to your bank.",
-      "failed": "The withdrawal couldn't be paid. The money is back in your available balance."
+      "failed": "The withdrawal couldn't be paid. The money is back in your available balance.",
+      "confirmTitle": "Withdraw {{amount}} to your bank?",
+      "confirmDescription": "Stripe pays it to the bank account you set up for payouts. Once you confirm, it can't be cancelled.",
+      "confirmAmount": "Withdrawing",
+      "confirmLeft": "Available afterwards",
+      "confirmAll": "This withdraws your whole available balance.",
+      "confirmCancel": "Cancel",
+      "confirmSubmit": "Withdraw {{amount}}"
     },
     "earnings": {
       "heading": "Client payments",
