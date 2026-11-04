@@ -277,7 +277,7 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!conflictChecked) {
-      // Enter in a field reaches here even though the button is disabled: say why, and go to the step that is open.
+      // Send quote, or Enter in a field, before the conflict check: say why, and go to the step that is open.
       setConflictBlocked(true);
       document.getElementById(CONFLICT_CLEAR_ID)?.focus();
       return;
@@ -406,9 +406,18 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
       </form>
       <Tooltip>
         <TooltipTrigger asChild>
-          {/* Wrapped so the tooltip still shows on a disabled button. */}
+          {/* Wrapped so the tooltip still shows while the button is disabled for sending. */}
           <span className="block">
-            <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={!conflictChecked} className="h-12 w-full">
+            {/* Not disabled before the conflict check: browsers won't submit by Enter through a disabled
+                button, so it stays live and handleSubmit refuses, saying why. It only looks unavailable. */}
+            <Button
+              type="submit"
+              form={QUOTE_FORM_ID}
+              variant="accent"
+              isPending={quote.isPending}
+              aria-disabled={!conflictChecked}
+              className={cn("h-12 w-full", !conflictChecked && "opacity-50")}
+            >
               {t("detail.quote.send")}
             </Button>
           </span>
