@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { isNotFoundError } from "@/lib/fetch"
 import { clientRequestKeys } from "@/lib/query-keys"
 import { claimClientRequest, listClientRequests, passClientRequest } from "./api"
 import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse } from "./types"
@@ -38,6 +39,11 @@ export function usePassClientRequestMutation() {
   return useMutation({
     mutationFn: (id: string) => passClientRequest(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clientRequestKeys.lists() }),
+    // 404: it's already gone from this lawyer's inbox (passed in another tab, taken, or closed), so
+    // the lists are refreshed and the out-of-date card drops out.
+    onError: (err) => {
+      if (isNotFoundError(err)) queryClient.invalidateQueries({ queryKey: clientRequestKeys.lists() })
+    },
   })
 }
 

@@ -37,7 +37,8 @@ import { formatMoney } from "@/lib/money";
 import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
-import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
+import { PLANS_PATH, toastPassError, toastRequestError } from "@/lib/client-requests/plan-errors";
+import { isNotFoundError } from "@/lib/fetch";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useDateLocale } from "@/lib/i18n/date-locale";
 import { Button } from "@workspace/ui/components/button";
@@ -434,7 +435,22 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
 
   return (
     <div className="flex gap-2.5">
-      <Button type="button" variant="outline" className="flex-1" isPending={pass.isPending} onClick={() => pass.mutate(request.id, { onSuccess: () => router.push("/homepage/client-requests") })}>
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1"
+        isPending={pass.isPending}
+        onClick={() =>
+          pass.mutate(request.id, {
+            onSuccess: () => router.push("/homepage/client-requests"),
+            onError: (err) => {
+              toastPassError(err, { gone: t("card.passGone"), fallback: t("card.passError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
+              // Gone from the inbox: nothing left to do on this page.
+              if (isNotFoundError(err)) router.push("/homepage/client-requests");
+            },
+          })
+        }
+      >
         {t("card.pass")}
       </Button>
       <Button

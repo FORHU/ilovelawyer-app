@@ -38,6 +38,8 @@
     "notReady": "{{met}} of {{total}} lawyer-ready",
     "open": "Open {{hours}}h more",
     "openMinutes": "Open {{minutes}}m more",
+    "passGone": "This request has already left your inbox.",
+    "passError": "Couldn’t pass on this request. Try again.",
     "closed": "Closing now",
     "expired": "Closed"
   },

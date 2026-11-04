@@ -21,7 +21,7 @@ import {
 } from "@/lib/client-requests/inbox";
 import { useClientRequestProfileQuery, useUpdateClientRequestProfileMutation } from "@/lib/client-requests/profile";
 import { sortRequests, type InboxSort } from "@/lib/client-requests/request-meta";
-import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
+import { PLANS_PATH, toastPassError, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { PageHeading } from "@workspace/ui/components/page-heading";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -81,7 +81,9 @@ export default function ClientRequestsPage() {
   }
 
   function onPass(id: string) {
-    pass.mutate(id);
+    pass.mutate(id, {
+      onError: (err) => toastPassError(err, { gone: t("card.passGone"), fallback: t("card.passError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+    });
   }
 
   function onAccept(id: string) {
