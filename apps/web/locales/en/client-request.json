@@ -27,7 +27,7 @@
     "received": "Received {{ago}}",
     "assignedTo": "Assigned to {{name}}",
     "pass": "Pass",
-    "passTooltip": "Hide this request from your inbox",
+    "passTooltip": "Remove this request from your inbox for good",
     "passOnlyForYouTooltip": "Pass: it goes to other matching lawyers straight away",
     "accept": "Accept",
     "acceptTooltip": "Join this request: up to 3 lawyers can quote on it",
@@ -48,6 +48,12 @@
     "description": "Up to 3 lawyers can accept a request. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. If the client hires you, they pay your quote through ilovelawyer, and it goes to your earnings less ilovelawyer’s platform fee.",
     "cancel": "Cancel",
     "confirm": "Accept request"
+  },
+  "confirmPass": {
+    "title": "Pass on this request?",
+    "description": "It will leave your inbox for good: you won’t be able to open or accept it again. Other lawyers can still take it.",
+    "cancel": "Keep request",
+    "confirm": "Pass"
   },
   "feeNote": "Nothing is charged to you. The client pays your quote, and ilovelawyer’s platform fee is deducted from what you receive.",
   "noMatches": "No requests match these filters.",
