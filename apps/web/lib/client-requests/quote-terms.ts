@@ -5,12 +5,13 @@ export const QUOTE_MAX_VALIDITY_DAYS = 90
 /** What the expiry picker starts at. */
 export const QUOTE_DEFAULT_VALIDITY_DAYS = 7
 
-/** The platform fee the client pays on top of a service fee, worked out the way the API does
- * (platformFeeOf): `platformFeeBps` of it rounded half-up, never below the minimum, none on a free
- * quote. The API prices it again when the quote is sent; this is the form's preview. */
-export function platformFeeOf(serviceFeeMinor: number, terms: QuoteTerms): number {
-  if (serviceFeeMinor <= 0) return 0
-  return Math.max(Math.floor((serviceFeeMinor * terms.platformFeeBps + 5000) / 10000), terms.minPlatformFee.amountMinor)
+/** The platform fee deducted from a quoted amount (what the client pays), worked out the way the API
+ * does (platformFeeOf): `platformFeeBps` of it rounded half-up, never below the minimum nor above the
+ * amount, none on a free quote. The lawyer receives the rest. The API prices it again when the quote
+ * is sent; this is the form's preview. */
+export function platformFeeOf(quotedMinor: number, terms: QuoteTerms): number {
+  if (quotedMinor <= 0) return 0
+  return Math.min(Math.max(Math.floor((quotedMinor * terms.platformFeeBps + 5000) / 10000), terms.minPlatformFee.amountMinor), quotedMinor)
 }
 
 /** "15%" from 1500 basis points; "12.5%" from 1250. */

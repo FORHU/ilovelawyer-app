@@ -19,7 +19,7 @@ import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import { RELEASE_REASONS, type ReleaseReason, type QuoteType } from "@/lib/client-handoff";
-import { useClaimClientRequestMutation, usePassClientRequestMutation, isCardRequiredError } from "@/lib/client-requests/inbox";
+import { useClaimClientRequestMutation, usePassClientRequestMutation } from "@/lib/client-requests/inbox";
 import {
   useClientRequestQuery,
   useCloseClientRequestMutation,
@@ -37,7 +37,8 @@ import { formatMoney } from "@/lib/money";
 import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
-import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
+import { PLANS_PATH, toastPassError, toastRequestError } from "@/lib/client-requests/plan-errors";
+import { isNotFoundError } from "@/lib/fetch";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useDateLocale } from "@/lib/i18n/date-locale";
 import { Button } from "@workspace/ui/components/button";
@@ -268,8 +269,9 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   const validUntil = useLongDate();
   const previewAmount = Number(amount);
   const hasPreviewAmount = quoteAmountOk(amount, type);
-  const serviceFeeMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
-  const platformFeeMinor = platformFeeOf(serviceFeeMinor, request.quoteTerms);
+  // What the lawyer types is what the client pays; the platform fee comes out of it.
+  const quotedMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
+  const platformFeeMinor = platformFeeOf(quotedMinor, request.quoteTerms);
   const expiresAt = endOfDayIso(expiry);
 
   function handleSubmit(e: React.FormEvent) {
@@ -379,23 +381,23 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
           <p className="text-xs text-muted-foreground">{t("detail.quote.messageHint")}</p>
         </div>
 
-        {/* What the client will be shown, as it will read to them: the lawyer's fee, the platform fee on top, the total. */}
+        {/* What the client will be shown: the amount they pay, nothing added. Then, for the lawyer only, the platform fee deducted from it and what they receive. */}
         <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-border px-4 py-3.5" aria-live="polite">
           <span className={LABEL}>{t("detail.quote.willSee")}</span>
           <span className="text-[13px] text-muted-foreground">{type === "FIXED_FEE" ? t("detail.quote.fixedQuote") : t("detail.quote.consultationQuote")}</span>
           <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">
-            {hasPreviewAmount ? formatMoney(serviceFeeMinor + platformFeeMinor) : t("detail.quote.amountPlaceholder")}
+            {hasPreviewAmount ? formatMoney(quotedMinor) : t("detail.quote.amountPlaceholder")}
           </span>
           <div className="flex flex-col gap-1 text-[13px]">
-            <div className="flex justify-between gap-3 text-foreground">
-              <span>{t("detail.quote.yourFee")}</span>
-              <span className="font-semibold">{hasPreviewAmount ? formatMoney(serviceFeeMinor) : "—"}</span>
-            </div>
             <div className="flex justify-between gap-3 text-muted-foreground">
               <span>
                 {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor) })}
               </span>
-              <span>{hasPreviewAmount ? formatMoney(platformFeeMinor) : "—"}</span>
+              <span>{hasPreviewAmount ? `−${formatMoney(platformFeeMinor)}` : "—"}</span>
+            </div>
+            <div className="flex justify-between gap-3 text-foreground">
+              <span>{t("detail.quote.yourFee")}</span>
+              <span className="font-semibold">{hasPreviewAmount ? formatMoney(quotedMinor - platformFeeMinor) : "—"}</span>
             </div>
           </div>
           {expiresAt && <span className="text-xs text-muted-foreground">{t("detail.quote.validUntil", { date: validUntil(expiresAt) })}</span>}
@@ -430,11 +432,25 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
   const router = useRouter();
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
-  const [cardModalOpen, setCardModalOpen] = useState(false);
 
   return (
     <div className="flex gap-2.5">
-      <Button type="button" variant="outline" className="flex-1" isPending={pass.isPending} onClick={() => pass.mutate(request.id, { onSuccess: () => router.push("/homepage/client-requests") })}>
+      <Button
+        type="button"
+        variant="outline"
+        className="flex-1"
+        isPending={pass.isPending}
+        onClick={() =>
+          pass.mutate(request.id, {
+            onSuccess: () => router.push("/homepage/client-requests"),
+            onError: (err) => {
+              toastPassError(err, { gone: t("card.passGone"), fallback: t("card.passError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
+              // Gone from the inbox: nothing left to do on this page.
+              if (isNotFoundError(err)) router.push("/homepage/client-requests");
+            },
+          })
+        }
+      >
         {t("card.pass")}
       </Button>
       <Button
@@ -444,16 +460,12 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
         isPending={claim.isPending}
         onClick={() =>
           claim.mutate(request.id, {
-            onError: (err) =>
-              isCardRequiredError(err)
-                ? setCardModalOpen(true)
-                : toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+            onError: (err) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
           })
         }
       >
         {t("card.accept")}
       </Button>
-      <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} extraReturnParams={{ resumeRequestId: request.id }} />
     </div>
   );
 }
@@ -469,10 +481,10 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
   return (
     <section className={CARD}>
       <div className={LABEL}>{t("detail.quote.sentTitle")}</div>
-      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.serviceFee.amountMinor ?? request.quote.amount.amountMinor)}</div>
+      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.total.amountMinor ?? request.quote.amount.amountMinor)}</div>
       {quotation && (
         <div className="mt-2 flex flex-col gap-1 text-[13px] text-muted-foreground">
-          <span>{t("detail.quote.clientPays", { total: formatMoney(quotation.total.amountMinor), fee: formatMoney(quotation.platformFee.amountMinor) })}</span>
+          <span>{t("detail.quote.youReceive", { amount: formatMoney(quotation.serviceFee.amountMinor), fee: formatMoney(quotation.platformFee.amountMinor) })}</span>
           <span>{t("detail.quote.validUntil", { date: validUntil(quotation.expiresAt) })}</span>
         </div>
       )}
@@ -720,6 +732,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
             {endedKey ? t(`${endedKey}.title`) : t(`detail.status.${request.status}`)}
           </h1>
           <RequestTags brief={request.brief} />
+          {request.status === "ROUTED" && request.onlyForYou && !endedKey && <p className="text-[13px] text-muted-foreground">{t("detail.onlyForYou")}</p>}
           {request.status === "ROUTED" && lawyersOn > 0 && !endedKey && (
             <p className="text-[13px] text-muted-foreground">{t("detail.lawyersOn", { count: lawyersOn, max: request.maxLawyers ?? 3 })}</p>
           )}
@@ -794,18 +807,15 @@ export default function ClientRequestDetailPage() {
   const { data: request, isLoading, isError, refetch } = useClientRequestQuery(id);
   const showSkeleton = useDelayedLoading(isLoading);
   const organizationId = useAuthStore((s) => s.organization?.id);
-  const claim = useClaimClientRequestMutation();
   const retry = useRetryClientRequestChargeMutation(id);
 
-  // Back from adding a card (AddCardModal, through Stripe): carry on with what it was added for,
-  // accepting this request or retrying its per-case fee.
+  // Back from adding a card (AddCardModal, through Stripe) after a failed per-case fee: retry it.
   useCardSetupReturn(organizationId, (status, params) => {
     // Drop our own params too, so the address is just the request again.
     router.replace(`/homepage/client-requests/${id}`);
     if (status !== "done") return;
     const onError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
-    if (params.get("resumeRequestId")) claim.mutate(id, { onError });
-    else if (params.get("retryCharge")) retry.mutate(undefined, { onError });
+    if (params.get("retryCharge")) retry.mutate(undefined, { onError });
   });
 
   return (
