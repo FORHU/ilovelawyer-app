@@ -182,6 +182,11 @@ export interface ClientRequestForLawyer {
   /** Several lawyers (phase 5): how many are on it now, of maxLawyers. */
   lawyersOn?: number
   maxLawyers?: number
+  /** The client asked for this lawyer by name, from the client app's Find a lawyer. */
+  askedForYou?: boolean
+  /** Only this lawyer is offered it until routingExpiresAt; after that, or once they pass, it goes to
+   * every matching lawyer. */
+  onlyForYou?: boolean
   claim: ClaimSummary | null
   quote: Quote | null
   /** The lawyer's quotation: their draft, or the one they sent, with the platform fee the client pays

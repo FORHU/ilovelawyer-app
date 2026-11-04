@@ -37,6 +37,16 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
     // One markup for both breakpoints: actions stack under the copy on mobile, sit to its right from md.
     <article className="flex flex-col gap-4 rounded-2xl border border-border bg-card px-5 py-4 md:flex-row md:items-center md:justify-between md:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        {request.askedForYou && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge shape="pill" className="self-start py-1 tracking-[1px]">
+                {t("card.askedForYou")}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>{t("card.askedForYouTooltip")}</TooltipContent>
+          </Tooltip>
+        )}
         <RequestTags brief={request.brief} />
         <p className="max-w-[860px] text-[15px] leading-relaxed text-foreground">{request.brief.summary}</p>
         {request.brief.clientNote && (
@@ -76,7 +86,7 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
                 {t("card.pass")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t("card.passTooltip")}</TooltipContent>
+            <TooltipContent>{t(request.onlyForYou ? "card.passOnlyForYouTooltip" : "card.passTooltip")}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -90,7 +100,7 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
                 {t("card.accept")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t("card.acceptTooltip")}</TooltipContent>
+            <TooltipContent>{t(request.onlyForYou ? "card.acceptOnlyForYouTooltip" : "card.acceptTooltip")}</TooltipContent>
           </Tooltip>
         </div>
       )}

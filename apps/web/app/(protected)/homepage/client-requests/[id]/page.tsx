@@ -720,6 +720,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
             {endedKey ? t(`${endedKey}.title`) : t(`detail.status.${request.status}`)}
           </h1>
           <RequestTags brief={request.brief} />
+          {request.status === "ROUTED" && request.onlyForYou && !endedKey && <p className="text-[13px] text-muted-foreground">{t("detail.onlyForYou")}</p>}
           {request.status === "ROUTED" && lawyersOn > 0 && !endedKey && (
             <p className="text-[13px] text-muted-foreground">{t("detail.lawyersOn", { count: lawyersOn, max: request.maxLawyers ?? 3 })}</p>
           )}
