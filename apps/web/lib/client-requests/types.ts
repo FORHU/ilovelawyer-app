@@ -189,8 +189,8 @@ export interface ClientRequestForLawyer {
   onlyForYou?: boolean
   claim: ClaimSummary | null
   quote: Quote | null
-  /** The lawyer's quotation: their draft, or the one they sent, with the platform fee the client pays
-   * on top, the total and the expiry. Null before they start one. */
+  /** The lawyer's quotation: their draft, or the one they sent, with what the client pays, the
+   * platform fee deducted from it, what the lawyer receives and the expiry. Null before they start one. */
   quotation: Quotation | null
   /** How the platform fee on a quote is worked out now, for the form's preview. */
   quoteTerms: QuoteTerms

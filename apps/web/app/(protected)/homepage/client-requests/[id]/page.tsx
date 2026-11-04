@@ -268,8 +268,9 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   const validUntil = useLongDate();
   const previewAmount = Number(amount);
   const hasPreviewAmount = quoteAmountOk(amount, type);
-  const serviceFeeMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
-  const platformFeeMinor = platformFeeOf(serviceFeeMinor, request.quoteTerms);
+  // What the lawyer types is what the client pays; the platform fee comes out of it.
+  const quotedMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
+  const platformFeeMinor = platformFeeOf(quotedMinor, request.quoteTerms);
   const expiresAt = endOfDayIso(expiry);
 
   function handleSubmit(e: React.FormEvent) {
@@ -379,23 +380,23 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
           <p className="text-xs text-muted-foreground">{t("detail.quote.messageHint")}</p>
         </div>
 
-        {/* What the client will be shown, as it will read to them: the lawyer's fee, the platform fee on top, the total. */}
+        {/* What the client will be shown: the amount they pay, nothing added. Then, for the lawyer only, the platform fee deducted from it and what they receive. */}
         <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-border px-4 py-3.5" aria-live="polite">
           <span className={LABEL}>{t("detail.quote.willSee")}</span>
           <span className="text-[13px] text-muted-foreground">{type === "FIXED_FEE" ? t("detail.quote.fixedQuote") : t("detail.quote.consultationQuote")}</span>
           <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">
-            {hasPreviewAmount ? formatMoney(serviceFeeMinor + platformFeeMinor) : t("detail.quote.amountPlaceholder")}
+            {hasPreviewAmount ? formatMoney(quotedMinor) : t("detail.quote.amountPlaceholder")}
           </span>
           <div className="flex flex-col gap-1 text-[13px]">
-            <div className="flex justify-between gap-3 text-foreground">
-              <span>{t("detail.quote.yourFee")}</span>
-              <span className="font-semibold">{hasPreviewAmount ? formatMoney(serviceFeeMinor) : "—"}</span>
-            </div>
             <div className="flex justify-between gap-3 text-muted-foreground">
               <span>
                 {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor) })}
               </span>
-              <span>{hasPreviewAmount ? formatMoney(platformFeeMinor) : "—"}</span>
+              <span>{hasPreviewAmount ? `−${formatMoney(platformFeeMinor)}` : "—"}</span>
+            </div>
+            <div className="flex justify-between gap-3 text-foreground">
+              <span>{t("detail.quote.yourFee")}</span>
+              <span className="font-semibold">{hasPreviewAmount ? formatMoney(quotedMinor - platformFeeMinor) : "—"}</span>
             </div>
           </div>
           {expiresAt && <span className="text-xs text-muted-foreground">{t("detail.quote.validUntil", { date: validUntil(expiresAt) })}</span>}
@@ -469,10 +470,10 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
   return (
     <section className={CARD}>
       <div className={LABEL}>{t("detail.quote.sentTitle")}</div>
-      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.serviceFee.amountMinor ?? request.quote.amount.amountMinor)}</div>
+      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.total.amountMinor ?? request.quote.amount.amountMinor)}</div>
       {quotation && (
         <div className="mt-2 flex flex-col gap-1 text-[13px] text-muted-foreground">
-          <span>{t("detail.quote.clientPays", { total: formatMoney(quotation.total.amountMinor), fee: formatMoney(quotation.platformFee.amountMinor) })}</span>
+          <span>{t("detail.quote.youReceive", { amount: formatMoney(quotation.serviceFee.amountMinor), fee: formatMoney(quotation.platformFee.amountMinor) })}</span>
           <span>{t("detail.quote.validUntil", { date: validUntil(quotation.expiresAt) })}</span>
         </div>
       )}

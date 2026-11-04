@@ -51,7 +51,7 @@ function Tile({ label, value, note }: { label: string; value: string; note?: str
 
 /**
  * The payee's earnings from client quotations (ilovelawyer-api's WalletSvc): each client payment
- * puts the lawyer's full fee in PENDING for the tenant's hold, then it becomes available to withdraw
+ * puts the lawyer's quote, less the platform fee, in PENDING for the tenant's hold, then it becomes available to withdraw
  * to the bank through Stripe Connect. Owners and Admins only for a firm, same as the API's
  * requireOrgRole(ADMIN); with OWN_WORKSPACE_ID it's a solo lawyer's own, on their profile.
  */
