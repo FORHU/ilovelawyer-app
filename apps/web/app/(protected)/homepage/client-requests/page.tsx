@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
+import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { RequestCard } from "@/components/client-requests/request-card";
 import { ErrorState } from "@/components/error-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -71,6 +72,8 @@ export default function ClientRequestsPage() {
   const pass = usePassClientRequestMutation();
   /** The request whose Accept is waiting on the confirmation dialog. */
   const [confirmAcceptFor, setConfirmAcceptFor] = useState<string | null>(null);
+  /** The request whose Pass is waiting on the confirmation dialog. */
+  const [confirmPassFor, setConfirmPassFor] = useState<string | null>(null);
 
   // A refusal from the lawyer's plan (trial over, month's client requests taken) offers the Plans page.
   const showError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
@@ -81,8 +84,16 @@ export default function ClientRequestsPage() {
   }
 
   function onPass(id: string) {
+    setConfirmPassFor(id);
+  }
+
+  function confirmPass(id: string) {
     pass.mutate(id, {
-      onError: (err) => toastPassError(err, { gone: t("card.passGone"), fallback: t("card.passError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+      onSuccess: () => setConfirmPassFor(null),
+      onError: (err) => {
+        setConfirmPassFor(null);
+        toastPassError(err, { gone: t("card.passGone"), fallback: t("card.passError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
+      },
     });
   }
 
@@ -238,6 +249,13 @@ export default function ClientRequestsPage() {
         isPending={claim.isPending}
         onConfirm={() => confirmAcceptFor && confirmAccept(confirmAcceptFor)}
         onClose={() => setConfirmAcceptFor(null)}
+      />
+
+      <ConfirmPassModal
+        open={!!confirmPassFor}
+        isPending={pass.isPending}
+        onConfirm={() => confirmPassFor && confirmPass(confirmPassFor)}
+        onClose={() => setConfirmPassFor(null)}
       />
     </PageShell>
   );

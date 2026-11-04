@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake";
+import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementInvoice } from "@/components/client-requests/engagement-invoice";
@@ -432,27 +433,29 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
   const router = useRouter();
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
+  const [confirmingPass, setConfirmingPass] = useState(false);
 
   return (
     <div className="flex gap-2.5">
-      <Button
-        type="button"
-        variant="outline"
-        className="flex-1"
+      <Button type="button" variant="outline" className="flex-1" disabled={pass.isPending} onClick={() => setConfirmingPass(true)}>
+        {t("card.pass")}
+      </Button>
+      <ConfirmPassModal
+        open={confirmingPass}
         isPending={pass.isPending}
-        onClick={() =>
+        onConfirm={() =>
           pass.mutate(request.id, {
             onSuccess: () => router.push("/homepage/client-requests"),
             onError: (err) => {
+              setConfirmingPass(false);
               toastPassError(err, { gone: t("card.passGone"), fallback: t("card.passError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
               // Gone from the inbox: nothing left to do on this page.
               if (isNotFoundError(err)) router.push("/homepage/client-requests");
             },
           })
         }
-      >
-        {t("card.pass")}
-      </Button>
+        onClose={() => setConfirmingPass(false)}
+      />
       <Button
         type="button"
         variant="accent"
