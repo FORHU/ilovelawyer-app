@@ -53,7 +53,18 @@
     "title": "Pass on this request?",
     "description": "It will leave your inbox for good: you won’t be able to open or accept it again. Other lawyers can still take it.",
     "cancel": "Keep request",
-    "confirm": "Pass"
+    "confirm": "Pass",
+    "reasonLabel": "Why are you passing? Optional",
+    "reasons": {
+      "CONFLICT": "Conflict of interest",
+      "CAPACITY": "No capacity",
+      "OUT_OF_SCOPE": "Outside my expertise",
+      "FEE_MISMATCH": "Fee doesn’t fit",
+      "NOT_ENOUGH_INFO": "Not enough information",
+      "OTHER": "Other"
+    },
+    "notePlaceholder": "Add a note (optional)",
+    "noteHint": "Only ilovelawyer can see this. The client is never told."
   },
   "feeNote": "Nothing is charged to you. The client pays your quote, and ilovelawyer’s platform fee is deducted from what you receive.",
   "noMatches": "No requests match these filters.",

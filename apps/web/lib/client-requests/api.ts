@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/fetch"
-import type { Money, QuoteType, ReleaseReason } from "@/lib/client-handoff"
+import type { Money, PassReason, QuoteType, ReleaseReason } from "@/lib/client-handoff"
 import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, ConflictParty, IntakePackageForLawyer } from "./types"
 
 export interface QuotationInput {
@@ -24,8 +24,15 @@ export function claimClientRequest(id: string) {
   return apiFetch<ClientRequestForLawyer>(`/api/client-requests/${id}/claim`, { method: "POST" })
 }
 
-export function passClientRequest(id: string) {
-  return apiFetch<void>(`/api/client-requests/${id}/pass`, { method: "POST" })
+/** What a lawyer says when passing: both optional, and read by ilovelawyer staff only. */
+export interface PassInput {
+  reason?: PassReason
+  note?: string
+}
+
+export function passClientRequest(id: string, input: PassInput = {}) {
+  const said = Object.keys(input).length > 0
+  return apiFetch<void>(`/api/client-requests/${id}/pass`, { method: "POST", ...(said ? { body: JSON.stringify(input) } : {}) })
 }
 
 export function getConflictParties(id: string) {

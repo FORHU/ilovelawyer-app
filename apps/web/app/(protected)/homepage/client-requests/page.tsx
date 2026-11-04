@@ -20,6 +20,7 @@ import {
   usePassClientRequestMutation,
   type ClientRequestInboxView,
 } from "@/lib/client-requests/inbox";
+import type { PassInput } from "@/lib/client-requests/api";
 import { useClientRequestProfileQuery, useUpdateClientRequestProfileMutation } from "@/lib/client-requests/profile";
 import { sortRequests, type InboxSort } from "@/lib/client-requests/request-meta";
 import { PLANS_PATH, toastPassError, toastRequestError } from "@/lib/client-requests/plan-errors";
@@ -87,8 +88,8 @@ export default function ClientRequestsPage() {
     setConfirmPassFor(id);
   }
 
-  function confirmPass(id: string) {
-    pass.mutate(id, {
+  function confirmPass(id: string, said: PassInput) {
+    pass.mutate({ id, ...said }, {
       onSuccess: () => setConfirmPassFor(null),
       onError: (err) => {
         setConfirmPassFor(null);
@@ -227,7 +228,7 @@ export default function ClientRequestsPage() {
                       request={request}
                       onPass={onPass}
                       onAccept={onAccept}
-                      passPending={pass.isPending && pass.variables === request.id}
+                      passPending={pass.isPending && pass.variables?.id === request.id}
                       acceptPending={claim.isPending && claim.variables === request.id}
                     />
                   ) : (
@@ -254,7 +255,7 @@ export default function ClientRequestsPage() {
       <ConfirmPassModal
         open={!!confirmPassFor}
         isPending={pass.isPending}
-        onConfirm={() => confirmPassFor && confirmPass(confirmPassFor)}
+        onConfirm={(said) => confirmPassFor && confirmPass(confirmPassFor, said)}
         onClose={() => setConfirmPassFor(null)}
       />
     </PageShell>

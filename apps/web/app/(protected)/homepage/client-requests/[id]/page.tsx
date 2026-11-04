@@ -462,8 +462,8 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
       <ConfirmPassModal
         open={confirmingPass}
         isPending={pass.isPending}
-        onConfirm={() =>
-          pass.mutate(request.id, {
+        onConfirm={(said) =>
+          pass.mutate({ id: request.id, ...said }, {
             onSuccess: () => router.push("/homepage/client-requests"),
             onError: (err) => {
               setConfirmingPass(false);
