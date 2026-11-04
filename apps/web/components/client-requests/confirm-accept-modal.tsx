@@ -11,7 +11,7 @@ interface ConfirmAcceptModalProps {
   onClose: () => void
 }
 
-/** Asked before the inbox's Accept claims a request, so a stray click can't take one. */
+/** Asked before Accept claims a request (in the inbox or on its own page), so a stray click can't take one. */
 export function ConfirmAcceptModal({ open, isPending, onConfirm, onClose }: ConfirmAcceptModalProps) {
   const { t } = useTranslation("client-request")
   return (

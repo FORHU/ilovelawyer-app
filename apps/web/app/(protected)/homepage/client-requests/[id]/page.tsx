@@ -11,6 +11,7 @@ import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake";
 import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { ClientFile } from "@/components/client-requests/client-file";
+import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementInvoice } from "@/components/client-requests/engagement-invoice";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
@@ -278,7 +279,7 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!conflictChecked) {
-      // Enter in a field reaches here even though the button is disabled: say why, and go to the step that is open.
+      // Send quote, or Enter in a field, before the conflict check: say why, and go to the step that is open.
       setConflictBlocked(true);
       document.getElementById(CONFLICT_CLEAR_ID)?.focus();
       return;
@@ -407,9 +408,18 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
       </form>
       <Tooltip>
         <TooltipTrigger asChild>
-          {/* Wrapped so the tooltip still shows on a disabled button. */}
+          {/* Wrapped so the tooltip still shows while the button is disabled for sending. */}
           <span className="block">
-            <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={!conflictChecked} className="h-12 w-full">
+            {/* Not disabled before the conflict check: browsers won't submit by Enter through a disabled
+                button, so it stays live and handleSubmit refuses, saying why. It only looks unavailable. */}
+            <Button
+              type="submit"
+              form={QUOTE_FORM_ID}
+              variant="accent"
+              isPending={quote.isPending}
+              aria-disabled={!conflictChecked}
+              className={cn("h-12 w-full", !conflictChecked && "opacity-50")}
+            >
               {t("detail.quote.send")}
             </Button>
           </span>
@@ -434,6 +444,15 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
   const [confirmingPass, setConfirmingPass] = useState(false);
+  // Accept asks first, as in the inbox, so a stray click can't take the request.
+  const [confirmingAccept, setConfirmingAccept] = useState(false);
+
+  function confirmAccept() {
+    claim.mutate(request.id, {
+      onSettled: () => setConfirmingAccept(false),
+      onError: (err) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+    });
+  }
 
   return (
     <div className="flex gap-2.5">
@@ -461,14 +480,11 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
         variant="accent"
         className="flex-1"
         isPending={claim.isPending}
-        onClick={() =>
-          claim.mutate(request.id, {
-            onError: (err) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
-          })
-        }
+        onClick={() => setConfirmingAccept(true)}
       >
         {t("card.accept")}
       </Button>
+      <ConfirmAcceptModal open={confirmingAccept} isPending={claim.isPending} onConfirm={confirmAccept} onClose={() => setConfirmingAccept(false)} />
     </div>
   );
 }

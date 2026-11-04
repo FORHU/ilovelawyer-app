@@ -364,7 +364,7 @@
   },
   "openRequests": {
     "title": "Open requests",
-    "hint": "Sent to every lawyer matching your practice areas — the first to accept holds it.",
+    "hint": "Sent to every lawyer matching your practice areas — up to 3 can accept each one.",
     "sort": "Sort",
     "closing": "Closing soonest",
     "newest": "Newest first",
