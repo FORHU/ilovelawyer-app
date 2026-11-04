@@ -7,14 +7,12 @@ import { Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
-import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
 import { RequestCard } from "@/components/client-requests/request-card";
 import { ErrorState } from "@/components/error-state";
 import { Pagination } from "@/components/ui/pagination";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import {
-  isCardRequiredError,
   useClaimClientRequestMutation,
   useClientRequestCountQuery,
   useClientRequestInboxQuery,
@@ -23,9 +21,7 @@ import {
 } from "@/lib/client-requests/inbox";
 import { useClientRequestProfileQuery, useUpdateClientRequestProfileMutation } from "@/lib/client-requests/profile";
 import { sortRequests, type InboxSort } from "@/lib/client-requests/request-meta";
-import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
-import { useAuthStore } from "@/lib/store/auth.store";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { PageHeading } from "@workspace/ui/components/page-heading";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -57,7 +53,6 @@ function RequestListSkeleton() {
 export default function ClientRequestsPage() {
   const { t } = useTranslation("client-request");
   const router = useRouter();
-  const organization = useAuthStore((s) => s.organization);
 
   const [view, setView] = useState<ClientRequestInboxView>("inbox");
   const [page, setPage] = useState(1);
@@ -74,18 +69,11 @@ export default function ClientRequestsPage() {
 
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
-  const [cardModalFor, setCardModalFor] = useState<string | null>(null);
   /** The request whose Accept is waiting on the confirmation dialog. */
   const [confirmAcceptFor, setConfirmAcceptFor] = useState<string | null>(null);
 
   // A refusal from the lawyer's plan (trial over, month's client requests taken) offers the Plans page.
   const showError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
-
-  // After AddCardModal redirects to Stripe and back, retry the claim it interrupted.
-  useCardSetupReturn(organization?.id, (status, params) => {
-    const resumeId = params.get("resumeRequestId");
-    if (status === "done" && resumeId) claim.mutate(resumeId, { onError: showError });
-  });
 
   function switchView(next: ClientRequestInboxView) {
     setView(next);
@@ -108,8 +96,7 @@ export default function ClientRequestsPage() {
       },
       onError: (err) => {
         setConfirmAcceptFor(null);
-        if (isCardRequiredError(err)) setCardModalFor(id);
-        else showError(err);
+        showError(err);
       },
     });
   }
@@ -249,12 +236,6 @@ export default function ClientRequestsPage() {
         isPending={claim.isPending}
         onConfirm={() => confirmAcceptFor && confirmAccept(confirmAcceptFor)}
         onClose={() => setConfirmAcceptFor(null)}
-      />
-
-      <AddCardModal
-        open={!!cardModalFor}
-        onClose={() => setCardModalFor(null)}
-        extraReturnParams={cardModalFor ? { resumeRequestId: cardModalFor } : undefined}
       />
     </PageShell>
   );

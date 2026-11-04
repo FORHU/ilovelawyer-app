@@ -19,7 +19,7 @@ import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import { RELEASE_REASONS, type ReleaseReason, type QuoteType } from "@/lib/client-handoff";
-import { useClaimClientRequestMutation, usePassClientRequestMutation, isCardRequiredError } from "@/lib/client-requests/inbox";
+import { useClaimClientRequestMutation, usePassClientRequestMutation } from "@/lib/client-requests/inbox";
 import {
   useClientRequestQuery,
   useCloseClientRequestMutation,
@@ -431,7 +431,6 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
   const router = useRouter();
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
-  const [cardModalOpen, setCardModalOpen] = useState(false);
 
   return (
     <div className="flex gap-2.5">
@@ -445,16 +444,12 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
         isPending={claim.isPending}
         onClick={() =>
           claim.mutate(request.id, {
-            onError: (err) =>
-              isCardRequiredError(err)
-                ? setCardModalOpen(true)
-                : toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+            onError: (err) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
           })
         }
       >
         {t("card.accept")}
       </Button>
-      <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} extraReturnParams={{ resumeRequestId: request.id }} />
     </div>
   );
 }
@@ -796,18 +791,15 @@ export default function ClientRequestDetailPage() {
   const { data: request, isLoading, isError, refetch } = useClientRequestQuery(id);
   const showSkeleton = useDelayedLoading(isLoading);
   const organizationId = useAuthStore((s) => s.organization?.id);
-  const claim = useClaimClientRequestMutation();
   const retry = useRetryClientRequestChargeMutation(id);
 
-  // Back from adding a card (AddCardModal, through Stripe): carry on with what it was added for,
-  // accepting this request or retrying its per-case fee.
+  // Back from adding a card (AddCardModal, through Stripe) after a failed per-case fee: retry it.
   useCardSetupReturn(organizationId, (status, params) => {
     // Drop our own params too, so the address is just the request again.
     router.replace(`/homepage/client-requests/${id}`);
     if (status !== "done") return;
     const onError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
-    if (params.get("resumeRequestId")) claim.mutate(id, { onError });
-    else if (params.get("retryCharge")) retry.mutate(undefined, { onError });
+    if (params.get("retryCharge")) retry.mutate(undefined, { onError });
   });
 
   return (

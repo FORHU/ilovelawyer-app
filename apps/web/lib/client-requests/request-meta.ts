@@ -1,13 +1,27 @@
 import type { ClientRequestStatus } from "@/lib/client-handoff"
 import type { ClientRequestForLawyer } from "./types"
 
+const HOUR = 3_600_000
+const MINUTE = 60_000
+
 /** An open request closing within this many hours reads as urgent on its card. */
 export const CLOSING_SOON_HOURS = 6
 
-/** Whole hours until `iso` (rounded up, never below 0), or null when there's no time to count to. */
-export function hoursLeft(iso: string | null, now: number = Date.now()): number | null {
+/** Milliseconds until `iso` (never below 0), or null when there's no time to count to. 0 means it has run out. */
+export function timeLeft(iso: string | null, now: number = Date.now()): number | null {
   if (!iso) return null
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 3_600_000))
+  return Math.max(0, new Date(iso).getTime() - now)
+}
+
+/** Whether a time left counts as closing soon. */
+export function closingSoon(ms: number): boolean {
+  return ms < CLOSING_SOON_HOURS * HOUR
+}
+
+/** A time left as it reads on a card, rounded down so it never overstates: whole hours, then whole
+ * minutes in the last hour. Both are 0 in the last minute. */
+export function leftToShow(ms: number): { hours: number } | { minutes: number } {
+  return ms >= HOUR ? { hours: Math.floor(ms / HOUR) } : { minutes: Math.floor(ms / MINUTE) }
 }
 
 /** How many of the intake's lawyer-readiness criteria are met, or null before the check has run. */

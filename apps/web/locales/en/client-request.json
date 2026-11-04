@@ -37,6 +37,7 @@
     "ready": "Lawyer-ready · {{met}} of {{total}}",
     "notReady": "{{met}} of {{total}} lawyer-ready",
     "open": "Open {{hours}}h more",
+    "openMinutes": "Open {{minutes}}m more",
     "closed": "Closing now",
     "expired": "Closed"
   },

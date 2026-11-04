@@ -41,9 +41,9 @@ export function usePassClientRequestMutation() {
   })
 }
 
-/** An apiFetch rejection carrying CARD_REQUIRED (claim(), #505): no card on the organization yet
- * — the caller opens the add-card modal (components/client-requests/add-card-modal.tsx) instead
- * of showing it as a plain error. */
+/** An apiFetch rejection carrying CARD_REQUIRED (a charge, such as an AI budget top-up): no card
+ * on the organization yet — the caller opens the add-card modal
+ * (components/client-requests/add-card-modal.tsx) instead of showing it as a plain error. */
 export function isCardRequiredError(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "CARD_REQUIRED"
 }
