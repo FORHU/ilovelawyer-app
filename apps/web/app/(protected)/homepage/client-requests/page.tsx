@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
+import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { RequestCard } from "@/components/client-requests/request-card";
 import { ErrorState } from "@/components/error-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -77,6 +78,8 @@ export default function ClientRequestsPage() {
   const [cardModalFor, setCardModalFor] = useState<string | null>(null);
   /** The request whose Accept is waiting on the confirmation dialog. */
   const [confirmAcceptFor, setConfirmAcceptFor] = useState<string | null>(null);
+  /** The request whose Pass is waiting on the confirmation dialog. */
+  const [confirmPassFor, setConfirmPassFor] = useState<string | null>(null);
 
   // A refusal from the lawyer's plan (trial over, month's client requests taken) offers the Plans page.
   const showError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
@@ -93,7 +96,17 @@ export default function ClientRequestsPage() {
   }
 
   function onPass(id: string) {
-    pass.mutate(id);
+    setConfirmPassFor(id);
+  }
+
+  function confirmPass(id: string) {
+    pass.mutate(id, {
+      onSuccess: () => setConfirmPassFor(null),
+      onError: (err) => {
+        setConfirmPassFor(null);
+        showError(err);
+      },
+    });
   }
 
   function onAccept(id: string) {
@@ -249,6 +262,13 @@ export default function ClientRequestsPage() {
         isPending={claim.isPending}
         onConfirm={() => confirmAcceptFor && confirmAccept(confirmAcceptFor)}
         onClose={() => setConfirmAcceptFor(null)}
+      />
+
+      <ConfirmPassModal
+        open={!!confirmPassFor}
+        isPending={pass.isPending}
+        onConfirm={() => confirmPassFor && confirmPass(confirmPassFor)}
+        onClose={() => setConfirmPassFor(null)}
       />
 
       <AddCardModal

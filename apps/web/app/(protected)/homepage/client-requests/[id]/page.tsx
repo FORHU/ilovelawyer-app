@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake";
+import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementInvoice } from "@/components/client-requests/engagement-invoice";
@@ -431,12 +432,27 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
   const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [confirmingPass, setConfirmingPass] = useState(false);
 
   return (
     <div className="flex gap-2.5">
-      <Button type="button" variant="outline" className="flex-1" isPending={pass.isPending} onClick={() => pass.mutate(request.id, { onSuccess: () => router.push("/homepage/client-requests") })}>
+      <Button type="button" variant="outline" className="flex-1" disabled={pass.isPending} onClick={() => setConfirmingPass(true)}>
         {t("card.pass")}
       </Button>
+      <ConfirmPassModal
+        open={confirmingPass}
+        isPending={pass.isPending}
+        onConfirm={() =>
+          pass.mutate(request.id, {
+            onSuccess: () => router.push("/homepage/client-requests"),
+            onError: (err) => {
+              setConfirmingPass(false);
+              toast.error(err instanceof Error ? err.message : t("loadError"));
+            },
+          })
+        }
+        onClose={() => setConfirmingPass(false)}
+      />
       <Button
         type="button"
         variant="accent"
