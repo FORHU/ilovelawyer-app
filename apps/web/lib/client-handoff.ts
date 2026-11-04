@@ -128,16 +128,17 @@ export type WithdrawalStatus = (typeof WITHDRAWAL_STATUSES)[number];
 export const WALLET_BUCKETS = ["PENDING", "AVAILABLE", "RESERVED", "WITHDRAWN"] as const;
 export type WalletBucket = (typeof WALLET_BUCKETS)[number];
 
-/** What a quote costs the client, as the lawyer app previews it before sending: the lawyer's service
- * fee (paid out to them in full) plus the platform fee, which is `platformFeeBps` of it, never less
- * than `minPlatformFee` (a free first consultation has none). */
+/** How the platform fee on a quote is worked out, for the lawyer app to preview before sending. The
+ * client pays the quoted amount and the fee is deducted from it: `platformFeeBps` of it, never less
+ * than `minPlatformFee` nor more than the amount (a free first consultation has none). */
 export interface QuoteTerms {
   platformFeeBps: number;
   minPlatformFee: Money;
 }
 
-/** The lawyer's quote as both apps read it. `total` is what the client pays; `acceptedAmount` is
- * set once they accept and never changes after. */
+/** The lawyer's quote as both apps read it. `total` is the amount the lawyer quoted, what the client
+ * pays; `platformFee` is deducted from it, and `serviceFee` (total - platformFee) is what the lawyer
+ * receives. `acceptedAmount` is set once they accept and never changes after. */
 export interface Quotation {
   id: string;
   claimId: string;
@@ -158,7 +159,9 @@ export interface Quotation {
 /** The client's payment for a lawyer's quotation, as the engaged lawyer's invoice (GET
  * /client-requests/:id/invoice). `number` stays the same for the payment. `refunded` is what the
  * client has been given back so far; `lawyerRefunded` is the part of it that came out of the
- * lawyer's service fee. `reference` is Stripe's PaymentIntent id, or ours for a dummy payment. */
+ * lawyer's share. `total` is what the client paid, `platformFee` what ilovelawyer deducted from it,
+ * `serviceFee` what the lawyer receives. `reference` is Stripe's PaymentIntent id, or ours for a
+ * dummy payment. */
 export interface QuotationInvoice {
   number: string;
   status: "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "DISPUTED";

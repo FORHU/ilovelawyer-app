@@ -43,9 +43,9 @@ export function releaseClientRequest(id: string, input: { reason: ReleaseReason;
   return apiFetch<ClientRequestForLawyer>(`/api/client-requests/${id}/release`, { method: "POST", body: JSON.stringify(input) })
 }
 
-/** Drafts and sends the quotation in one step. `amount` is the lawyer's fee, paid out to them in full;
- * the client pays ilovelawyer's platform fee on top. `expiresAt` (ISO) is the lawyer's: the client
- * accepts and pays before it. */
+/** Drafts and sends the quotation in one step. `amount` is what the client pays; ilovelawyer's
+ * platform fee is deducted from it and the lawyer receives the rest. `expiresAt` (ISO) is the
+ * lawyer's: the client accepts and pays before it. */
 export function quoteClientRequest(id: string, input: QuotationInput) {
   return apiFetch<ClientRequestForLawyer>(`/api/client-requests/${id}/quote`, { method: "POST", body: JSON.stringify(input) })
 }

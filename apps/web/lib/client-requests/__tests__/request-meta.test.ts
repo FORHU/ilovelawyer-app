@@ -1,18 +1,41 @@
 import { describe, expect, it } from "vitest"
 import { CLIENT_REQUEST_STATUSES } from "@/lib/client-handoff"
-import { hoursLeft, readiness, sortRequests, stepPosition } from "../request-meta"
+import { closingSoon, leftToShow, readiness, sortRequests, stepPosition, timeLeft } from "../request-meta"
 
 const NOW = new Date("2026-10-29T12:00:00Z").getTime()
+const MIN = 60_000
 
-describe("hoursLeft", () => {
-  it("rounds up to whole hours", () => {
-    expect(hoursLeft("2026-10-29T14:30:00Z", NOW)).toBe(3)
+describe("timeLeft", () => {
+  it("counts the milliseconds left", () => {
+    expect(timeLeft("2026-10-29T12:30:00Z", NOW)).toBe(30 * MIN)
   })
   it("never goes below zero", () => {
-    expect(hoursLeft("2026-10-29T10:00:00Z", NOW)).toBe(0)
+    expect(timeLeft("2026-10-29T10:00:00Z", NOW)).toBe(0)
   })
   it("is null with nothing to count to", () => {
-    expect(hoursLeft(null, NOW)).toBeNull()
+    expect(timeLeft(null, NOW)).toBeNull()
+  })
+})
+
+describe("leftToShow", () => {
+  it("rounds down to whole hours from an hour up", () => {
+    expect(leftToShow(150 * MIN)).toEqual({ hours: 2 })
+    expect(leftToShow(90 * MIN)).toEqual({ hours: 1 })
+    expect(leftToShow(60 * MIN)).toEqual({ hours: 1 })
+  })
+  it("shows minutes in the last hour", () => {
+    expect(leftToShow(30 * MIN)).toEqual({ minutes: 30 })
+    expect(leftToShow(59.9 * MIN)).toEqual({ minutes: 59 })
+  })
+  it("is 0 minutes in the last minute", () => {
+    expect(leftToShow(30_000)).toEqual({ minutes: 0 })
+  })
+})
+
+describe("closingSoon", () => {
+  it("is true under 6 hours", () => {
+    expect(closingSoon(359 * MIN)).toBe(true)
+    expect(closingSoon(360 * MIN)).toBe(false)
   })
 })
 

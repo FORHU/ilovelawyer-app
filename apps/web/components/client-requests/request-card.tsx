@@ -6,7 +6,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { formatTimeAgo } from "@/lib/client-requests/format";
-import { CLOSING_SOON_HOURS, hoursLeft, readiness } from "@/lib/client-requests/request-meta";
+import { closingSoon, leftToShow, readiness, timeLeft } from "@/lib/client-requests/request-meta";
 import { useNow } from "@/lib/client-requests/use-countdown";
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { RequestTags } from "./request-tags";
@@ -28,15 +28,33 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
   const actionable = !!onPass && !!onAccept;
   const ready = readiness(request);
   // Only an unclaimed request is still counting down to its 48-hour expiry. Re-read every minute, so
-  // the hours left stay true and a request that has run out stops being acceptable.
+  // the time left stays true and a request that has run out stops being acceptable.
   const now = useNow();
-  const open = actionable ? hoursLeft(request.routingExpiresAt, now) : null;
-  const expired = open === 0;
+  const left = actionable ? timeLeft(request.routingExpiresAt, now) : null;
+  const expired = left === 0;
+  const shown = left === null ? null : leftToShow(left);
+  const openText = !shown
+    ? ""
+    : "hours" in shown
+      ? t("card.open", shown)
+      : shown.minutes > 0
+        ? t("card.openMinutes", shown)
+        : t("card.closed");
 
   return (
     // One markup for both breakpoints: actions stack under the copy on mobile, sit to its right from md.
     <article className="flex flex-col gap-4 rounded-2xl border border-border bg-card px-5 py-4 md:flex-row md:items-center md:justify-between md:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        {request.askedForYou && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge shape="pill" className="self-start py-1 tracking-[1px]">
+                {t("card.askedForYou")}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>{t("card.askedForYouTooltip")}</TooltipContent>
+          </Tooltip>
+        )}
         <RequestTags brief={request.brief} />
         <p className="max-w-[860px] text-[15px] leading-relaxed text-foreground">{request.brief.summary}</p>
         {request.brief.clientNote && (
@@ -49,8 +67,8 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
               {t(ready.met === ready.total ? "card.ready" : "card.notReady", ready)}
             </span>
           )}
-          {open !== null && (
-            <span className={cn(open < CLOSING_SOON_HOURS && "text-danger")}>{expired ? t("card.expired") : t("card.open", { hours: open })}</span>
+          {left !== null && (
+            <span className={cn(closingSoon(left) && "text-danger")}>{expired ? t("card.expired") : openText}</span>
           )}
           {request.assignedTo && <span>{t("card.assignedTo", { name: request.assignedTo.name })}</span>}
         </p>
@@ -76,7 +94,7 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
                 {t("card.pass")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t("card.passTooltip")}</TooltipContent>
+            <TooltipContent>{t(request.onlyForYou ? "card.passOnlyForYouTooltip" : "card.passTooltip")}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -90,7 +108,7 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
                 {t("card.accept")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t("card.acceptTooltip")}</TooltipContent>
+            <TooltipContent>{t(request.onlyForYou ? "card.acceptOnlyForYouTooltip" : "card.acceptTooltip")}</TooltipContent>
           </Tooltip>
         </div>
       )}

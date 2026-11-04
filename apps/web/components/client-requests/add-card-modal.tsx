@@ -11,8 +11,8 @@ const CAN_MANAGE_BILLING: OrganizationRole[] = ["OWNER", "ADMIN"]
 
 /**
  * Opened from the Organization Billing page's "Add card"/"Change card" action (a solo lawyer's: their
- * profile), from the inbox when accepting a request answers 402 CARD_REQUIRED, and from a confirmed
- * request whose per-case fee failed. Organization OWNER/ADMIN only, matching the real route's own
+ * profile), from an AI budget top-up that answers 402 CARD_REQUIRED, and from a confirmed request
+ * whose per-case fee failed. Organization OWNER/ADMIN only, matching the real route's own
  * restriction (ilovelawyer-api#505); a solo lawyer's card is their own (their workspace's role is
  * OWNER).
  *

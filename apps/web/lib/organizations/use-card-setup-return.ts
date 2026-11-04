@@ -11,7 +11,7 @@ import { getOrganizationCard, useSetOrganizationCardCache } from "@/lib/organiza
  * (ilovelawyer-api#505 — see organization-card.service.ts's startSetup). The return URL carries
  * `cardSetup=done&setupSessionId=...` or `cardSetup=cancelled`, appended by the API after
  * whatever the caller's own returnUrl already had — so any extra params AddCardModal was asked
- * to carry (e.g. the inbox's `resumeRequestId`) survive the round trip and come back in
+ * to carry (e.g. a request page's `retryCharge`) survive the round trip and come back in
  * `onDone`'s `params`, with the API's own two params already stripped.
  *
  * Runs once per redirect: strips its query params from the URL immediately, so a later reload

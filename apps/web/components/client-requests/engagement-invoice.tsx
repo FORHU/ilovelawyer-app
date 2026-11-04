@@ -68,9 +68,8 @@ function InvoiceDocument({ invoice }: { invoice: QuotationInvoice }) {
         <Line
           label={invoice.quoteType === "FIRST_CONSULTATION" ? t("detail.quote.consultation") : t("detail.quote.fixed")}
           note={invoice.description || undefined}
-          amount={formatMoney(invoice.serviceFee.amountMinor)}
+          amount={formatMoney(invoice.total.amountMinor)}
         />
-        <Line label={t("invoice.platformFee")} amount={formatMoney(invoice.platformFee.amountMinor)} />
         <Line label={t("invoice.total")} amount={formatMoney(invoice.total.amountMinor)} strong />
         {invoice.refunded.amountMinor > 0 && (
           <>
@@ -83,7 +82,7 @@ function InvoiceDocument({ invoice }: { invoice: QuotationInvoice }) {
       <div className="flex items-center justify-between gap-4 rounded-2xl bg-muted/50 px-4 py-3 print:border print:border-border">
         <div>
           <div className="font-semibold text-foreground">{t("invoice.yourFee")}</div>
-          <div className="text-[12px] text-muted-foreground">{t("invoice.yourFeeNote")}</div>
+          <div className="text-[12px] text-muted-foreground">{t("invoice.yourFeeNote", { fee: formatMoney(invoice.platformFee.amountMinor) })}</div>
         </div>
         <div className="text-[15px] font-semibold text-foreground tabular-nums">{formatMoney(yourFee)}</div>
       </div>
