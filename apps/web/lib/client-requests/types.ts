@@ -206,8 +206,3 @@ export interface ClientRequestListResponse {
   total: number
   data: ClientRequestForLawyer[]
 }
-
-export interface ConflictParty {
-  name: string
-  role: string
-}

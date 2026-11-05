@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/fetch"
-import type { Money, PassReason, QuoteType, ReleaseReason } from "@/lib/client-handoff"
-import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, ConflictParty, IntakePackageForLawyer } from "./types"
+import type { Money, PassReason, QuoteType } from "@/lib/client-handoff"
+import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, IntakePackageForLawyer } from "./types"
 
 export interface QuotationInput {
   type: QuoteType
@@ -35,19 +35,11 @@ export function passClientRequest(id: string, input: PassInput = {}) {
   return apiFetch<void>(`/api/client-requests/${id}/pass`, { method: "POST", ...(said ? { body: JSON.stringify(input) } : {}) })
 }
 
-export function getConflictParties(id: string) {
-  return apiFetch<{ parties: ConflictParty[] }>(`/api/client-requests/${id}/parties`)
-}
-
 /** The client's full intake (ADR 0018 in the API repo): the case, the transcript, the documents
  * and the live CaseIntake. Only once ENGAGED, for the lawyer that engagement is for; every read
  * is audited on the API side (client_request.intake_package_viewed). */
 export function getIntakePackage(id: string) {
   return apiFetch<IntakePackageForLawyer>(`/api/client-requests/${id}/intake-package`)
-}
-
-export function releaseClientRequest(id: string, input: { reason: ReleaseReason; note?: string }) {
-  return apiFetch<ClientRequestForLawyer>(`/api/client-requests/${id}/release`, { method: "POST", body: JSON.stringify(input) })
 }
 
 /** Drafts and sends the quotation in one step. `amount` is what the client pays; ilovelawyer's
