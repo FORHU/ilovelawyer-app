@@ -96,6 +96,10 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
   // state other previews can't render (see MessageAttachment's `url` doc comment).
   const [docLoading, setDocLoading] = useState(() => isLegacyDoc);
   const [docText, setDocText] = useState<string | null>(null);
+  // What the PDF iframe shows: the fetched file, so a failed link says so instead of leaving the
+  // frame blank (an expired /files link is an empty 404/410). Not needed while pdf.js draws it.
+  const needsPdfFetch = isPdf && !!attachment.url && (!wantsPosition || pdfViewFailed);
+  const [pdfSrc, setPdfSrc] = useState<string | null>(null);
 
   const canInlinePreview = (isPdf || isImage) && !!attachment.url && !inlineFailed;
   const canDocxPreview = isDocx && !!attachment.url && !inlineFailed;
@@ -226,6 +230,37 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
     };
   }, [isXlsx, attachment.url]);
 
+  // Fetched first, like docx/xlsx above, then shown from a local copy typed application/pdf (as
+  // anything else the browser would download it rather than show it, and the frame stays blank).
+  useEffect(() => {
+    if (!needsPdfFetch) return;
+    let cancelled = false;
+    let objectUrl = "";
+    (async () => {
+      let res: Response;
+      try {
+        res = await fetch(attachment.url!);
+      } catch {
+        // Not readable from here (a presigned S3 link without CORS): let the viewer load it itself.
+        if (!cancelled) setPdfSrc(attachment.url!);
+        return;
+      }
+      try {
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+        setPdfSrc(objectUrl);
+      } catch {
+        if (!cancelled) setInlineFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [needsPdfFetch, attachment.url]);
+
   // Legacy .doc has no client-parseable format at all (see isLegacyDocAttachment), so unlike
   // docx/xlsx above this never fetches file bytes itself — it asks the backend to run the same
   // word-extractor pass the RAG pipeline already uses and just renders the resulting text.
@@ -292,6 +327,11 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
           quote={quote}
           onError={() => setPdfViewFailed(true)}
         />
+      ) : canInlinePreview && !pdfSrc ? (
+        <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          {t("attachment.loadingPreview")}
+        </div>
       ) : canInlinePreview ? (
         <iframe
           // PDF Open Parameters fragment (Adobe spec, honored by Chrome/Edge's built-in PDFium
@@ -299,7 +339,7 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
           // zoom, which on a narrow mobile width renders the page wider than the iframe with no
           // way to zoom out first, so it never fits the screen. FitH forces "fit to width" so the
           // page always starts scaled to the frame and only needs vertical scroll.
-          src={isPdf ? `${attachment.url!}#${hidePdfToolbar ? "toolbar=0&" : ""}${page ? `page=${page}&` : ""}view=FitH` : attachment.url!}
+          src={`${pdfSrc}#${hidePdfToolbar ? "toolbar=0&" : ""}${page ? `page=${page}&` : ""}view=FitH`}
           title={attachment.name}
           className="h-full w-full touch-pan-y border-0"
           onError={() => setInlineFailed(true)}
