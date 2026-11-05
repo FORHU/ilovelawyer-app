@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Users } from "lucide-react";
+import { FileText, Hourglass, ShieldAlert, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
 import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
+import { LAWYER_APPLICATION_SECTION_ID } from "@/components/account/client-requests-settings";
 import { RequestCard } from "@/components/client-requests/request-card";
 import { ErrorState } from "@/components/error-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -16,6 +17,7 @@ import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import {
   useClaimClientRequestMutation,
   useClientRequestCountQuery,
+  isNotVerifiedError,
   useClientRequestInboxQuery,
   usePassClientRequestMutation,
   type ClientRequestInboxView,
@@ -32,6 +34,13 @@ import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 
 const LIMIT = 10;
 const VIEWS: ClientRequestInboxView[] = ["inbox", "mine", "history"];
+
+/** Where an unverified lawyer stands with their Lawyer Application, as the inbox explains it. */
+const NOT_VERIFIED = {
+  PENDING: Hourglass,
+  REJECTED: ShieldAlert,
+  UNSUBMITTED: FileText,
+} as const;
 
 const TAB_TRIGGER = (active: boolean) =>
   `h-9 rounded-full border px-4 text-[11px] font-semibold tracking-[1px] uppercase transition-colors ${
@@ -121,6 +130,13 @@ export default function ClientRequestsPage() {
   // The sort reorders the page in hand: the API has no sort of its own yet, so a long inbox says so.
   const requests = view === "inbox" ? sortRequests(requestsQuery.data?.data ?? [], sort) : (requestsQuery.data?.data ?? []);
   const isEmpty = !requestsQuery.isLoading && !requestsQuery.isError && requests.length === 0;
+  // The API shows no client requests until the Lawyer Application is verified: say where it
+  // stands, not that loading failed. A just-verified profile the API hasn't caught up with reads
+  // as still under review.
+  const notVerified = isNotVerifiedError(requestsQuery.error);
+  const verificationStatus = profileQuery.data?.verification.status;
+  const notVerifiedKey = verificationStatus === "REJECTED" || verificationStatus === "UNSUBMITTED" ? verificationStatus : "PENDING";
+  const NotVerifiedIcon = NOT_VERIFIED[notVerifiedKey];
 
   const accepting = profileQuery.data?.acceptingRequests ?? false;
   const capacity = profileQuery.data?.capacityLimit;
@@ -158,7 +174,8 @@ export default function ClientRequestsPage() {
   return (
     <PageShell>
       <main className={`mx-auto w-full ${CONTENT_WIDTH_LG} flex-1 px-6 pb-16 pt-24 md:px-16`}>
-        <PageHeading eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} action={acceptingPill} />
+        {/* Accepting can't be turned on before verification (the API refuses it), so it isn't offered. */}
+        <PageHeading eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} action={notVerified ? undefined : acceptingPill} />
 
         <div className="mt-6 flex gap-2">
           {VIEWS.map((v) => (
@@ -169,7 +186,22 @@ export default function ClientRequestsPage() {
         </div>
 
         <div className="mt-6">
-          {requestsQuery.isError ? (
+          {notVerified ? (
+            <EmptyState
+              className="py-24"
+              icon={<NotVerifiedIcon />}
+              title={t(`notVerified.${notVerifiedKey}.title`)}
+              description={t(`notVerified.${notVerifiedKey}.description`)}
+              action={
+                <Link
+                  href={`/homepage/profile#${LAWYER_APPLICATION_SECTION_ID}`}
+                  className="text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground underline underline-offset-4"
+                >
+                  {t(`notVerified.${notVerifiedKey}.action`)}
+                </Link>
+              }
+            />
+          ) : requestsQuery.isError ? (
             <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => requestsQuery.refetch()} />
           ) : showSkeleton ? (
             <RequestListSkeleton />

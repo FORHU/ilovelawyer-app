@@ -13,6 +13,8 @@ export function useClientRequestInboxQuery(view: ClientRequestInboxView, page = 
     queryKey: clientRequestKeys.list(view, page, limit),
     queryFn: () => listClientRequests(view, page, limit),
     enabled,
+    // Not verified yet: asking again won't change that, so the page says so straight away.
+    retry: (failureCount, error) => !isNotVerifiedError(error) && failureCount < 1,
   })
 }
 
@@ -45,6 +47,12 @@ export function usePassClientRequestMutation() {
       if (isNotFoundError(err)) queryClient.invalidateQueries({ queryKey: clientRequestKeys.lists() })
     },
   })
+}
+
+/** An apiFetch rejection carrying LAWYER_NOT_VERIFIED (403): the lawyer's Lawyer Application isn't
+ * verified yet (not sent, being checked, or rejected), so the API shows them no client requests. */
+export function isNotVerifiedError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "LAWYER_NOT_VERIFIED"
 }
 
 /** An apiFetch rejection carrying CARD_REQUIRED (a charge, such as an AI budget top-up): no card
