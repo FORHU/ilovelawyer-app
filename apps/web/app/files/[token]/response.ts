@@ -1,6 +1,18 @@
 // Pure decision logic pulled out of route.ts so it can be unit-tested without a request/response
 // harness (this repo's vitest.config.ts is deliberately scoped to pure-function tests only).
 
+import { versioned } from "@/lib/api-version"
+
+/** Where this server calls GET /api/files/resolve. A build with an empty NEXT_PUBLIC_API_URL
+ * (deployed dev: the browser reaches the API through this app's own domain, whose /api/* Caddy
+ * sends to the API) has no host for a server-side fetch, which can't take a relative URL — so it
+ * calls back through the domain the request came in on. That origin comes from the Host header,
+ * which is only safe because the container listens on 127.0.0.1 and Caddy only forwards this
+ * app's own hostnames to it. */
+export function resolveEndpoint(apiUrl: string, requestOrigin: string): string {
+  return `${apiUrl || requestOrigin}${versioned("/api/files/resolve")}`
+}
+
 /** Maps a GET /api/files/resolve failure onto what the browser sees. 410 (token deliberately
  * revoked/expired, per the API) passes through; everything else — bad token, network error,
  * API down — collapses to a generic 404 so nothing about the failure reason leaks. */
