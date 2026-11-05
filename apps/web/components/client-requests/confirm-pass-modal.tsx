@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@workspace/ui/components/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
@@ -40,9 +40,17 @@ function PassForm({ isPending, onConfirm, onClose }: Omit<ConfirmPassModalProps,
   const { t } = useTranslation("client-request")
   const [reason, setReason] = useState<PassReason | null>(null)
   const [note, setNote] = useState("")
+  const noteRef = useRef<HTMLTextAreaElement>(null)
+  // The note is the "Other" reason in the lawyer's own words: shown only while Other is picked. What
+  // was typed is kept if they pick another reason, so going back to Other brings it back.
+  const noteOpen = reason === "OTHER"
+
+  useEffect(() => {
+    if (noteOpen) noteRef.current?.focus()
+  }, [noteOpen])
 
   function confirm() {
-    const trimmed = note.trim()
+    const trimmed = noteOpen ? note.trim() : ""
     onConfirm({ ...(reason ? { reason } : {}), ...(trimmed ? { note: trimmed } : {}) })
   }
 
@@ -69,22 +77,27 @@ function PassForm({ isPending, onConfirm, onClose }: Omit<ConfirmPassModalProps,
             </button>
           ))}
         </div>
-        <div className="relative">
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={PASS_NOTE_MAX_LENGTH}
-            rows={3}
-            disabled={isPending}
-            aria-label={t("confirmPass.notePlaceholder")}
-            placeholder={t("confirmPass.notePlaceholder")}
-            className="w-full resize-none rounded-xl border border-border bg-background px-3.5 py-2.5 pb-6 text-[13px] outline-none focus:border-foreground disabled:opacity-60"
-          />
-          <span className="pointer-events-none absolute bottom-2 right-3 text-[10.5px] tabular-nums text-muted-foreground">
-            {note.length} / {PASS_NOTE_MAX_LENGTH}
-          </span>
-        </div>
-        <p className="text-[11.5px] text-muted-foreground">{t("confirmPass.noteHint")}</p>
+        {noteOpen && (
+          <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-150 motion-reduce:animate-none">
+            <div className="relative">
+              <textarea
+                ref={noteRef}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={PASS_NOTE_MAX_LENGTH}
+                rows={3}
+                disabled={isPending}
+                aria-label={t("confirmPass.notePlaceholder")}
+                placeholder={t("confirmPass.notePlaceholder")}
+                className="w-full resize-none rounded-xl border border-border bg-background px-3.5 py-2.5 pb-6 text-[13px] outline-none focus:border-foreground disabled:opacity-60"
+              />
+              <span className="pointer-events-none absolute bottom-2 right-3 text-[10.5px] tabular-nums text-muted-foreground">
+                {note.length} / {PASS_NOTE_MAX_LENGTH}
+              </span>
+            </div>
+            <p className="text-[11.5px] text-muted-foreground">{t("confirmPass.noteHint")}</p>
+          </div>
+        )}
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" disabled={isPending} onClick={onClose}>
