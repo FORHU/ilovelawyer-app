@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, Eye, Lock, ShieldCheck, Undo2, Users } from "lucide-react";
+import { ArrowLeft, Lock, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
@@ -20,15 +20,13 @@ import { RequestStepper } from "@/components/client-requests/request-stepper";
 import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
-import { RELEASE_REASONS, type ReleaseReason, type QuoteType } from "@/lib/client-handoff";
+import type { QuoteType } from "@/lib/client-handoff";
 import { useClaimClientRequestMutation, usePassClientRequestMutation } from "@/lib/client-requests/inbox";
 import {
   useClientRequestQuery,
   useCloseClientRequestMutation,
-  useConflictPartiesQuery,
   useCopyClientRequestCaseMutation,
   useQuoteClientRequestMutation,
-  useReleaseClientRequestMutation,
   useRetryClientRequestChargeMutation,
   useWithdrawQuotationMutation,
 } from "@/lib/client-requests/detail";
@@ -54,8 +52,6 @@ import { cn } from "@workspace/ui/lib/utils";
 const CARD = "rounded-2xl border border-border bg-card p-5";
 const LABEL = "text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground";
 const QUOTE_FORM_ID = "client-request-quote-form";
-/** The open step of the conflict check (its Show the parties button, then its checkbox): where focus goes when a quote is tried too early. */
-const CONFLICT_CLEAR_ID = "client-request-conflict-step";
 const TWO_HOURS_MS = 2 * 3_600_000;
 
 /** Counts down a claim's 24h hold; turns amber in the last two hours. */
@@ -75,167 +71,6 @@ function HeldTimer({ until }: { until: number }) {
   );
 }
 
-function ReleaseDialog({ open, onClose, onConfirm, pending }: { open: boolean; onClose: () => void; onConfirm: (reason: ReleaseReason, note: string) => void; pending: boolean }) {
-  const { t } = useTranslation("client-request");
-  const [reason, setReason] = useState<ReleaseReason>("CONFLICT");
-  const [note, setNote] = useState("");
-  return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("detail.conflict.release")}</DialogTitle>
-          <DialogDescription>{t("detail.conflict.confirmRelease")}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div role="radiogroup" className="flex flex-wrap gap-1.5">
-            {RELEASE_REASONS.map((r) => (
-              <button
-                key={r}
-                type="button"
-                role="radio"
-                aria-checked={reason === r}
-                onClick={() => setReason(r)}
-                className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[1px]",
-                  reason === r ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"
-                )}
-              >
-                {t(`detail.conflict.reasons.${r}`)}
-              </button>
-            ))}
-          </div>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={500}
-            rows={3}
-            placeholder={t("detail.conflict.title")}
-            className="w-full resize-none rounded-xl border border-border bg-background px-3.5 py-2.5 text-[13px] outline-none focus:border-foreground"
-          />
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-            {t("detail.back")}
-          </Button>
-          <Button type="button" variant="accent" isPending={pending} onClick={() => onConfirm(reason, note.trim())}>
-            {t("detail.conflict.release")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * The conflict check, as one step with a visible state: to do, then (once the parties are shown and
- * the lawyer says they're clear) cleared. `cleared` lives on the page because the quote waits on it;
- * a quote that has already been sent (`needsClearance` false) has nothing left to clear.
- */
-function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: string; cleared: boolean; onClearedChange: (cleared: boolean) => void; needsClearance: boolean }) {
-  const { t } = useTranslation("client-request");
-  const [shown, setShown] = useState(false);
-  const [releasing, setReleasing] = useState(false);
-  const parties = useConflictPartiesQuery(id, shown);
-  const release = useReleaseClientRequestMutation(id);
-  const done = needsClearance && cleared;
-
-  // The clearance is for the parties on screen: if they're gone (the read failed or is being redone),
-  // so is the clearance, and the quote waits for it again.
-  useEffect(() => {
-    if (cleared && (!parties.data || parties.isError)) onClearedChange(false);
-  }, [cleared, parties.data, parties.isError, onClearedChange]);
-
-  return (
-    <section className={cn(CARD, "flex flex-col gap-4")}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[15px] font-semibold text-foreground">{t("detail.conflict.title")}</h2>
-        {needsClearance && (
-          <span
-            role="status"
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-              done ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
-            )}
-          >
-            {done && <Check className="size-3" strokeWidth={3} aria-hidden="true" />}
-            {done ? t("detail.conflict.statusCleared") : t("detail.conflict.statusTodo")}
-          </span>
-        )}
-      </div>
-
-      {!shown ? (
-        <div className="flex flex-col gap-3">
-          <p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.conflict.intro")}</p>
-          <Button id={CONFLICT_CLEAR_ID} type="button" variant="default" onClick={() => setShown(true)} className="h-11 w-full gap-2 text-[13px] font-semibold">
-            <Eye className="size-4" aria-hidden="true" />
-            {t("detail.conflict.load")}
-          </Button>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
-            {t("detail.conflict.loadTooltip")}
-          </p>
-        </div>
-      ) : parties.isLoading ? (
-        <Skeleton className="h-24 w-full" />
-      ) : parties.isError ? (
-        <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => parties.refetch()} />
-      ) : (
-        <div className="flex flex-col gap-3">
-          <dl className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
-            {parties.data?.parties.map((p, i) => (
-              <div key={i} className="flex flex-col gap-0.5 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <dt className={LABEL}>{p.role}</dt>
-                <dd className="text-sm font-semibold text-foreground sm:text-right">{p.name}</dd>
-              </div>
-            ))}
-          </dl>
-          {needsClearance && (
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-snug text-foreground has-[:checked]:border-ok/50 has-[:checked]:bg-ok/5">
-              <input
-                id={CONFLICT_CLEAR_ID}
-                type="checkbox"
-                checked={cleared}
-                onChange={(e) => onClearedChange(e.target.checked)}
-                className="mt-0.5 size-4 shrink-0 accent-[var(--brand-gold)]"
-              />
-              {t("detail.conflict.clearedLabel")}
-            </label>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-col items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-3">
-        <p className="text-[13px] text-foreground">{t("detail.conflict.releaseHint")}</p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setReleasing(true)}
-              className="h-9 gap-1.5 border-red-500/40 bg-background px-3.5 text-[13px] font-semibold text-red-600 hover:border-red-500/70 hover:bg-red-500/10 hover:text-red-700"
-            >
-              <Undo2 className="size-3.5" aria-hidden="true" />
-              {t("detail.conflict.releaseShort")}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t("detail.conflict.releaseTooltip")}</TooltipContent>
-        </Tooltip>
-      </div>
-      <ReleaseDialog
-        open={releasing}
-        onClose={() => setReleasing(false)}
-        pending={release.isPending}
-        onConfirm={(reason, note) =>
-          release.mutate(
-            { reason, note: note || undefined },
-            { onSuccess: () => toast.success(t("detail.conflict.released")), onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")) }
-          )
-        }
-      />
-    </section>
-  );
-}
-
 /** "6 November 2026", in the app's language. */
 function useLongDate() {
   const locale = useDateLocale();
@@ -250,7 +85,7 @@ function quoteAmountOk(amount: string, type: QuoteType): boolean {
   return type === "FIRST_CONSULTATION" ? value >= 0 : value > 0;
 }
 
-function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawyer; conflictChecked: boolean }) {
+function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   const id = request.id;
   const quote = useQuoteClientRequestMutation(id);
@@ -267,7 +102,6 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   const [expiry, setExpiry] = useState(() => dateInputValue(QUOTE_DEFAULT_VALIDITY_DAYS));
   const [expiryError, setExpiryError] = useState(false);
 
-  const [conflictBlocked, setConflictBlocked] = useState(false);
   const validUntil = useLongDate();
   const previewAmount = Number(amount);
   const hasPreviewAmount = quoteAmountOk(amount, type);
@@ -278,12 +112,6 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!conflictChecked) {
-      // Send quote, or Enter in a field, before the conflict check: say why, and go to the step that is open.
-      setConflictBlocked(true);
-      document.getElementById(CONFLICT_CLEAR_ID)?.focus();
-      return;
-    }
     const value = Number(amount);
     // What the preview shows is what the client is sent: a real amount, or £0 for a free first consultation.
     if (!quoteAmountOk(amount, type)) return setAmountError(true);
@@ -410,30 +238,13 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
         <TooltipTrigger asChild>
           {/* Wrapped so the tooltip still shows while the button is disabled for sending. */}
           <span className="block">
-            {/* Not disabled before the conflict check: browsers won't submit by Enter through a disabled
-                button, so it stays live and handleSubmit refuses, saying why. It only looks unavailable. */}
-            <Button
-              type="submit"
-              form={QUOTE_FORM_ID}
-              variant="accent"
-              isPending={quote.isPending}
-              aria-disabled={!conflictChecked}
-              className={cn("h-12 w-full", !conflictChecked && "opacity-50")}
-            >
+            <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} className="h-12 w-full">
               {t("detail.quote.send")}
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>{!conflictChecked ? t("detail.quote.doConflictFirst") : t("detail.quote.sendTooltip")}</TooltipContent>
+        <TooltipContent>{t("detail.quote.sendTooltip")}</TooltipContent>
       </Tooltip>
-      {!conflictChecked &&
-        (conflictBlocked ? (
-          <p role="alert" className="-mt-2 text-xs font-medium text-red-600">
-            {t("detail.quote.conflictRequired")}
-          </p>
-        ) : (
-          <p className="-mt-2 text-xs text-muted-foreground">{t("detail.quote.doConflictFirst")}</p>
-        ))}
     </section>
   );
 }
@@ -739,8 +550,6 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
   const beforeHire = held && mine?.outcome == null;
   const claimEnded = !!endedKey;
   const lawyersOn = request.lawyersOn ?? 0;
-  // The lawyer clearing the conflict check (parties shown, no conflict) is what the quote waits for.
-  const [conflictCleared, setConflictCleared] = useState(false);
   const beforeEngagement = held && (request.status === "CLAIMED" || request.status === "QUOTED" || request.status === "CONFIRMED");
 
   return (
@@ -787,7 +596,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
               </span>
-              <p className="text-[13px] text-muted-foreground">{!held ? t("detail.lockedParties") : request.status === "CONFIRMED" ? t("detail.lockedConfirmed") : t("detail.lockedFile")}</p>
+              <p className="text-[13px] text-muted-foreground">{held && request.status === "CONFIRMED" ? t("detail.lockedConfirmed") : t("detail.lockedFile")}</p>
             </div>
           )}
         </div>
@@ -796,18 +605,8 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
           {endedKey && <ClaimEndedCard endedKey={endedKey} />}
           {(beforeHire || claimEnded) && <ClientQuestionsCard requestId={request.id} ended={claimEnded} />}
           {!mine && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
-          {held && request.status === "CLAIMED" && (
-            <>
-              <ConflictCheck id={request.id} cleared={conflictCleared} onClearedChange={setConflictCleared} needsClearance />
-              <QuoteForm request={request} conflictChecked={conflictCleared} />
-            </>
-          )}
-          {held && request.status === "QUOTED" && (
-            <>
-              <QuotedCard request={request} />
-              <ConflictCheck id={request.id} cleared={conflictCleared} onClearedChange={setConflictCleared} needsClearance={false} />
-            </>
-          )}
+          {held && request.status === "CLAIMED" && <QuoteForm request={request} />}
+          {held && request.status === "QUOTED" && <QuotedCard request={request} />}
           {held && request.status === "CONFIRMED" && <ConfirmedCard request={request} />}
           {held && request.status === "ENGAGED" && <EngagedCard request={request} />}
           {held && request.status === "CLOSED" && <ClosedCard request={request} />}
