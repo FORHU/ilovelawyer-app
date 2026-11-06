@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server"
-import { versioned } from "@/lib/api-version"
-import { resolveErrorStatus, buildFileResponseInit } from "./response"
+import { resolveEndpoint, resolveErrorStatus, buildFileResponseInit } from "./response"
 
 // Same env var next.config.ts reads server-side for rewrites() — this route makes the app's
 // first *runtime* server-to-server call to the API (rewrites() only wires up build-time proxy
@@ -40,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   let presignedUrl: string
   try {
     const resolveRes = await fetch(
-      `${API_URL}${versioned("/api/files/resolve")}?token=${encodeURIComponent(token)}`,
+      `${resolveEndpoint(API_URL, req.nextUrl.origin)}?token=${encodeURIComponent(token)}`,
       { signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS), headers: viewerHeaders(req) },
     )
     if (!resolveRes.ok) {

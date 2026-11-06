@@ -85,6 +85,23 @@
   },
   "loadError": "Couldn’t load client requests.",
   "retry": "Retry",
+  "notVerified": {
+    "PENDING": {
+      "title": "Your application is under review",
+      "description": "We’re checking your registration. Client requests will show here once you’re verified, and we’ll email you as soon as it’s done.",
+      "action": "View your application"
+    },
+    "REJECTED": {
+      "title": "Your application needs changes",
+      "description": "We couldn’t verify your registration. See why on your Lawyer Application, update it and send it again.",
+      "action": "Update your application"
+    },
+    "UNSUBMITTED": {
+      "title": "Send your Lawyer Application first",
+      "description": "Client requests are for verified lawyers. Finish your Lawyer Application and we’ll check your registration.",
+      "action": "Finish your application"
+    }
+  },
   "pagination": {
     "previous": "Previous",
     "next": "Next",

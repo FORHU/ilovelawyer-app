@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest"
-import { resolveErrorStatus, buildFileResponseInit } from "../response"
+import { resolveEndpoint, resolveErrorStatus, buildFileResponseInit } from "../response"
+
+describe("resolveEndpoint", () => {
+  it("calls the API's own origin when the build has one", () => {
+    expect(resolveEndpoint("http://localhost:3001", "https://uk-dev.ilovelawyer.com")).toBe("http://localhost:3001/api/files/resolve")
+  })
+
+  it("calls back through this app's domain when the build's API URL is empty (deployed dev), never a relative URL", () => {
+    expect(resolveEndpoint("", "https://uk-dev.ilovelawyer.com")).toBe("https://uk-dev.ilovelawyer.com/api/files/resolve")
+  })
+})
 
 describe("resolveErrorStatus", () => {
   it("passes through 410 from the resolve endpoint", () => {
