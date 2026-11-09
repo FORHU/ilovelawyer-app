@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { MobileDrawer } from "@/components/mobile-drawer";
+import { useTrial } from "@/lib/trial";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export interface TopicNavigatorItem {
@@ -238,6 +239,10 @@ export default function TopicNavigator({
   // disappearing. Mirrors that same pattern (trigger button + boolean state + resize-based
   // auto-close + overlay), sliding in from the right instead of the left. Falls back to local
   // state when the caller doesn't control it (see isMobileOpen's doc comment above).
+  // A trial guest's floating "Create account" pill (TrialBanner) sits fixed at the bottom right,
+  // right over this panel's last items. Leave room under the list for it, so every topic stays
+  // readable and clickable.
+  const trial = useTrial();
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   const isMobileOpen = isMobileOpenProp ?? internalMobileOpen;
   const setIsMobileOpen = onMobileOpenChangeProp ?? setInternalMobileOpen;
@@ -280,7 +285,7 @@ export default function TopicNavigator({
       )}
 
       <aside
-        className={`hidden lg:flex absolute right-0 top-16 bottom-0 bg-card/90 backdrop-blur-md border-l border-y border-border rounded-l-[8px] shadow-lg flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex absolute right-0 top-16 ${trial ? "bottom-20" : "bottom-0"} bg-card/90 backdrop-blur-md border-l border-y border-border rounded-l-[8px] shadow-lg flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
           expanded ? "w-64" : "w-12"
         }`}
       >
@@ -337,7 +342,7 @@ export default function TopicNavigator({
             <TooltipContent>{label}</TooltipContent>
           </Tooltip>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-2">
+        <div className={`flex-1 min-h-0 overflow-y-auto px-2 ${trial ? "pb-20" : ""}`}>
           {body(false, (index) => {
             onJump(index);
             setIsMobileOpen(false);
