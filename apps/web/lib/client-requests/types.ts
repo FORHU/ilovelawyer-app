@@ -1,4 +1,4 @@
-import type { ClaimOutcome, ClientRequestStatus, Money, Quotation, QuoteTerms, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
+import type { ClaimOutcome, ClientRequestStatus, EngagementCompletion, LawyerExitForLawyer, Money, Quotation, QuoteTerms, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
 
 // ClientRequestForLawyer and its parts, from ilovelawyer-api's swagger-client-handoff.ts
 // (GET /api/client-requests, built in #511/#512).
@@ -170,6 +170,14 @@ export interface Engagement {
   closedBy: "LAWYER" | "CLIENT" | null
   /** The lawyer's workspace copy, once made. */
   copyCaseId: string | null
+  /** On one request (GET, close), not on lists: the client paid through ilovelawyer, so closing
+   * needs an outcome (work finished, or can't continue). */
+  paid?: boolean
+  /** On one request: the lawyer's own Lawyer Exit, if they closed saying they couldn't continue. */
+  exit?: LawyerExitForLawyer | null
+  /** The lawyer's "the work is finished": waiting on the client to confirm, or answered. Null until
+   * they've said it; missing from an older API. */
+  completion?: EngagementCompletion | null
 }
 
 export interface ClientRequestForLawyer {
