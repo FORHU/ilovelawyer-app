@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/fetch"
-import type { Money, PassReason, QuoteType } from "@/lib/client-handoff"
+import type { CloseOutcome, Money, PassReason, QuoteType, ReleaseReason } from "@/lib/client-handoff"
 import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, IntakePackageForLawyer } from "./types"
 
 export interface QuotationInput {
@@ -54,7 +54,19 @@ export function withdrawClientRequestQuotation(id: string) {
   return apiFetch<ClientRequestForLawyer>(`/api/client-requests/${id}/quotation/withdraw`, { method: "POST" })
 }
 
-export function closeClientRequest(id: string, input: { note?: string } = {}) {
+/** Closing the engagement. A paid one needs an outcome: WORK_FINISHED, or CANT_CONTINUE (a Lawyer
+ * Exit) with the reason and whether any work was done; with work done, what's claimed for it (at most
+ * the lawyer's share) and a short explanation. */
+export interface CloseInput {
+  outcome?: CloseOutcome
+  note?: string
+  reason?: ReleaseReason
+  workDone?: boolean
+  claimed?: Money
+  claimNote?: string
+}
+
+export function closeClientRequest(id: string, input: CloseInput = {}) {
   return apiFetch<ClientRequestForLawyer>(`/api/client-requests/${id}/close`, { method: "POST", body: JSON.stringify(input) })
 }
 

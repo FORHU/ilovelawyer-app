@@ -288,7 +288,11 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
                           <Badge tone={EARNING_TONE[e.status]} shape="pill">
                             {e.disputed ? t("wallet.earnings.disputed") : t(`wallet.earnings.statuses.${e.status}`)}
                           </Badge>
-                          {e.status === "PENDING" && !e.disputed && <span className="ml-2 text-[11px] text-muted-foreground">{t("wallet.earnings.availableOn", { date: date(e.availableAt) })}</span>}
+                          {e.status === "PENDING" && !e.disputed && (
+                            <span className="ml-2 text-[11px] text-muted-foreground">
+                              {e.availableAt ? t("wallet.earnings.availableOn", { date: date(e.availableAt) }) : t("wallet.earnings.heldUntilClose")}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

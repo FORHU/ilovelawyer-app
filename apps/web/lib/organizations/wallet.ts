@@ -45,7 +45,8 @@ export interface Earning {
   net: Money
   reversed: Money
   disputed: boolean
-  availableAt: string
+  /** Null while the engagement is open, or while a Lawyer Exit on it isn't settled: its hold hasn't started. */
+  availableAt: string | null
   releasedAt: string | null
   createdAt: string
 }

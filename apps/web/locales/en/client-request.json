@@ -227,12 +227,33 @@
       "copying": "Copying…",
       "close": "Close engagement",
       "closeTooltip": "Ends your read-only access to the case",
-      "confirmClose": "Close this engagement? You'll lose access to the client's case."
+      "completion": {
+        "sent": "We've asked the client to confirm the work is finished.",
+        "waiting": "Waiting for the client to confirm the work is finished",
+        "waitingHint": "You told them on {{asked}}. If they don't answer, it closes by itself on {{closes}}. You keep access until then.",
+        "asked": "You told them on {{asked}}.",
+        "declined": "On {{date}}, the client said the work isn't finished",
+        "declinedHint": "Carry on, and close the engagement again when it's done."
+      }
     },
     "closed": {
       "title": "Closed",
       "byLawyer": "You closed this engagement.",
-      "byClient": "The client ended this engagement."
+      "byLawyerExit": "You stopped acting on this case.",
+      "byClient": "The client ended this engagement.",
+      "exit": {
+        "claimed": "you claimed {{amount}}",
+        "refunded": "{{amount}} refunded to the client",
+        "status": {
+          "REFUNDING": "The client’s refund is on its way",
+          "AWAITING_REVIEW": "ilovelawyer is reviewing your exit to decide the client’s refund",
+          "WAITING_ON_DISPUTE": "Waiting on the client’s bank, which is looking at a dispute",
+          "NEEDS_ATTENTION": "ilovelawyer is sorting out the client’s refund",
+          "SETTLED": "Settled: anything left of your fee is released after the usual hold"
+        }
+      },
+      "confirmedByClient": "The client confirmed the work is finished, and the engagement closed.",
+      "confirmedAuto": "The engagement closed as finished: the client didn't answer within 7 days."
     },
     "expired": {
       "title": "Expired",
@@ -340,6 +361,45 @@
     "topUpDone": "Topped up: {{credit}} of AI credit added.",
     "topUpPending": "Payment is processing. The credit is added as soon as it goes through."
   },
+  "closeEngagement": {
+    "title": "Close engagement",
+    "description": "Tell us how the engagement ends.",
+    "outcomeLabel": "How does it end?",
+    "outcomeRequired": "Choose how the engagement ends.",
+    "finished": "The work is finished",
+    "finishedHint": "We ask the client to confirm. It closes when they do.",
+    "cantContinue": "I can’t continue",
+    "cantContinueHint": "A conflict, no capacity, or it’s outside what you do.",
+    "reasonLabel": "Why can’t you continue?",
+    "reasonRequired": "Choose why.",
+    "reasons": {
+      "CONFLICT": "Conflict of interest",
+      "CAPACITY": "No capacity",
+      "OUT_OF_SCOPE": "Outside my expertise",
+      "OTHER": "Other"
+    },
+    "workDoneLabel": "Did you do any of the work?",
+    "workDoneRequired": "Say whether you did any of the work.",
+    "noWork": "No work done",
+    "someWork": "Some work done",
+    "claimLabel": "What you claim for it (at most {{max}})",
+    "claimInvalid": "Enter an amount above £0 and no more than {{max}}.",
+    "claimNoteLabel": "What you did",
+    "claimNotePlaceholder": "For example: reviewed the contract and drafted a letter before claim.",
+    "noteLabel": "Note for the client (optional)",
+    "noteHint": "Sent to the client with the request to confirm.",
+    "exitNoteLabel": "Note for ilovelawyer (optional)",
+    "exitNoteHint": "Only ilovelawyer can see this. The client is never told why you left.",
+    "effect": {
+      "finished": "The client is asked to confirm the work is finished. It closes when they do, or by itself after 7 days, and you keep access until then. Nothing is refunded; your fee is released once the usual hold after closing ends.",
+      "finishedUnpaid": "The client is asked to confirm the work is finished. It closes when they do, or by itself after 7 days, and you keep access until then. Nothing was paid through ilovelawyer, so there's nothing to refund.",
+      "noWork": "ilovelawyer reviews your reason and decides how much the client gets back, up to their whole payment, ilovelawyer’s fee included. Your fee stays on hold until then.",
+      "claimed": "ilovelawyer reviews your reason and your claim, and decides how much the client gets back, out of your share. Your fee stays on hold until then.",
+      "exitUnpaid": "Nothing was paid through ilovelawyer, so there’s nothing to refund. The client won’t be offered you again on this case."
+    },
+    "finishedPending": "You've already said so: it's waiting on the client.",
+    "askClient": "Ask the client to confirm"
+  },
   "invoice": {
     "title": "Invoice",
     "clientPaid": "Client paid {{amount}}",
@@ -352,7 +412,7 @@
     "refunded": "Refunded to the client",
     "netPaid": "Net paid",
     "yourFee": "You receive",
-    "yourFeeNote": "Paid into your earnings: what the client paid, less ilovelawyer’s {{fee}} platform fee.",
+    "yourFeeNote": "Paid into your earnings: what the client paid, less ilovelawyer’s {{fee}} platform fee. You can withdraw it once the engagement has closed and the hold after it has ended.",
     "paidByStripe": "Paid by the client through Stripe.",
     "paidByTest": "Test payment: no money was taken.",
     "reference": "Payment reference",

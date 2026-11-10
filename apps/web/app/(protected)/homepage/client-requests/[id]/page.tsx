@@ -12,6 +12,7 @@ import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake
 import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { ClientFile } from "@/components/client-requests/client-file";
 import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
+import { CloseEngagementModal } from "@/components/client-requests/close-engagement-modal";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementInvoice } from "@/components/client-requests/engagement-invoice";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
@@ -400,6 +401,36 @@ function ConfirmedCard({ request }: { request: ClientRequestForLawyer }) {
   );
 }
 
+/** The lawyer's "the work is finished" on an open engagement: waiting on the client (and when it
+ * closes by itself), or the client's last "it isn't finished yet", with what's left. */
+function CompletionBanner({ completion }: { completion: NonNullable<NonNullable<ClientRequestForLawyer["engagement"]>["completion"]> }) {
+  const { t } = useTranslation("client-request");
+  const locale = useDateLocale();
+  const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
+  if (completion.requestedAt) {
+    return (
+      <div role="status" className="flex flex-col gap-1 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-3 text-[13px]">
+        <div className="font-semibold text-foreground">{t("detail.engaged.completion.waiting")}</div>
+        <div className="text-muted-foreground">
+          {completion.autoClosesAt
+            ? t("detail.engaged.completion.waitingHint", { asked: day(completion.requestedAt), closes: day(completion.autoClosesAt) })
+            : t("detail.engaged.completion.asked", { asked: day(completion.requestedAt) })}
+        </div>
+      </div>
+    );
+  }
+  if (completion.declinedAt) {
+    return (
+      <div role="status" className="flex flex-col gap-1 rounded-xl border border-red-500/30 bg-red-500/5 px-3.5 py-3 text-[13px]">
+        <div className="font-semibold text-foreground">{t("detail.engaged.completion.declined", { date: day(completion.declinedAt) })}</div>
+        {completion.declineReason && <p className="whitespace-pre-wrap break-words text-muted-foreground">{completion.declineReason}</p>}
+        <div className="text-[12px] text-muted-foreground">{t("detail.engaged.completion.declinedHint")}</div>
+      </div>
+    );
+  }
+  return null;
+}
+
 function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   const router = useRouter();
@@ -423,6 +454,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         <div className={LABEL}>{t("detail.engaged.client")}</div>
         <div className="mt-1 text-[15px] font-semibold text-foreground">{request.engagement.clientName}</div>
       </div>
+      {engagement.completion && <CompletionBanner completion={engagement.completion} />}
       <EngagementAiMeter requestId={request.id} />
       <EngagementInvoice requestId={request.id} />
       <div className="flex flex-wrap gap-2">
@@ -464,36 +496,42 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         </TooltipTrigger>
         <TooltipContent>{t("detail.engaged.closeTooltip")}</TooltipContent>
       </Tooltip>
-      <Dialog open={closing} onOpenChange={(next) => !next && setClosing(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("detail.engaged.close")}</DialogTitle>
-            <DialogDescription>{t("detail.engaged.confirmClose")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setClosing(false)} disabled={close.isPending}>
-              {t("detail.back")}
-            </Button>
-            <Button
-              type="button"
-              variant="accent"
-              isPending={close.isPending}
-              onClick={() =>
-                close.mutate(
-                  {},
-                  {
-                    onSuccess: () => setClosing(false),
-                    onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")),
-                  }
-                )
-              }
-            >
-              {t("detail.engaged.close")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CloseEngagementModal
+        open={closing}
+        isPending={close.isPending}
+        // An older API leaves `paid` out: ask for the outcome anyway, which it ignores.
+        paid={engagement.paid ?? true}
+        maxClaimMinor={request.quotation?.serviceFee.amountMinor ?? 0}
+        completionPending={!!engagement.completion?.requestedAt}
+        onClose={() => setClosing(false)}
+        onConfirm={(input) =>
+          close.mutate(input, {
+            onSuccess: (after) => {
+              setClosing(false);
+              // "The work is finished" doesn't close it: it waits on the client.
+              if (after.status === "ENGAGED") toast.success(t("detail.engaged.completion.sent"));
+            },
+            onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")),
+          })
+        }
+      />
     </section>
+  );
+}
+
+/** The lawyer's own Lawyer Exit, once they closed saying they couldn't continue: where the client's
+ * refund stands, and so when their earning (what's left of it) is released. */
+function ExitSummary({ exit }: { exit: NonNullable<NonNullable<ClientRequestForLawyer["engagement"]>["exit"]> }) {
+  const { t } = useTranslation("client-request");
+  return (
+    <div className="flex flex-col gap-1 rounded-xl bg-muted/50 px-3.5 py-3 text-[13px]">
+      <div className="font-semibold text-foreground">{t(`detail.closed.exit.status.${exit.status}`)}</div>
+      <div className="text-muted-foreground">
+        {t(`closeEngagement.reasons.${exit.reason}`)}
+        {exit.claimed && ` · ${t("detail.closed.exit.claimed", { amount: formatMoney(exit.claimed.amountMinor) })}`}
+        {exit.refunded.amountMinor > 0 && ` · ${t("detail.closed.exit.refunded", { amount: formatMoney(exit.refunded.amountMinor) })}`}
+      </div>
+    </div>
   );
 }
 
@@ -501,7 +539,18 @@ function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   return (
     <section className={cn(CARD, "flex flex-col items-start gap-3")}>
-      <div className="text-[13px] text-muted-foreground">{request.engagement?.closedBy === "CLIENT" ? t("detail.closed.byClient") : t("detail.closed.byLawyer")}</div>
+      <div className="text-[13px] text-muted-foreground">
+        {request.engagement?.closedBy === "CLIENT"
+          ? t("detail.closed.byClient")
+          : request.engagement?.exit
+            ? t("detail.closed.byLawyerExit")
+            : request.engagement?.completion?.confirmedBy === "CLIENT"
+              ? t("detail.closed.confirmedByClient")
+              : request.engagement?.completion?.confirmedBy === "AUTO"
+                ? t("detail.closed.confirmedAuto")
+                : t("detail.closed.byLawyer")}
+      </div>
+      {request.engagement?.exit && <ExitSummary exit={request.engagement.exit} />}
       {/* The thread stays readable after close (ilovelawyer-api#517). */}
       {request.engagement && <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed />}
       <EngagementInvoice requestId={request.id} className="self-stretch" />

@@ -8,6 +8,7 @@ import {
   quoteClientRequest,
   retryClientRequestCharge,
   withdrawClientRequestQuotation,
+  type CloseInput,
   type QuotationInput,
 } from "./api"
 
@@ -56,7 +57,7 @@ export function useWithdrawQuotationMutation(id: string) {
 export function useCloseClientRequestMutation(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { note?: string } = {}) => closeClientRequest(id, input),
+    mutationFn: (input: CloseInput = {}) => closeClientRequest(id, input),
     onSuccess: () => invalidateRequest(queryClient, id),
   })
 }

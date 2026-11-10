@@ -299,7 +299,7 @@
     "balances": {
       "available": "Available",
       "pending": "On hold",
-      "pendingNote": "Available {{days}} days after the client pays",
+      "pendingNote": "Available {{days}} days after the engagement closes",
       "reserved": "On its way",
       "withdrawn": "Paid out"
     },
@@ -341,6 +341,7 @@
       "refunded": "({{amount}} refunded)",
       "disputed": "Disputed",
       "availableOn": "Available {{date}}",
+      "heldUntilClose": "Held until the engagement closes and any refund is settled",
       "statuses": {
         "PENDING": "On hold",
         "AVAILABLE": "Available",
