@@ -64,6 +64,11 @@ export const UK_COURTS = [
 ] as const
 export type UkCourt = (typeof UK_COURTS)[number]
 
+/** The longest search the API takes (LAW_QUERY_MAX_LENGTH in ilovelawyer-api's
+ * validation/law.validation.ts): keep them the same. The search box stops here, so a longer
+ * search is never sent only to be refused. */
+export const LAW_QUERY_MAX_LENGTH = 300
+
 // ── A hit from GET /api/law/search (juris.ph item shape + our annotations) ────
 // Same payload the admin panel consumes — the app route (law.route.ts) is just a
 // non-admin, PH-tenant-gated entry point to the same LawSvc.search.

@@ -145,6 +145,10 @@ function ProfileSkeleton() {
   );
 }
 
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 30;
+
 export default function ProfilePage() {
   const { t } = useTranslation("profile");
   // The auth store only ever holds {id, username, email} from login/signup — the
@@ -307,13 +311,19 @@ export default function ProfilePage() {
     setUsernameError(null);
   };
 
+  // The same rules as the API's updateMeSchema (FORHU/ilovelawyer-api#642): letters, numbers, dots,
+  // underscores and hyphens, 3 to 30. Keep the two in sync.
   const saveUsername = () => {
     const trimmed = usernameDraft.trim();
-    if (trimmed.length < 3) {
+    if (trimmed.length < USERNAME_MIN_LENGTH) {
       setUsernameError(t("username.tooShortError"));
       return;
     }
-    if (!/^[a-zA-Z0-9._-]+$/.test(trimmed)) {
+    if (trimmed.length > USERNAME_MAX_LENGTH) {
+      setUsernameError(t("username.tooLongError"));
+      return;
+    }
+    if (!USERNAME_PATTERN.test(trimmed)) {
       setUsernameError(t("username.invalidCharsError"));
       return;
     }
@@ -325,7 +335,13 @@ export default function ProfilePage() {
           setIsEditingUsername(false);
           flashSaved(setUsernameJustSaved);
         },
-        onError: (err) => setUsernameError((err as Error).message || t("username.genericError")),
+        // Our own words, never the API's: taken, refused by its rules, or anything else.
+        onError: (err) => {
+          const { status, code } = err as { status?: number; code?: string };
+          if (status === 409 || code === "USERNAME_TAKEN") setUsernameError(t("username.takenError"));
+          else if (code === "INVALID_USERNAME") setUsernameError(t("username.rejectedError"));
+          else setUsernameError(t("username.genericError"));
+        },
       },
     );
   };

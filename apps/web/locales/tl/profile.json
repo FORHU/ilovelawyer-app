@@ -29,6 +29,9 @@
     "cancel": "Kanselahin",
     "tooShortError": "Ang username ay dapat hindi bababa sa 3 karakter.",
     "invalidCharsError": "Mga letra, numero, tuldok, underscore, at gitling lamang ang pinapayagan.",
+    "tooLongError": "Ang username ay hanggang 30 karakter lamang.",
+    "takenError": "May gumagamit na ng username na iyan. Sumubok ng iba.",
+    "rejectedError": "Hindi magagamit ang username na iyan. Gumamit ng 3 hanggang 30 letra, numero, tuldok, underscore, o gitling.",
     "genericError": "Hindi na-save. Pakisubukang muli."
   },
   "emailAddress": "Email Address",

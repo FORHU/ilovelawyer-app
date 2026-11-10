@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/store/auth.store"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import {
+  LAW_QUERY_MAX_LENGTH,
   type LawCategoryParam,
   type LawCaseType,
   type LawSearchItem,
@@ -125,12 +126,18 @@ export function LawSearchPanel() {
   const canBrowse = cfg.browsable(category)
   // Only the court facet narrows a search (the API has no PH caseType/topic search filter), so
   // it's the one facet kept on screen and applied while search results are showing.
+  // A ?q= longer than the API takes (a hand-edited or old link) is never sent: the API would only
+  // refuse it, and retrying wouldn't help. The page says it's too long instead.
+  const submittedTooLong = submittedQuery.length > LAW_QUERY_MAX_LENGTH
   const search = useLawSearchInfiniteQuery({
     category,
     q: submittedQuery,
     courts: facetKind === "uk-court" ? courts : [],
-    enabled: supported,
+    enabled: supported && !submittedTooLong,
   })
+  // A 400 is the API refusing the search as typed: trying again can't fix it, so it gets its own
+  // message rather than "please try again".
+  const searchRefused = (search.error as { status?: number } | null)?.status === 400
   const showSearchSkeleton = useDelayedLoading(search.isLoading)
   // The submit button's spinner tracks a (re-)run of the search, not the background prefetch
   // of the next page below.
@@ -212,7 +219,7 @@ export function LawSearchPanel() {
   const runSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const q = query.trim()
-    if (!q) return
+    if (!q || q.length > LAW_QUERY_MAX_LENGTH) return
     // Re-submitting the same text re-runs it rather than just showing the cached results.
     if (q === submittedQuery) void search.refetch()
     else updateParams({ q, spage: null })
@@ -337,6 +344,10 @@ export function LawSearchPanel() {
     )
   }
 
+  // The box stops at the limit (maxLength), so it's only over when filled from a long ?q=.
+  const queryTooLong = query.length > LAW_QUERY_MAX_LENGTH
+  const atLimit = query.length >= LAW_QUERY_MAX_LENGTH
+
   const cardGridClass = "grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
 
   return (
@@ -378,8 +389,21 @@ export function LawSearchPanel() {
               className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-foreground placeholder-muted-foreground outline-none"
               placeholder={t(cfg.searchPlaceholderKey)}
               value={query}
+              maxLength={LAW_QUERY_MAX_LENGTH}
+              aria-invalid={queryTooLong || undefined}
+              aria-describedby={atLimit || queryTooLong ? "library-search-limit" : undefined}
               onChange={(e) => setQuery(e.target.value)}
             />
+            {query.length > 0 && (
+              <span
+                aria-hidden="true"
+                className={`mr-1.5 shrink-0 text-[11px] tabular-nums ${
+                  queryTooLong ? "text-red-600 dark:text-red-400" : atLimit ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"
+                }`}
+              >
+                {query.length}/{LAW_QUERY_MAX_LENGTH}
+              </span>
+            )}
             {(showingSearch || query.length > 0) && (
               <button
                 type="button"
@@ -394,7 +418,7 @@ export function LawSearchPanel() {
 
           <button
             type="submit"
-            disabled={isSearching || !query.trim()}
+            disabled={isSearching || !query.trim() || query.trim().length > LAW_QUERY_MAX_LENGTH}
             className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-brand-gold px-5 py-2.5 text-xs font-semibold tracking-wider text-brand-gold-foreground uppercase transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
           >
             {isSearching ? (
@@ -405,6 +429,16 @@ export function LawSearchPanel() {
             {t("lawSearch.searchButton")}
           </button>
         </form>
+
+        {(atLimit || queryTooLong) && (
+          <p
+            id="library-search-limit"
+            role="status"
+            className={`-mt-2 text-xs ${queryTooLong ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
+          >
+            {t(queryTooLong ? "lawSearch.tooLong" : "lawSearch.limitReached", { max: LAW_QUERY_MAX_LENGTH })}
+          </p>
+        )}
 
         {/* ── Filters (PH facets in browse mode only; UK court in both) ─── */}
         {canBrowse &&
@@ -454,7 +488,9 @@ export function LawSearchPanel() {
             {showSearchSkeleton && <ResultCardGridSkeleton className={cardGridClass} />}
 
             {search.isError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.error")}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {t(searchRefused ? "lawSearch.refused" : "lawSearch.error")}
+              </p>
             )}
 
             {search.data && (
