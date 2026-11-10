@@ -185,5 +185,8 @@
     "relatedCases": "Related cases cited",
     "citedNumbers": "Cited G.R. / R.A. numbers",
     "keywords": "Keywords"
+  },
+  "citationConfidence": {
+    "quoted": "quoted from a source the AI retrieved"
   }
 }

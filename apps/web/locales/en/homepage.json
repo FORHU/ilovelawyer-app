@@ -220,5 +220,20 @@
       "REVISE_PREVIOUS": "revision",
       "OTHER": ""
     }
+  },
+  "confidenceView": {
+    "toggle": "Confidence view",
+    "showHint": "Show where each sentence came from",
+    "hideHint": "Hide where each sentence came from",
+    "legendTitle": "Confidence view",
+    "legendBody": "shows where each sentence came from, not whether it is correct.",
+    "tier": {
+      "quoted": "Quoted from source",
+      "sourced": "Conclusion from a source",
+      "unsourced": "No source"
+    },
+    "linkRing": "Link to a source the AI retrieved",
+    "unsourcedList": "No source behind these",
+    "jumpHint": "Show in chat"
   }
 }

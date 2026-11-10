@@ -5,6 +5,7 @@ import { getNotificationSocket } from "@/lib/notifications/socket"
 import type { MindMapItem, TraceStep } from "@/lib/chat/mind-map-parser"
 import type { MindMapEditRequest } from "@/components/chat/mind-map/types"
 import type { DecisionRecordPayload } from "@/lib/terminal/types"
+import type { ConfidencePayload } from "@/lib/chat/confidence"
 
 export interface ChatSession {
   session_id: string
@@ -166,6 +167,13 @@ export interface ChatMessage {
    * reply has none until the next messages fetch, and absent unless USE_JEV_CITATION_RANK is on.
    * A link with no entry is unrated and renders neutral. */
   citationRanking?: { items: CitationRankItem[] } | null
+  /** Confidence view for this turn: chat-wonder's per-sentence provenance (QUOTED / SOURCED /
+   * UNSOURCED — where a sentence came from, never whether it is correct). Persisted on the
+   * turn's LAST assistant message (MessageConfidence), like reasoning/decisions — a split reply's
+   * earlier siblings carry none, and ConsultationChat hands the turn's spans to all of them.
+   * Absent until ilovelawyer-api ships it, for non-legal turns, and when CONFIDENCE_VIEW_ENABLED
+   * is off. Read through confidenceSpansOf, which tolerates any shape. */
+  confidence?: { payload: ConfidencePayload } | null
   /** Jev triage for a user turn (ilovelawyer-api message-triage.ts): whether the message reads as
    * time-critical, and what it is asking for. Written on send when USE_JEV_MESSAGE_TRIAGE is on;
    * absent otherwise and on assistant messages. */

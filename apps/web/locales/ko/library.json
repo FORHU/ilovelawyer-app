@@ -158,5 +158,8 @@
     "relatedCases": "인용된 관련 판례",
     "citedNumbers": "인용된 G.R. / R.A. 번호",
     "keywords": "키워드"
+  },
+  "citationConfidence": {
+    "quoted": "AI가 조회한 출처에서 인용됨"
   }
 }

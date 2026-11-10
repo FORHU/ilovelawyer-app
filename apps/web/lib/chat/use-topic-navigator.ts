@@ -4,6 +4,7 @@ import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import type { TraceStep } from "@/lib/chat/mind-map-parser";
+import { confidenceSpansOf, type ConfidenceSpan } from "@/lib/chat/confidence";
 
 export interface TopicNavigatorItem {
   /** Index into ConsultationChat's own visibleMessages — matches the `chat-msg-${index}` id
@@ -35,6 +36,18 @@ export interface DecisionNavigatorGroup {
   index: number;
   records: DecisionRecordPayload[];
   researchSteps: TraceStep[] | undefined;
+}
+
+/** One turn's Confidence view spans, grouped under the prompt that produced them — every turn
+ * that has any, unlike DecisionNavigatorGroup (only turns with Decision Records). `index` is the
+ * visibleMessages index of the message CARRYING the payload (a split reply's last bubble): the
+ * same turnIndex ConsultationChat passes to AssistantMessage, so confidenceSpanElementId(index,
+ * spanIndex) here names the exact <mark> the shading rendered. */
+export interface ConfidenceNavigatorGroup {
+  promptIndex: number;
+  promptTitle: string;
+  index: number;
+  spans: ConfidenceSpan[];
 }
 
 /** DOM id of one decision's highlighted anchor span inside a reply bubble (see
@@ -281,6 +294,23 @@ export function useTopicNavigator(
     return result;
   }, [visibleMessages]);
 
+  // Same "prompt -> its stuff" grouping, for Confidence view (Case Studio's per-answer summary).
+  const confidenceGroups = useMemo<ConfidenceNavigatorGroup[]>(() => {
+    const result: ConfidenceNavigatorGroup[] = [];
+    let currentPrompt: { promptIndex: number; promptTitle: string } | null = null;
+    visibleMessages.forEach((m, index) => {
+      if (m.role === "user") {
+        currentPrompt = { promptIndex: index, promptTitle: m.content.trim() };
+        return;
+      }
+      if (!currentPrompt || m.role !== "assistant") return;
+      const spans = confidenceSpansOf(m.confidence?.payload);
+      if (spans.length === 0) return;
+      result.push({ ...currentPrompt, index, spans });
+    });
+    return result;
+  }, [visibleMessages]);
+
   const topics = useMemo<TopicNavigatorItem[]>(() => groups.flatMap((g) => g.topics), [groups]);
 
   // Effective ordering time for a message: a user message's own createdAt (set synchronously
@@ -429,6 +459,7 @@ export function useTopicNavigator(
     topics,
     groups,
     decisionGroups,
+    confidenceGroups,
     activeIndex,
     scrollToTopic,
     scrollToElementId,
