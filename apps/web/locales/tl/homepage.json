@@ -205,5 +205,20 @@
       "REVISE_PREVIOUS": "revision",
       "OTHER": ""
     }
+  },
+  "confidenceView": {
+    "toggle": "Confidence view",
+    "showHint": "Ipakita kung saan galing ang bawat pangungusap",
+    "hideHint": "Itago kung saan galing ang bawat pangungusap",
+    "legendTitle": "Confidence view",
+    "legendBody": "ay nagpapakita kung saan galing ang bawat pangungusap, hindi kung tama ito.",
+    "tier": {
+      "quoted": "Sinipi mula sa source",
+      "sourced": "Konklusyon mula sa source",
+      "unsourced": "Walang source"
+    },
+    "linkRing": "Link sa source na kinuha ng AI",
+    "unsourcedList": "Walang source sa likod ng mga ito",
+    "jumpHint": "Ipakita sa chat"
   }
 }

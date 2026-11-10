@@ -23,6 +23,7 @@ import { Sheet, SheetContent, SheetTitle } from "@workspace/ui/components/sheet"
 import { parseLibraryHref } from "@/lib/law/internal-library-link";
 import { lawPreviewQueryOptions } from "@/lib/law/queries";
 import type { CitationRankItem, CitationRankTier } from "@/lib/chat/mutations";
+import type { ConfidenceSpan } from "@/lib/chat/confidence";
 import { CitationCta, CitationPreviewBody, CitationPreviewCard, CitationRankNote } from "./citation-preview-card";
 
 // A citation reads as a bold italic serif pill followed by a small badge that says what kind of
@@ -128,7 +129,20 @@ function isTouchClick(e: React.MouseEvent): boolean {
  * where the hover delay comes from, and what lets the card move between adjacent citations
  * without re-waiting.
  */
-export function CitationLink({ href, children, rank }: { href: string; children: React.ReactNode; rank?: CitationRankItem }) {
+export function CitationLink({
+  href,
+  children,
+  rank,
+  confidence,
+}: {
+  href: string;
+  children: React.ReactNode;
+  rank?: CitationRankItem;
+  /** Confidence view's verdict for this link (source "citation"), passed only while the view is
+   * on. Ranking keeps owning the pill's colours (green/amber/slate mean relevance there), so a
+   * link QUOTED from a retrieved source gets a green ring instead of a recolour. */
+  confidence?: ConfidenceSpan;
+}) {
   const { t } = useTranslation("library");
   const queryClient = useQueryClient();
   const target = React.useMemo(() => parseLibraryHref(href), [href]);
@@ -175,7 +189,8 @@ export function CitationLink({ href, children, rank }: { href: string; children:
         data-open={open || sheetOpen ? "" : undefined}
         data-rank={rank?.tier}
         data-kind={kind ?? undefined}
-        className={`${CITATION_BASE_CLASS} ${PILL_CLASS[family]}${rank ? ` ${TIER_UNDERLINE_CLASS[rank.tier]}` : ""}`}
+        data-confidence={confidence?.tier}
+        className={`${CITATION_BASE_CLASS} ${PILL_CLASS[family]}${rank ? ` ${TIER_UNDERLINE_CLASS[rank.tier]}` : ""}${confidence?.tier === "QUOTED" ? " ring-2 ring-emerald-500/70 ring-offset-1 ring-offset-background" : ""}`}
         {...getReferenceProps({
           onPointerEnter: prefetch,
           onFocus: prefetch,
@@ -197,6 +212,7 @@ export function CitationLink({ href, children, rank }: { href: string; children:
             {")"}
           </span>
         )}
+        {confidence?.tier === "QUOTED" && <span className="sr-only">{" ("}{t("citationConfidence.quoted")}{")"}</span>}
         <span className="sr-only">{t("citationPreview.opensInNewTab")}</span>
       </a>
 

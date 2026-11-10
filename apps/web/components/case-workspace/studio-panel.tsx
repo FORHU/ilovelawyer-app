@@ -19,7 +19,10 @@ import { AudioOverviewTranscript } from "@/components/audio-overview/audio-overv
 import { activeTurnIndex, hasUsableTimings, hostBands } from "@/components/audio-overview/audio-overview-sync";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
-import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
+import { useTopicNavigator, type ConfidenceNavigatorGroup } from "@/lib/chat/use-topic-navigator";
+import type { TraceStep } from "@/lib/chat/mind-map-parser";
+import { confidenceSpanElementId } from "@/lib/chat/confidence";
+import { ConfidenceSummary } from "@/components/chat/confidence-view";
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
@@ -382,14 +385,48 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // untouched by this tile). Each group carries its own researchSteps (ilovelawyer-api#119's
   // persisted replay of that same turn's research/verification trace), absent when that turn made
   // no tool calls, same as everywhere else this field shows up.
-  const { decisionGroups } = useTopicNavigator(consultationId);
-  const decisionGroupsNewestFirst = useMemo(() => [...decisionGroups].reverse(), [decisionGroups]);
+  const { decisionGroups, confidenceGroups, scrollToElementId } = useTopicNavigator(consultationId);
+  // One list of prompts for this view: every prompt with Decision Records, Confidence view spans,
+  // or both (a turn can have confidence without any records — those used to have no row here).
+  // Newest first, same as before.
+  const studioPromptGroups = useMemo(() => {
+    const byPrompt = new Map<
+      number,
+      {
+        promptIndex: number;
+        promptTitle: string;
+        records: DecisionRecordPayload[];
+        researchSteps: TraceStep[] | undefined;
+        confidence?: ConfidenceNavigatorGroup;
+      }
+    >();
+    for (const g of decisionGroups) byPrompt.set(g.promptIndex, { ...g });
+    for (const c of confidenceGroups) {
+      const existing = byPrompt.get(c.promptIndex);
+      if (existing) existing.confidence = c;
+      else byPrompt.set(c.promptIndex, { promptIndex: c.promptIndex, promptTitle: c.promptTitle, records: [], researchSteps: undefined, confidence: c });
+    }
+    return [...byPrompt.values()].sort((a, b) => b.promptIndex - a.promptIndex);
+  }, [decisionGroups, confidenceGroups]);
+  // Clicking a "No source" sentence: Confidence view is switched on by ConfidenceSummary, then the
+  // chat scrolls to that sentence's <mark> once it has rendered. On mobile, Studio and Chat are
+  // separate tabs — go back to Chat first (onExpandedChange is the tab switch there).
+  const jumpToConfidenceSpan = useCallback(
+    (turnIndex: number, spanIndex: number, quote: string) => {
+      if (fullWidth) onExpandedChange(false);
+      window.setTimeout(
+        () => scrollToElementId(confidenceSpanElementId(turnIndex, spanIndex), turnIndex, quote),
+        fullWidth ? 200 : 60,
+      );
+    },
+    [fullWidth, onExpandedChange, scrollToElementId],
+  );
   // Newest prompt open by default, same "only an explicit toggle is stored" idiom as
   // TopicNavigatorList's own `overrides` (topic-navigator.tsx) and Sources panel's decision
   // groups (sources-panel.tsx) — kept consistent across all three so a lawyer doesn't have to
   // learn a different expand/collapse behavior per panel.
   const [decisionOverrides, setDecisionOverrides] = useState<Map<number, boolean>>(() => new Map());
-  const latestDecisionPromptIndex = decisionGroups[decisionGroups.length - 1]?.promptIndex ?? null;
+  const latestDecisionPromptIndex = studioPromptGroups[0]?.promptIndex ?? null;
   const isDecisionGroupOpen = (promptIndex: number) =>
     decisionOverrides.get(promptIndex) ?? promptIndex === latestDecisionPromptIndex;
   const toggleDecisionGroup = (promptIndex: number) =>
@@ -776,9 +813,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "decisions" ? (
             isMindMapConsultationBusy ? (
               <PaneLoadingState fill>{t("workspace.decisionsGenerating")}</PaneLoadingState>
-            ) : decisionGroupsNewestFirst.length > 0 ? (
+            ) : studioPromptGroups.length > 0 ? (
               <div className="flex flex-col gap-2">
-                {decisionGroupsNewestFirst.map((group) => {
+                {studioPromptGroups.map((group) => {
                   const isOpen = isDecisionGroupOpen(group.promptIndex);
                   const researchStepsOpen = isResearchStepsOpen(group.promptIndex);
                   return (
@@ -797,16 +834,31 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                           {group.promptTitle || "Untitled prompt"}
                         </span>
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {t("workspace.decisionsNotePrompt", { count: group.records.length })}
+                          {group.records.length > 0
+                            ? t("workspace.decisionsNotePrompt", { count: group.records.length })
+                            : t("workspace.confidenceOnly", { defaultValue: "Confidence view" })}
                         </span>
                       </button>
                       {isOpen && (
                         <div className="flex flex-col gap-3 border-t border-border px-3 py-2.5">
-                          <ul className="space-y-4">
-                            {group.records.map((record, i) => (
-                              <DecisionRecordCard key={record.anchor || i} payload={record} />
-                            ))}
-                          </ul>
+                          {group.records.length > 0 && (
+                            <ul className="space-y-4">
+                              {group.records.map((record, i) => (
+                                <DecisionRecordCard key={record.anchor || i} payload={record} />
+                              ))}
+                            </ul>
+                          )}
+                          {group.confidence && (
+                            <div className="rounded-md border border-border px-3 py-2.5">
+                              <p className="mb-2 text-[12px] font-medium text-foreground">
+                                {t("workspace.confidenceTitle", { defaultValue: "Where this answer came from" })}
+                              </p>
+                              <ConfidenceSummary
+                                spans={group.confidence.spans}
+                                onJump={(spanIndex, span) => jumpToConfidenceSpan(group.confidence!.index, spanIndex, span.quote)}
+                              />
+                            </div>
+                          )}
                           {group.researchSteps && group.researchSteps.length > 0 && (
                             <div className="rounded-md border border-border px-3 py-2.5">
                               <button

@@ -16,6 +16,16 @@ import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import type { CitationRankItem, MessageGroundingCheck } from "@/lib/chat/mutations";
 import { GroundingSummary } from "./grounding-summary";
+import { rehypeConfidence } from "@/lib/chat/confidence-rehype";
+import {
+  CONFIDENCE_MARK_CLASS,
+  CONFIDENCE_TIERS,
+  citationConfidenceByHref,
+  confidenceSpanElementId,
+  type ConfidenceSpan,
+  type ConfidenceTier,
+} from "@/lib/chat/confidence";
+import { useConfidenceViewStore } from "@/lib/store/confidence-view.store";
 
 /** One piece of evidence's quote (evidenceFor/evidenceAgainst), searched for and highlighted
  * yellow wherever it actually appears in a reply — see SourcesPanel, which builds this list from
@@ -136,8 +146,23 @@ function buildComponents(
   quoteHighlights: QuoteHighlight[],
   activeHighlightId: string | null,
   ranks: ReadonlyMap<string, CitationRankItem>,
+  citationConfidence: ReadonlyMap<string, ConfidenceSpan> | null,
 ): Components {
   return {
+    // Confidence view's shading (lib/chat/confidence-rehype.ts wraps matched sentences in
+    // <mark class="conf-span" data-tier>). Its children still go through highlightChildren: that
+    // only handles plain strings, and once a sentence is shaded its text lives inside this mark,
+    // so without this a decision anchor in a shaded sentence would silently stop being clickable.
+    mark: ({ node, children, className, id, title }) => {
+      const tierProp = (node?.properties as Record<string, unknown> | undefined)?.dataTier;
+      const tier = CONFIDENCE_TIERS.find((t) => t === tierProp) as ConfidenceTier | undefined;
+      if (!tier) return <mark className={className}>{children}</mark>;
+      return (
+        <mark id={id} title={title} data-tier={tier} className={CONFIDENCE_MARK_CLASS[tier]}>
+          {highlightChildren(children, decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId)}
+        </mark>
+      );
+    },
     h1: ({ children }) => <p className="text-[18px] font-bold mt-4 mb-1 first:mt-0">{children}</p>,
     h2: ({ children }) => <p className="text-[17px] font-bold mt-4 mb-1 first:mt-0">{children}</p>,
     h3: ({ children }) => <p className="text-[16px] font-bold mt-3 mb-1 first:mt-0">{children}</p>,
@@ -175,7 +200,7 @@ function buildComponents(
       }
       if (isInternalLibraryHref(href)) {
         return (
-          <CitationLink href={href} rank={ranks.get(href)}>
+          <CitationLink href={href} rank={ranks.get(href)} confidence={citationConfidence?.get(href)}>
             {children}
           </CitationLink>
         );
@@ -324,6 +349,8 @@ const AssistantMessage = React.memo(function AssistantMessage({
   quoteHighlights = NO_QUOTE_HIGHLIGHTS,
   groundingChecks,
   citationRanking,
+  confidenceSpans,
+  confidenceTurnIndex,
 }: {
   content: string;
   className?: string;
@@ -350,16 +377,55 @@ const AssistantMessage = React.memo(function AssistantMessage({
    * href. A link with no entry renders neutral: ranking runs after the reply is saved, and only
    * when enabled on the API. */
   citationRanking?: CitationRankItem[];
+  /** Confidence view: this TURN's spans (lib/chat/confidence.ts). For a split reply every sibling
+   * bubble gets the same list — the payload is stored on the last one, but a sentence can sit in
+   * any of them; each bubble shades whatever matches its own text. Shown only while the global
+   * Confidence view switch is on. */
+  confidenceSpans?: ConfidenceSpan[];
+  /** visibleMessages index of the message carrying the payload — used for the marks' DOM ids
+   * (confidenceSpanElementId), which Studio's summary jumps to. */
+  confidenceTurnIndex?: number;
 }) {
   const cleaned = cleanAssistantContent(content);
   const ranks = React.useMemo(() => new Map((citationRanking ?? []).map((r) => [r.href, r])), [citationRanking]);
+  const confidenceOn = useConfidenceViewStore((s) => s.on);
+  const showConfidence = confidenceOn && (confidenceSpans?.length ?? 0) > 0;
+  const citationConfidence = React.useMemo(
+    () => (showConfidence ? citationConfidenceByHref(confidenceSpans!) : null),
+    [showConfidence, confidenceSpans],
+  );
+  const rehypePlugins = React.useMemo(
+    () =>
+      showConfidence
+        ? [
+            [
+              rehypeConfidence,
+              {
+                spans: confidenceSpans!,
+                idFor:
+                  confidenceTurnIndex !== undefined ? (i: number) => confidenceSpanElementId(confidenceTurnIndex, i) : undefined,
+              },
+            ] as [typeof rehypeConfidence, Parameters<typeof rehypeConfidence>[0]],
+          ]
+        : [],
+    [showConfidence, confidenceSpans, confidenceTurnIndex],
+  );
   // Subscribed directly (not a prop) so a click anywhere that calls setActiveHighlight —
   // currently only SourcesPanel — re-renders every bubble to move the highlight, without
   // ConsultationChat needing to know or forward that state itself.
   const activeHighlightId = useActiveHighlightStore((s) => s.activeHighlightId);
   const components = React.useMemo(
-    () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId, ranks),
-    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId, ranks],
+    () =>
+      buildComponents(
+        decisions,
+        onOpenDecision ?? (() => {}),
+        messageIndex,
+        quoteHighlights,
+        activeHighlightId,
+        ranks,
+        citationConfidence,
+      ),
+    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId, ranks, citationConfidence],
   );
   // A new `components` object (any prop/highlight change above) remounts every <p>/<li> in this
   // bubble, dropping the paragraph-level highlight SourcesPanel put on one of them — see
@@ -374,7 +440,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
           preview opens, 150ms grace to reach it — and once one is open, moving to an adjacent
           citation swaps the card instantly instead of waiting out the delay again. */}
       <FloatingDelayGroup delay={CITATION_HOVER_DELAY}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components}>
           {cleaned}
         </ReactMarkdown>
       </FloatingDelayGroup>

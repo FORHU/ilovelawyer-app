@@ -219,7 +219,9 @@
     "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map.",
     "consultationsSectionTitle": "Mga konsultasyon",
     "topicsLoading": "Nilo-load ang mga paksa…",
-    "tileUpdating": "Ina-update…"
+    "tileUpdating": "Ina-update…",
+    "confidenceTitle": "Saan galing ang sagot na ito",
+    "confidenceOnly": "Confidence view"
   },
   "mindMapExpand": {
     "button": "Palawakin",

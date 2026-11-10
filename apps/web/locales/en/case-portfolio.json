@@ -393,7 +393,9 @@
     "mindMapNoConsultation": "Start a chat to generate a mind map.",
     "consultationsSectionTitle": "Consultations",
     "topicsLoading": "Loading topics…",
-    "tileUpdating": "Updating…"
+    "tileUpdating": "Updating…",
+    "confidenceTitle": "Where this answer came from",
+    "confidenceOnly": "Confidence view"
   },
   "mindMapExpand": {
     "button": "Expand",

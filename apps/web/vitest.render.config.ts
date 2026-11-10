@@ -5,5 +5,5 @@ import path from "node:path"
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(import.meta.dirname, ".") } },
   oxc: { jsx: { runtime: "automatic" } },
-  test: { environment: "node", include: ["components/chat/__tests__/citation-rank-render.spec.ts"] },
+  test: { environment: "node", include: ["components/chat/__tests__/*.spec.ts"] },
 })

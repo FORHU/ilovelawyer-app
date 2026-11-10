@@ -37,6 +37,8 @@ import { ThreadPicker } from "@/components/chat/thread-picker";
 import { SourcesPanel } from "@/components/case-workspace/sources-panel";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
+import { ConfidenceLegend, ConfidenceViewToggle } from "@/components/chat/confidence-view";
+import { confidenceSpansOf, type ConfidenceSpan } from "@/lib/chat/confidence";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
@@ -115,6 +117,10 @@ interface DisplayMessage {
   /** Per-citation relevance tiers for this reply, straight off the messages API — see
    * CitationLink. Undefined until the background ranking has run, and whenever it is disabled. */
   citationRanking?: CitationRankItem[];
+  /** Confidence view spans for this reply's TURN, straight off the messages API (only the turn's
+   * last bubble carries them — see turnConfidence below for how siblings get them). Undefined
+   * while streaming, for non-legal turns, and until the API ships MessageConfidence. */
+  confidence?: ConfidenceSpan[];
   /** Jev triage for this user turn — drives the urgency chip under the prompt. */
   urgent?: boolean | null;
   intent?: string | null;
@@ -708,6 +714,10 @@ export default function ConsultationChat({
               researchSteps: m.researchSteps?.steps,
               groundingChecks: m.groundingChecks,
               citationRanking: m.citationRanking?.items,
+              confidence: (() => {
+                const spans = confidenceSpansOf(m.confidence?.payload);
+                return spans.length > 0 ? spans : undefined;
+              })(),
               urgent: m.urgent,
               intent: m.intent,
             }))
@@ -929,6 +939,32 @@ export default function ConsultationChat({
   // for the Case even with nothing open yet (it's where a consultation gets picked or started),
   // either expanded or minimized to its icon rail (`terminalTopicsOpen`).
   const terminalTopicsPanelVisible = Boolean(embedded && showTopicNavigator && caseId);
+
+  // Confidence view: each reply bubble -> its TURN's spans, plus the index of the bubble that
+  // carries them (the marks' DOM ids key off it, so Case Studio can jump to a sentence). A split
+  // reply stores the payload on its last topic bubble only (ChatSvc.persistAssistantTurn), but a
+  // sentence can be in any sibling — so every bubble sharing that groupId gets the same list, the
+  // same reasoning as evidenceQuoteHighlights below.
+  const turnConfidence = useMemo(() => {
+    const byIndex = new Map<number, { spans: ConfidenceSpan[]; turnIndex: number }>();
+    const byGroup = new Map<string, { spans: ConfidenceSpan[]; turnIndex: number }>();
+    visibleMessages.forEach((m, i) => {
+      if (m.role !== "assistant" || !m.confidence?.length) return;
+      const entry = { spans: m.confidence, turnIndex: i };
+      byIndex.set(i, entry);
+      if (m.groupId) byGroup.set(m.groupId, entry);
+    });
+    if (byGroup.size > 0) {
+      visibleMessages.forEach((m, i) => {
+        if (m.role === "assistant" && m.groupId && !byIndex.has(i)) {
+          const entry = byGroup.get(m.groupId);
+          if (entry) byIndex.set(i, entry);
+        }
+      });
+    }
+    return byIndex;
+  }, [visibleMessages]);
+  const hasConfidence = turnConfidence.size > 0;
 
   // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
   // the transcript so each can highlight yellow whichever quotes actually appear in its own
@@ -2590,6 +2626,12 @@ export default function ConsultationChat({
                       </Link>
                     </div>
                   )}
+                  {/* Confidence view toggle (desktop) — only once a reply here actually has spans. */}
+                  {hasConfidence && (
+                    <div className="hidden lg:flex shrink-0">
+                      <ConfidenceViewToggle variant="header" />
+                    </div>
+                  )}
                   {/* Mobile-only controls: a ChatGPT-style "new chat" pencil sitting left of the
                       kebab, so starting a fresh consultation doesn't require opening the sidebar
                       drawer first just to reach its own "New consultation" button. The kebab
@@ -2597,6 +2639,7 @@ export default function ConsultationChat({
                       rail, both of which have no room on a phone header — only rendered when
                       there's actually something for it to hold. */}
                   <div className="lg:hidden flex items-center gap-1 shrink-0">
+                    {hasConfidence && <ConfidenceViewToggle variant="compact" />}
                     {!chatReadOnly && (
                     <button
                       type="button"
@@ -2652,6 +2695,14 @@ export default function ConsultationChat({
                  * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
                  * instead of in the (non-embedded-only) centered landing above. */}
                 {showHistorySkeleton && <ChatHistorySkeleton />}
+
+                {/* What the shading means (renders only while Confidence view is on). Pinned to
+                    the top of the transcript so it stays readable while scrolling — and lives
+                    here rather than in a header so the embedded Case Workspace and Legal
+                    Terminal chats, which have no ConsultationChat header, get it too. */}
+                {hasConfidence && (
+                  <ConfidenceLegend className="sticky top-0 z-10 rounded-lg border border-border bg-background/95 px-3 py-2 backdrop-blur" />
+                )}
 
                 {/* Any other failure to load the history (a 404 is handled above): say so, with a
                     way to try again, instead of passing it off as an empty consultation. */}
@@ -2797,6 +2848,8 @@ export default function ConsultationChat({
                             quoteHighlights={evidenceQuoteHighlights}
                             groundingChecks={m.groundingChecks}
                             citationRanking={m.citationRanking}
+                            confidenceSpans={turnConfidence.get(i)?.spans}
+                            confidenceTurnIndex={turnConfidence.get(i)?.turnIndex}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
                           {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {
@@ -2838,6 +2891,9 @@ export default function ConsultationChat({
                                 failedLabel={t("message.copyFailed", { defaultValue: "Couldn't copy" })}
                                 compact={embedded}
                               />
+                              {/* Confidence view, once per reply like Copy — the only toggle the
+                                  header-less Legal Terminal chat has, and a shortcut everywhere else. */}
+                              {turnConfidence.has(i) && <ConfidenceViewToggle variant={embedded ? "compact" : "icon"} />}
                               {/* A split answer is one reply: like Copy, the thumbs sit once, under its last card. */}
                               {m.id && consultationId && (
                                 <MessageFeedback key={m.id} messageId={m.id} consultationId={consultationId} caseId={caseId} compact={embedded} />

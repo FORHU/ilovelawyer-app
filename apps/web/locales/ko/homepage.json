@@ -204,5 +204,20 @@
       "REVISE_PREVIOUS": "revision",
       "OTHER": ""
     }
+  },
+  "confidenceView": {
+    "toggle": "신뢰도 보기",
+    "showHint": "각 문장의 출처 표시",
+    "hideHint": "각 문장의 출처 숨기기",
+    "legendTitle": "신뢰도 보기",
+    "legendBody": "는 각 문장이 어디에서 왔는지를 보여 줄 뿐, 내용이 옳은지는 보여 주지 않습니다.",
+    "tier": {
+      "quoted": "출처에서 인용",
+      "sourced": "출처에 근거한 결론",
+      "unsourced": "출처 없음"
+    },
+    "linkRing": "AI가 실제로 조회한 출처로 연결되는 링크",
+    "unsourcedList": "출처가 없는 문장",
+    "jumpHint": "채팅에서 보기"
   }
 }

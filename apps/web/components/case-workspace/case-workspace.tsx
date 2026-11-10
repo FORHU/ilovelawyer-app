@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import ConsultationChat from "@/components/chat/consultation-chat";
@@ -14,6 +14,9 @@ import { useResizableWidth } from "@/lib/case-workspace/use-resizable-width";
 import { useCaseQuery } from "@/lib/cases/mutations";
 import { useCaseRoom } from "@/lib/cases/case-room";
 import { consultationIdFromParam, isDraftConsultationParam } from "@/lib/chat/consultation-param";
+import { useMessagesQuery } from "@/lib/chat/mutations";
+import { confidenceSpansOf } from "@/lib/chat/confidence";
+import { ConfidenceViewToggle } from "@/components/chat/confidence-view";
 
 interface CaseWorkspaceProps {
   caseId: string;
@@ -74,6 +77,13 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
     router.replace(`${window.location.pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [router]);
   const { data: caseRecord } = useCaseQuery(caseId);
+  // Same query (and cache entry) ConsultationChat already loads for this thread — no extra
+  // request; just decides whether the chat strip shows the Confidence view toggle.
+  const { data: activeHistory } = useMessagesQuery(activeConsultationId ?? undefined);
+  const activeHasConfidence = useMemo(
+    () => (activeHistory ?? []).some((m) => confidenceSpansOf(m.confidence?.payload).length > 0),
+    [activeHistory],
+  );
   // StudioPanel's tiles (Mind Map, Timeline) poll their AiGenerationJob status via
   // useAiJobStatus, which is purely event-driven after its first fetch — it relies entirely on
   // the ai-job:started/done/failed push to case:<caseId>, not on any poll. That push only reaches
@@ -226,11 +236,14 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   // plain JSX value, not a component, so this is just choosing which branch mounts it.
   const chatColumn = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-11 md:h-14 shrink-0 items-center border-b border-border px-4 md:px-6">
+      <div className="flex h-11 md:h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 md:px-6">
         {/* Same px-6 gutter as ConsultationChat's `centerContent` column below (uncapped —
          * see its doc comment), so the thread title's left edge lines up with the transcript,
          * input dock, and message bubbles beneath it at any sidebar width. */}
         <ThreadPicker caseId={caseId} activeConsultationId={activeConsultationId} isDraftActive={isDraftActive} />
+        {/* The case page's Confidence view toggle — ConsultationChat runs `embedded` here, so its
+         * own header (where the Consultation page has this button) isn't rendered. */}
+        {activeHasConfidence && <ConfidenceViewToggle variant="header" />}
       </div>
       <div className="min-h-0 flex-1">
         <ConsultationChat
