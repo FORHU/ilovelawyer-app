@@ -29,6 +29,9 @@
     "cancel": "Cancel",
     "tooShortError": "Username must be at least 3 characters.",
     "invalidCharsError": "Only letters, numbers, dots, underscores, and hyphens are allowed.",
+    "tooLongError": "Username can be at most 30 characters.",
+    "takenError": "That username is taken. Try another one.",
+    "rejectedError": "That username can't be used. Use 3 to 30 letters, numbers, dots, underscores or hyphens.",
     "genericError": "Failed to save. Please try again."
   },
   "emailAddress": "Email Address",
