@@ -18,7 +18,7 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { FaqSection } from "@/components/landing/faq-section";
 import { DeveloperCredit } from "@/components/landing/developer-credit";
 import { BRAND_ORIGIN, brandJsonLd } from "@/lib/seo/brand";
-import { getFaqItems, getFaqLede } from "@/lib/seo/faq";
+import { getFaqHeading, getFaqItems, getFaqLede } from "@/lib/seo/faq";
 
 // The testimonial section is switched off until there are real client quotes to show (the UK
 // one is still a placeholder). Flip to true to bring it back on both tenants.
@@ -163,7 +163,7 @@ export default async function LandingPage() {
       dangerouslySetInnerHTML={{ __html: JSON.stringify([structuredData, ...brandJsonLd(origin)]) }}
     />
   );
-  const faqSection = <FaqSection items={getFaqItems(tenantCode)} lede={getFaqLede(tenantCode)} />;
+  const faqSection = <FaqSection items={getFaqItems(tenantCode)} heading={getFaqHeading(tenantCode)} lede={getFaqLede(tenantCode)} />;
 
   // One layout for every tenant: each section takes the tenant code and reads its own copy
   // (i18n `_UK` / `_KR` variants), assets and per-tenant data from it.

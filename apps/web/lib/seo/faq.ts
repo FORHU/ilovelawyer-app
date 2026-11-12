@@ -89,12 +89,6 @@ const SHARED: FaqItem[] = [
   },
 ]
 
-/** The SHARED answers that are already true on the KR site. */
-const KR_SHARED_QUESTIONS = new Set([
-  "Is ilovelawyer a law firm, and does it give legal advice?",
-  "Can a whole law firm or team use ilovelawyer?",
-])
-
 const BY_TENANT: Record<TenantCode, FaqItem[]> = {
   PH: [
     {
@@ -119,19 +113,31 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
     },
     ...SHARED,
   ],
-  // Only what the KR site offers today. Most SHARED answers describe AI features KR doesn't have
-  // yet, so it takes just the ones that hold there; switch to ...SHARED when Korean AI ships.
+  // In Korean: the KR site opens in Korean, and this is server-rendered before any language choice
+  // is known. Only what the KR site offers today — the SHARED answers describe AI features KR
+  // doesn't have yet; translate and add them when Korean AI ships.
   KR: [
     {
-      question: "Is there legal software built for Korean lawyers?",
+      question: "한국 변호사를 위한 법률 소프트웨어가 있나요?",
       answer:
-        "ilovelawyer Korea is being built for Korean practice: case files and documents in one workspace, in Korean or English. AI consultation grounded in Korean statutes and Supreme Court decisions is coming next.",
+        "ilovelawyer Korea는 한국 법률 실무에 맞춰 만들고 있는 서비스입니다. 사건 기록과 문서를 한곳에서 관리할 수 있으며, 한국어와 영어로 사용할 수 있습니다.",
+      detail: "한국 법령과 대법원 판례에 근거한 AI 상담은 곧 제공될 예정입니다.",
     },
-    ...SHARED.filter((item) => KR_SHARED_QUESTIONS.has(item.question)),
     {
-      question: "Which countries and jurisdictions does ilovelawyer cover?",
+      question: "ilovelawyer는 법률사무소인가요? 법률 자문을 제공하나요?",
       answer:
-        "ilovelawyer runs separate sites for the Philippines, the United Kingdom and South Korea. The Korean site, kr.ilovelawyer.com, is being built for Korean practice.",
+        "아닙니다. ilovelawyer는 법률 전문가가 사용하는 소프트웨어입니다. 법률사무소가 아니며, 일반인에게 법률 자문이나 법률 서비스를 제공하지 않습니다.",
+      detail: "결과물은 조사와 서면 작성을 돕는 자료이므로, 활용하기 전에 변호사가 검토해야 합니다.",
+    },
+    {
+      question: "법무법인이나 팀 전체가 함께 사용할 수 있나요?",
+      answer:
+        "네. Solo, Professional, Enterprise 요금제에서 여러 사용자가 함께 쓰는 법무법인 계정을 제공하며, 소유자·관리자·멤버 역할별로 팀원을 초대할 수 있습니다.",
+    },
+    {
+      question: "어떤 국가와 관할을 지원하나요?",
+      answer:
+        "ilovelawyer는 필리핀, 영국, 대한민국을 위한 별도의 사이트를 운영합니다. 한국 사이트(kr.ilovelawyer.com)는 한국 법률 실무에 맞춰 만들고 있습니다.",
     },
   ],
 }
@@ -143,11 +149,22 @@ export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
 const LEDE: Record<TenantCode, string> = {
   PH: "Short, direct answers about ilovelawyer Philippines: cited Philippine jurisprudence, the statutory code library, and how citations are checked.",
   UK: "Short, direct answers about ilovelawyer UK: cited UK precedent, live TNA and legislation.gov.uk search, and how deadlines are confirmed.",
-  KR: "Short, direct answers about ilovelawyer Korea: what it does today and what is coming for Korean practice.",
+  KR: "ilovelawyer Korea에 대한 짧고 명확한 답변: 지금 제공하는 기능과 한국 실무를 위해 준비 중인 기능.",
 }
 
 export function getFaqLede(tenantCode: TenantCode): string {
   return LEDE[tenantCode]
+}
+
+/** The section heading, in the same language as that site's FAQ items. */
+const HEADING: Record<TenantCode, string> = {
+  PH: "Frequently asked questions",
+  UK: "Frequently asked questions",
+  KR: "자주 묻는 질문",
+}
+
+export function getFaqHeading(tenantCode: TenantCode): string {
+  return HEADING[tenantCode]
 }
 
 export function buildFaqJsonLd(items: FaqItem[]) {
