@@ -11,7 +11,7 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 /** The display languages this site offers — the signed-in organization's tenant, else the
  * hostname's (`tenantCode` overrides both, for components already handed one). An unrecognized
  * host offers every language. A stored choice the tenant doesn't offer (Tagalog picked on the PH
- * site, then visiting the UK one) falls back to the default. */
+ * site, then visiting the UK one) falls back to that site's default language. */
 export function useTenantLanguages(tenantCode?: TenantCode | null): readonly SupportedLanguage[] {
   const hint = useTenantCodeHint()
   const orgTenant = useAuthStore((s) => s.organization?.tenantCode)
@@ -21,8 +21,8 @@ export function useTenantLanguages(tenantCode?: TenantCode | null): readonly Sup
   const setLanguage = useLanguageStore((s) => s.setLanguage)
 
   useEffect(() => {
-    if (!languages.includes(language)) setLanguage(DEFAULT_LANGUAGE)
-  }, [languages, language, setLanguage])
+    if (!languages.includes(language)) setLanguage(tenant ? getTenantCodeConfig(tenant).defaultLanguage : DEFAULT_LANGUAGE)
+  }, [languages, language, setLanguage, tenant])
 
   return languages
 }

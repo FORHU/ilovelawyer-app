@@ -404,7 +404,185 @@ const UK_CASE: SampleCase = {
   },
 }
 
-const SAMPLE_CASES: Record<TenantCode, SampleCase> = { PH: PH_CASE, UK: UK_CASE }
+// ── KR: 김서연 v. (주)한빛개발 ─────────────────────────────────────────────
+// Fictional. Dates follow Korean order (2026년 11월 12일) on the KR site whatever the language.
+// Interest: 5% a year under Civil Act art. 379 until the complaint was served, then 12% under the
+// Act on Special Cases Concerning Expedition of Legal Proceedings, art. 3.
+
+const KR_CASE: SampleCase = {
+  title: "김서연 v. (주)한빛개발",
+  number: "2026가합12345",
+  court: "서울중앙지방법원",
+  type: "Civil · Fraud (rescission and damages)",
+  nextDate: "10월 28일",
+  nextDateLabel: "Preparatory hearing",
+  risk: { label: "Medium", sev: "med" },
+  documents: [
+    {
+      folder: "Pleadings",
+      files: [
+        { name: "Complaint-소장.pdf", status: "indexed" },
+        { name: "Statement-Kim.pdf", status: "indexed" },
+        { name: "Answer-Hanbit.pdf", status: "indexed" },
+        { name: "Preparatory-brief-draft.txt", status: "indexed" },
+      ],
+    },
+    {
+      folder: "Evidence",
+      files: [
+        { name: "Bank-transfer-records.xlsx", status: "indexed" },
+        { name: "KakaoTalk-screenshots.png", status: "indexing" },
+        { name: "Building-permit-search.jpg", status: "failed" },
+      ],
+    },
+    { folder: "Correspondence", files: [{ name: "Certified-demand-letter-내용증명.pdf", status: "indexed" }] },
+    { folder: "Court Orders", files: [{ name: "Notice-of-preparatory-hearing.pdf", status: "indexed" }] },
+  ],
+  chat: {
+    question: "Was the permit statement made before Ms Kim paid?",
+    answer: [
+      { text: "Yes, on the documents. On 2025년 11월 2일, two days before the payment, Mr Park told Ms Kim on KakaoTalk that the building permit had “already been issued”" },
+      { cite: "KakaoTalk-screenshots.png · p.3" },
+      { text: ". The bank records show the ₩240,000,000 left her account on 2025년 11월 4일" },
+      { cite: "Bank-transfer-records.xlsx · row 14" },
+      { text: ". The district office has no permit application for the site" },
+      { cite: "Statement-Kim.pdf · para 18" },
+      { text: ". That supports fraud that induced the payment, so she can rescind under Civil Act art. 110 and claim damages under art. 750." },
+    ],
+  },
+  audioScript: [
+    ["A", "Today: Kim Seo-yeon against Hanbit Development, a fraud claim before the Seoul Central District Court. Two hundred and forty million won, and a warehouse that was never built."],
+    ["B", "It turns on one KakaoTalk message. On 2 November, Park Jun-ho says the building permit has already been issued. The money moves on 4 November."],
+    ["A", "And the district office has no application on record. That makes it a false statement of fact, not just a promise that fell through."],
+    ["B", "The defence says this was a joint investment that failed, so it's a contract dispute, not fraud."],
+    ["A", "Ms Kim can rescind the payment for fraud under article 110 of the Civil Act, and claim damages in tort under article 750 as well."],
+    ["B", "One soft spot: the permit search is only a screenshot. Expect them to ask for an official certificate from the district office."],
+  ],
+  mindMap: [
+    { branch: "Facts", nodes: ["Payment on 2025년 11월 4일", "KakaoTalk statements", "Certified demand, 2026년 2월 3일"] },
+    { branch: "Law", nodes: ["Civil Act art. 110 (rescission for fraud)", "Civil Act art. 750 (tort)"] },
+    { branch: "Defence theory", nodes: ["Failed joint investment", "Statement of intention, not fact"] },
+    { branch: "Evidence gaps", nodes: ["Official permit certificate", "District office officer as witness"] },
+    { branch: "Next steps", nodes: ["Preparatory brief", "Request for document submission"] },
+  ],
+  timeline: [
+    { date: "2025년 10월 28일", event: "First meeting between Kim and Park", source: "Statement-Kim.pdf" },
+    { date: "2025년 11월 2일", event: "“Permit already issued” sent on KakaoTalk", source: "KakaoTalk-screenshots.png" },
+    { date: "2025년 11월 4일", event: "₩240,000,000 paid to Hanbit Development", source: "Bank-transfer-records.xlsx" },
+    { date: "2026년 1월 20일", event: "Construction fails to start", source: "Statement-Kim.pdf" },
+    { date: "2026년 2월 3일", event: "Demand sent by certified mail (내용증명)", source: "Certified-demand-letter-내용증명.pdf" },
+    { date: "2026년 3월 10일", event: "Complaint filed", source: "Complaint-소장.pdf" },
+    { date: "2026년 3월 20일", event: "Complaint served on the defendant", source: "Complaint-소장.pdf" },
+    { date: "2026년 10월 28일", event: "Preparatory hearing", source: "Calendar" },
+  ],
+  dataTable: [
+    { type: "Witness", label: "Kim Seo-yeon", detail: "Plaintiff; gives evidence of the KakaoTalk messages and the payment" },
+    { type: "Witness", label: "District office permit officer", detail: "Confirms no permit application was made for the site" },
+    { type: "Damage", label: "Sum paid", detail: "₩240,000,000" },
+    { type: "Damage", label: "Delay damages", detail: "5% a year until the complaint was served, then 12% a year" },
+    { type: "Deadline", label: "Preparatory brief", detail: "Due 2026년 10월 14일" },
+    { type: "Finding", label: "No permit application", detail: "Nothing on the district office's records for the site" },
+  ],
+  decisions: [
+    { claim: "The statement was made before payment", why: "The KakaoTalk message of 2 Nov is two days before the 4 Nov payment.", status: "Active" },
+    { claim: "No permit application was ever made", why: "Relies on a screenshot. Disputed: the defence wants an official certificate.", status: "Disputed" },
+    { claim: "12% interest runs from the day after service", why: "Act on Special Cases Concerning Expedition of Legal Proceedings, art. 3, from 2026년 3월 21일.", status: "Active" },
+  ],
+  brief: {
+    facts:
+      "Kim Seo-yeon paid ₩240,000,000 to Hanbit Development Co., Ltd. on 2025년 11월 4일 for a warehouse that was never built. Its representative director, Park Jun-ho, had told her the building permit was already issued. No application was ever made, and nothing was repaid after a certified demand on 2026년 2월 3일.",
+    issues: [
+      "Whether the permit statement was a false statement of fact that induced the payment",
+      "Whether the payment can be rescinded for fraud (Civil Act art. 110)",
+      "Whether the dealings were a joint investment rather than a payment induced by the statement",
+    ],
+    arguments: [
+      "The 2 November KakaoTalk messages state, as a fact, that the permit had been issued",
+      "The district office has no application, so the statement was false when made",
+      "Ms Kim paid two days later, relying on it",
+    ],
+    relief:
+      "Return of ₩240,000,000 on rescission, or damages under Civil Act art. 750, with delay damages at 5% a year to the day of service and 12% a year after it, and costs.",
+  },
+  panes: {
+    command: [
+      { tag: { label: "Medium", sev: "med" }, title: "Overall risk", detail: "Rescission for fraud is strong; the joint-investment defence needs answering" },
+      { tag: { label: "Next", sev: "high" }, title: "File the preparatory brief by 10월 14일", detail: "From Case Strategy · two weeks before the preparatory hearing" },
+      { tag: { label: "Next", sev: "med" }, title: "Re-upload the permit search", detail: "The scan failed to index" },
+    ],
+    evidence: [
+      { tag: { label: "Verified", sev: "low" }, title: "Bank transfer records", detail: "2025년 11월 4일 · ₩240,000,000" },
+      { tag: { label: "Authenticate", sev: "med" }, title: "KakaoTalk screenshots", detail: "2025년 11월 2일" },
+      { tag: { label: "Verified", sev: "low" }, title: "Certified demand letter (내용증명)", detail: "2026년 2월 3일" },
+      { tag: { label: "Disputed", sev: "high" }, title: "Building permit search", detail: "Screenshot only; no official certificate" },
+    ],
+    witnesses: [
+      { title: "Kim Seo-yeon", detail: "Plaintiff", value: "78", meter: 78 },
+      { title: "District office permit officer", detail: "Witness application to be filed", value: "85", meter: 85 },
+      { title: "Site supervisor", detail: "Visited the site in January", value: "62", meter: 62 },
+    ],
+    law: [
+      { tag: { label: "Statute", sev: "neutral" }, title: "Civil Act art. 110", detail: "A declaration of intention induced by fraud may be rescinded" },
+      { tag: { label: "Statute", sev: "neutral" }, title: "Civil Act art. 750", detail: "Liability for damage caused by an unlawful act" },
+      { tag: { label: "Statute", sev: "neutral" }, title: "Act on Special Cases Concerning Expedition of Legal Proceedings, art. 3", detail: "Statutory interest after the complaint is served" },
+    ],
+    legalIssues: [
+      { tag: { label: "High", sev: "high" }, title: "A false statement of fact, made before payment", detail: "Burden: Plaintiff" },
+      { tag: { label: "High", sev: "high" }, title: "The statement induced the payment", detail: "Burden: Plaintiff" },
+      { tag: { label: "Med", sev: "med" }, title: "Joint investment or payment", detail: "Burden: Defendant" },
+      { tag: { label: "Low", sev: "low" }, title: "Delay damages and amount", detail: "Burden: Plaintiff" },
+    ],
+    procedure: [
+      { tag: { label: "Soon", sev: "high" }, title: "Preparatory brief due", value: "10월 14일" },
+      { tag: { label: "Upcoming", sev: "med" }, title: "Request the official permit certificate", value: "10월 21일" },
+      { tag: { label: "Upcoming", sev: "med" }, title: "Preparatory hearing", value: "10월 28일" },
+      { tag: { label: "Later", sev: "low" }, title: "First hearing for oral argument", value: "12월 9일" },
+    ],
+    redTeam: [
+      {
+        tag: { label: "High", sev: "high" },
+        title: "The joint-investment framing is plausible",
+        detail: "Ms Kim signed a one-page investment memo on 10월 30일. Expect the defence to lead with it.",
+      },
+      {
+        tag: { label: "Med", sev: "med" },
+        title: "The permit evidence is only a screenshot",
+        detail: "Get an official certificate from the district office before the preparatory hearing.",
+      },
+    ],
+    damages: [
+      { title: "Sum paid", value: "₩240,000,000" },
+      { title: "Delay damages, 5% a year, 2025년 11월 4일 to 2026년 3월 20일", value: "₩4,471,233" },
+      { title: "Delay damages, 12% a year, 2026년 3월 21일 to 2026년 10월 2일", value: "₩15,465,205" },
+      { title: "Total to date", value: "₩259,936,438" },
+    ],
+  },
+  changes: {
+    run: {
+      time: "오전 9:42",
+      documents: ["Bank-transfer-records.xlsx", "Preparatory-brief-draft.txt"],
+      lines: [
+        { pane: "command", text: "Overall risk Low → Medium" },
+        { pane: "evidence", text: "Bank transfer records now verified" },
+        { pane: "witnesses", text: "District office permit officer: credibility 70 → 85" },
+        { pane: "procedure", text: "New key date: request the official permit certificate by 10월 21일" },
+        { pane: "redTeam", text: "New: “The permit evidence is only a screenshot”" },
+        { pane: "damages", text: "Delay damages recalculated to 2026년 10월 2일" },
+      ],
+    },
+    edits: {
+      author: "Lee Ji-hoon",
+      time: "오후 4:10–4:25",
+      lines: [
+        { pane: "legalIssues", text: "Re-rated “Joint investment or payment” (Severity Low → Med)" },
+        { pane: "witnesses", text: "Added “Site supervisor”" },
+        { pane: "redTeam", text: "Resolved “The investment memo is unsigned”" },
+      ],
+    },
+  },
+}
+
+const SAMPLE_CASES: Record<TenantCode, SampleCase> = { PH: PH_CASE, UK: UK_CASE, KR: KR_CASE }
 
 /** The sample case for the user's tenant. PH when it isn't known yet, matching
  * getTenantCodeConfig's display default. */

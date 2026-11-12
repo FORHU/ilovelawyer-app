@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+import { tenantI18nContext } from "@/config/tenant-codes";
 
 // PH and UK render identical markup (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files) — differing only in i18next context.
@@ -28,7 +29,7 @@ interface Member {
 
 export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
+  const tCtx = tenantI18nContext(tenantCode);
   const members = t("firms.roster", { ...tCtx, returnObjects: true }) as Member[];
   const [ref, y] = useScrollDrift([-20, 20]);
   const router = useRouter();

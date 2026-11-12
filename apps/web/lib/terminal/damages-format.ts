@@ -5,7 +5,7 @@ import type { DamageClaim, DamagesSummary } from "@/lib/terminal/types"
 
 type Currency = DamagesSummary["currency"]
 
-const LOCALE_FOR: Record<Currency, string> = { PHP: "en-PH", GBP: "en-GB" }
+const LOCALE_FOR: Record<Currency, string> = { PHP: "en-PH", GBP: "en-GB", KRW: "ko-KR" }
 
 /** ₱486,000 / £486,000 — cents only when there are any. */
 export function formatMoney(value: number, currency: Currency): string {

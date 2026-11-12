@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolveTenantCodeFromHost, hostForTenantCode } from "../resolve-host"
+import { resolveTenantCodeFromHost, hostForTenantCode, isTenantCode, TENANT_CODES } from "../resolve-host"
 
 describe("resolveTenantCodeFromHost", () => {
   it("resolves the four production/local PH and UK hosts", () => {
@@ -48,6 +48,29 @@ describe("resolveTenantCodeFromHost", () => {
   it("does not use substring matching", () => {
     expect(resolveTenantCodeFromHost("notph.ilovelawyer.com")).toBeNull()
   })
+
+  it("resolves the three KR hosts: prod, hosted dev and local", () => {
+    expect(resolveTenantCodeFromHost("kr.ilovelawyer.com")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr-dev.ilovelawyer.com")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr-dev.ilovelawyer.local:3002")).toBe("KR")
+  })
+
+  it("resolves the other KR dev forms PH and UK also have", () => {
+    expect(resolveTenantCodeFromHost("kr.ilovelawyer.local:3002")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr-local.ilovelawyer.com:3002")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr.ilovelawyer:3002")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr.localhost:3002")).toBe("KR")
+  })
+})
+
+describe("isTenantCode", () => {
+  it("accepts every known code and nothing else", () => {
+    for (const code of TENANT_CODES) expect(isTenantCode(code)).toBe(true)
+    expect(isTenantCode("kr")).toBe(false)
+    expect(isTenantCode("SG")).toBe(false)
+    expect(isTenantCode("")).toBe(false)
+    expect(isTenantCode(null)).toBe(false)
+  })
 })
 
 describe("hostForTenantCode", () => {
@@ -79,5 +102,14 @@ describe("hostForTenantCode", () => {
   it("preserves the -dev suffix on the .local counterpart (with port)", () => {
     expect(hostForTenantCode("UK", "ph-dev.ilovelawyer.local:3002")).toBe("uk-dev.ilovelawyer.local:3002")
     expect(hostForTenantCode("PH", "uk-dev.ilovelawyer.local:3002")).toBe("ph-dev.ilovelawyer.local:3002")
+  })
+
+  it("moves to and from the KR hosts in every convention", () => {
+    expect(hostForTenantCode("KR", "uk.ilovelawyer.com")).toBe("kr.ilovelawyer.com")
+    expect(hostForTenantCode("KR", "ph-dev.ilovelawyer.com")).toBe("kr-dev.ilovelawyer.com")
+    expect(hostForTenantCode("KR", "uk-dev.ilovelawyer.local:3002")).toBe("kr-dev.ilovelawyer.local:3002")
+    expect(hostForTenantCode("UK", "kr.ilovelawyer.com")).toBe("uk.ilovelawyer.com")
+    expect(hostForTenantCode("PH", "kr-dev.ilovelawyer.local:3002")).toBe("ph-dev.ilovelawyer.local:3002")
+    expect(hostForTenantCode("UK", "kr-local.ilovelawyer.com:3002")).toBe("uk-local.ilovelawyer.com:3002")
   })
 })

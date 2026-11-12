@@ -6,6 +6,11 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
   countryName: "United Kingdom",
   locale: "en-GB",
   languages: ["en"],
+  defaultLanguage: "en",
+  currency: "GBP",
+  i18nContext: "UK",
+  weekStartsOn: 1,
+  trial: true,
   branding: {
     flag: "🇬🇧",
   },

@@ -59,7 +59,10 @@ export function firmDetailsPayload(f: FirmDetailsForm, tenantCode: TenantCode | 
   };
 }
 
-export type FirmDetailsErrors = Partial<Record<"phone" | "postcode", string>>;
+/** Longest postcode as typed: UK "SW1A 1AA", PH 4 digits, KR 5 digits. */
+const POSTCODE_MAX_LENGTH: Record<TenantCode, number> = { UK: 8, PH: 4, KR: 5 };
+
+export type FirmDetailsErrors =Partial<Record<"phone" | "postcode", string>>;
 
 /** What's wrong with the typed details, empty when they can be saved. Characters that never fit a
  * field can't be typed at all (lib/forms/field-rules.ts); this catches what's left: a phone number
@@ -157,13 +160,14 @@ export function FirmDetailsFields({
       <div className="grid gap-5 sm:grid-cols-[1fr_10rem]">
         <TextField label={t("firm.city")} autoComplete="address-level2" value={value.city} onChange={(e) => onChange({ city: keepWords(e.target.value) })} maxLength={80} />
         <TextField
-          label={uk ? t("firm.postcodeUK") : t("firm.postcodePH")}
+          // "Postcode" on UK and KR, "ZIP code" on PH.
+          label={tenantCode === "PH" ? t("firm.postcodePH") : t("firm.postcodeUK")}
           autoComplete="postal-code"
           inputMode={uk ? "text" : "numeric"}
           value={value.postcode}
           onChange={(e) => onChange({ postcode: uk ? keepUkPostcode(e.target.value) : keepDigits(e.target.value) })}
           errorText={errors.postcode}
-          maxLength={uk ? 8 : 4}
+          maxLength={POSTCODE_MAX_LENGTH[tenantCode ?? "PH"]}
         />
       </div>
     </fieldset>

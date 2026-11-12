@@ -89,6 +89,12 @@ const SHARED: FaqItem[] = [
   },
 ]
 
+/** The SHARED answers that are already true on the KR site. */
+const KR_SHARED_QUESTIONS = new Set([
+  "Is ilovelawyer a law firm, and does it give legal advice?",
+  "Can a whole law firm or team use ilovelawyer?",
+])
+
 const BY_TENANT: Record<TenantCode, FaqItem[]> = {
   PH: [
     {
@@ -113,6 +119,21 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
     },
     ...SHARED,
   ],
+  // Only what the KR site offers today. Most SHARED answers describe AI features KR doesn't have
+  // yet, so it takes just the ones that hold there; switch to ...SHARED when Korean AI ships.
+  KR: [
+    {
+      question: "Is there legal software built for Korean lawyers?",
+      answer:
+        "ilovelawyer Korea is being built for Korean practice: case files and documents in one workspace, in Korean or English. AI consultation grounded in Korean statutes and Supreme Court decisions is coming next.",
+    },
+    ...SHARED.filter((item) => KR_SHARED_QUESTIONS.has(item.question)),
+    {
+      question: "Which countries and jurisdictions does ilovelawyer cover?",
+      answer:
+        "ilovelawyer runs separate sites for the Philippines, the United Kingdom and South Korea. The Korean site, kr.ilovelawyer.com, is being built for Korean practice.",
+    },
+  ],
 }
 
 export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
@@ -122,6 +143,7 @@ export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
 const LEDE: Record<TenantCode, string> = {
   PH: "Short, direct answers about ilovelawyer Philippines: cited Philippine jurisprudence, the statutory code library, and how citations are checked.",
   UK: "Short, direct answers about ilovelawyer UK: cited UK precedent, live TNA and legislation.gov.uk search, and how deadlines are confirmed.",
+  KR: "Short, direct answers about ilovelawyer Korea: what it does today and what is coming for Korean practice.",
 }
 
 export function getFaqLede(tenantCode: TenantCode): string {

@@ -6,6 +6,7 @@ import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { tenantI18nContext } from "@/config/tenant-codes";
 import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -20,8 +21,9 @@ interface Section {
 
 export default function TermsPage() {
   const { t } = useTranslation("term");
-  // UK copy lives under the `_UK` i18n context (sections_UK, effectiveDate_UK), same as the landing page.
-  const tCtx = useAuthStore((s) => s.organization?.tenantCode) === "UK" ? { context: "UK" } : undefined;
+  // Site-specific copy lives under the `_UK` / `_KR` i18n context (sections_UK, effectiveDate_UK),
+  // same as the landing page.
+  const tCtx = tenantI18nContext(useAuthStore((s) => s.organization?.tenantCode));
   const SECTIONS = t("sections", { returnObjects: true, ...tCtx }) as Section[];
 
   return (

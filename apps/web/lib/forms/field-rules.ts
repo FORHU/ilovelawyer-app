@@ -1,3 +1,5 @@
+import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+
 /**
  * What the firm details and the Lawyer Application's fields may hold. The `keep*` filters run on
  * every change, so a character that can never be right (a letter in a phone number) can't be typed
@@ -46,10 +48,18 @@ export function phoneProblem(v: string): string | null {
   return digits < PHONE_MIN_DIGITS || digits > PHONE_MAX_DIGITS ? `Enter a phone number of ${PHONE_MIN_DIGITS} to ${PHONE_MAX_DIGITS} digits.` : null;
 }
 
-export function postcodeProblem(v: string, country: "UK" | "PH" | null | undefined): string | null {
+/** Korean postcodes (우편번호) have been 5 digits since 2015. */
+export const KR_POSTCODE = /^\d{5}$/;
+
+const POSTCODE_RULES: Record<TenantCode, { pattern: RegExp; message: string }> = {
+  UK: { pattern: UK_POSTCODE, message: "Enter a UK postcode, e.g. SW1A 1AA." },
+  PH: { pattern: PH_ZIP_CODE, message: "Enter a 4-digit ZIP code." },
+  KR: { pattern: KR_POSTCODE, message: "Enter a 5-digit postcode, e.g. 06236." },
+};
+
+export function postcodeProblem(v: string, country: TenantCode | null | undefined): string | null {
   const value = v.trim().toUpperCase();
-  if (!value) return null;
-  if (country === "UK") return UK_POSTCODE.test(value) ? null : "Enter a UK postcode, e.g. SW1A 1AA.";
-  if (country === "PH") return PH_ZIP_CODE.test(value) ? null : "Enter a 4-digit ZIP code.";
-  return null;
+  if (!value || !country) return null;
+  const rule = POSTCODE_RULES[country];
+  return rule.pattern.test(value) ? null : rule.message;
 }

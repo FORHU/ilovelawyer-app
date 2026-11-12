@@ -42,6 +42,15 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     expect(getStatus("UK", "aiChat")).toBe("available")
   })
 
+  it("KR opens only what works without Korean legal content or a KR-aware API", () => {
+    expect(isFeatureEnabled("KR", "cases")).toBe(true)
+    expect(isFeatureEnabled("KR", "documents")).toBe(true)
+    expect(isFeatureEnabled("KR", "citations")).toBe(true)
+    for (const feature of ["aiChat", "legalSearch", "deadlines", "clientRequests", "lawyerApplication"] as const) {
+      expect(isFeatureEnabled("KR", feature)).toBe(false)
+    }
+  })
+
   it("defaults to PH capabilities when the tenant code is unresolved", () => {
     expect(isFeatureEnabled(null, "legalSearch")).toBe(true)
     expect(isFeatureEnabled(undefined, "legalSearch")).toBe(true)

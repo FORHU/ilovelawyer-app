@@ -11,6 +11,8 @@ import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import type { RelatedCase } from "@/lib/chat/mutations";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+import { tenantI18nContext } from "@/config/tenant-codes";
+import { siteVariantKey } from "@/lib/i18n/site-variant-key";
 
 // PH and UK render identical markup (see hero-section-base.tsx for why this is one component
 // instead of two hand-copied files), but each tenant gets its own sample case and citations via
@@ -35,11 +37,10 @@ interface MockCitation {
 
 export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const isUk = tenantCode === "UK";
-  const tCtx = isUk ? { context: "UK" as const } : undefined;
-  // Explicit `_UK` key rather than i18next's `context` option: context is not applied when the
-  // value is a nested object, so it would silently keep returning the Philippine sample data.
-  const relatedCases = t(isUk ? "consultation.relatedCasesItems_UK" : "consultation.relatedCasesItems", {
+  const tCtx = tenantI18nContext(tenantCode);
+  // Explicit `_UK` / `_KR` key rather than i18next's `context` option: context is not applied when
+  // the value is a nested object, so it would silently keep returning the Philippine sample data.
+  const relatedCases = t(siteVariantKey("landing", "consultation.relatedCasesItems", tenantCode), {
     returnObjects: true,
   }) as MockCitation[];
   const entries: RelatedCase[] = relatedCases.map((c) => ({

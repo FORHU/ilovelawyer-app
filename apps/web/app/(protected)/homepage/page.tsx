@@ -4,6 +4,7 @@ import { PageShell } from "@/components/page-shell";
 import ConsultationChat from "@/components/chat/consultation-chat";
 import { ApplicationReminderBanner } from "@/components/account/application-reminder-banner";
 import { useAuthStore } from "@/lib/store/auth.store";
+import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // Fallback pool ConsultationChat draws a random handful from whenever the user has no
 // consultation history yet to suggest from instead (see suggestedPrompts in
@@ -40,6 +41,24 @@ const UK_PROMPTS = [
   "Summarise a court judgment",
 ];
 
+// Korean practice: 내용증명 (demand letter by certified mail), 소멸시효 (limitation), 부당해고
+// (unfair dismissal) before the Labour Relations Commission, 소액사건심판 (small claims), 임대차
+// (lease) deposits. Written in English; the KR site's chat is off until its Korean persona ships.
+const KR_PROMPTS = [
+  "Draft a demand letter by certified mail (내용증명)",
+  "Check a citation",
+  "Assess remedies for unfair dismissal before the Labour Relations Commission",
+  "Summarise an attached contract",
+  "Explain the elements of a claim for non-performance of a contract",
+  "Review a non-disclosure agreement",
+  "Outline the small claims procedure (소액사건심판)",
+  "Explain a tenant's right to recover a lease deposit",
+  "Explain the limitation period (소멸시효) for a claim",
+  "Summarise a Supreme Court judgment",
+];
+
+const PROMPTS: Record<TenantCode, string[]> = { PH: PH_PROMPTS, UK: UK_PROMPTS, KR: KR_PROMPTS };
+
 export default function AiConsultationPage() {
   const user = useAuthStore((s) => s.user);
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
@@ -53,7 +72,7 @@ export default function AiConsultationPage() {
         enableFileChips
         emptyStateHeading={firstName ? `What can I help you with, ${firstName}?` : undefined}
         emptyStateHeroImage="/consultation/hero-2.jpg"
-        emptyStatePrompts={tenantCode === "UK" ? UK_PROMPTS : PH_PROMPTS}
+        emptyStatePrompts={PROMPTS[tenantCode ?? "PH"]}
       />
     </PageShell>
   );

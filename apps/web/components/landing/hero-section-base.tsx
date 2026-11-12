@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { getTenantCodeConfig, tenantI18nContext } from "@/config/tenant-codes";
 import { EASE_EXPO_OUT, LANDING_DURATIONS, LANDING_STAGGERS } from "@/lib/landing/motion-tokens";
 import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
@@ -29,6 +29,11 @@ const HERO_H1: Record<TenantCode, { heading: string; lede: string }> = {
     heading: "ilovelawyer UK: AI legal intelligence for lawyers",
     lede: "Case management, AI consultation with cited UK precedent, and the Legal Terminal.",
   },
+  // Only what the KR site offers today; widen when Korean AI consultation ships (plan step 5).
+  KR: {
+    heading: "ilovelawyer Korea: legal intelligence for Korean lawyers",
+    lede: "Case files and documents in one workspace, with AI consultation grounded in Korean law on the way.",
+  },
 };
 
 const lineVariants = {
@@ -53,7 +58,7 @@ const lineVariants = {
 
 export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" } : undefined;
+  const tCtx = tenantI18nContext(tenantCode);
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);

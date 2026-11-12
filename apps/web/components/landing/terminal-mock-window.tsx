@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Maximize2, Pin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+import { siteVariantKey } from "@/lib/i18n/site-variant-key";
 import { cardTitleOf, type DetailedMockKey, type LandingPanel } from "@/components/landing/terminal-panel-cards";
 
 // Static miniature "screenshots" of Legal Terminal panes for the landing page's panel carousel.
@@ -121,16 +122,15 @@ function PaneHeader({ title, extra }: { title: string; extra?: ReactNode }) {
 
 export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel; tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const isUk = tenantCode === "UK";
-  // Explicit `_UK` key rather than i18next's `context` option: context is not applied when the
-  // value is a nested object, so it would silently keep returning the Philippine sample data.
-  const mocks = t(isUk ? "terminal.mocks_UK" : "terminal.mocks", { returnObjects: true }) as unknown as Mocks;
+  // Explicit `_UK` / `_KR` key rather than i18next's `context` option: context is not applied when
+  // the value is a nested object, so it would silently keep returning the Philippine sample data.
+  const mocks = t(siteVariantKey("landing", "terminal.mocks", tenantCode), { returnObjects: true }) as unknown as Mocks;
   const title = cardTitleOf(panel);
   const mock = panel.detailedMock;
 
   let body: ReactNode;
   if (!mock) {
-    const sample = t(`${isUk ? "terminal.samples_UK" : "terminal.samples"}.${panel.id}`, {
+    const sample = t(`${siteVariantKey("landing", "terminal.samples", tenantCode)}.${panel.id}`, {
       returnObjects: true,
     }) as unknown as PanelSample;
     body = (

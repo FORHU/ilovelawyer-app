@@ -28,6 +28,7 @@ import {
 import { dateLocale } from "@/lib/i18n/date-locale"
 import { formatMoney } from "@/lib/terminal/damages-format"
 import { useAuthStore } from "@/lib/store/auth.store"
+import { getTenantCodeConfig } from "@/config/tenant-codes"
 
 type ContradictionMetadata = {
   kind: string
@@ -74,8 +75,8 @@ function severityOf(m: ContradictionMetadata): Severity {
 
 function formatContradictionValue(kind: string, value: string) {
   if (kind === "amount_mismatch" && /^\d+(\.\d+)?$/.test(value)) {
-    // A bare amount carries no currency — it is the tenant's (₱ on the PH site, £ on the UK site).
-    return formatMoney(Number(value), useAuthStore.getState().organization?.tenantCode === "UK" ? "GBP" : "PHP")
+    // A bare amount carries no currency — it is the tenant's (₱ on PH, £ on UK, ₩ on KR).
+    return formatMoney(Number(value), getTenantCodeConfig(useAuthStore.getState().organization?.tenantCode).currency)
   }
   // Full-bundle scan values: "GBP4500.00", "2023-11-14", "11d".
   const money = value.match(/^([A-Z]{3})(\d+(?:\.\d+)?)$/)

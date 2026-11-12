@@ -45,8 +45,21 @@ export interface TenantCodeConfig {
   countryName: string
   locale: string
   /** Display languages offered on this tenant's site (language menu, landing footer). Korean and
-   * Tagalog serve the PH market; the UK site is English-only. */
+   * Tagalog serve the PH market; the UK site is English-only; the KR site is Korean first. */
   languages: readonly SupportedLanguage[]
+  /** The language a first visit gets, and the fallback when a stored choice isn't in `languages`. */
+  defaultLanguage: SupportedLanguage
+  /** ISO 4217 code for amounts shown in this tenant's own currency (damages, fees). */
+  currency: "PHP" | "GBP" | "KRW"
+  /** i18next context for copy that differs by site: `t(key, { context })` reads `key_UK` /
+   * `key_KR` and falls back to the plain key when that variant isn't written. Null reads the
+   * plain key (PH). */
+  i18nContext: "UK" | "KR" | null
+  /** First day of the week in calendars and date pickers (date-fns `weekStartsOn`). */
+  weekStartsOn: 0 | 1
+  /** Whether visitors can try a consultation before signing up (app/trial). The API decides too
+   * (ilovelawyer-api trial.service.ts); keep the two in step. */
+  trial: boolean
   branding: {
     flag: string
   }

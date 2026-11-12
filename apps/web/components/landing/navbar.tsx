@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -37,10 +38,11 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 // splash) — every NAV_LINKS entry scrolls to one of them, so there they'd silently do nothing.
 export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHero?: boolean; sectionLinks?: boolean }) {
   const { t } = useTranslation("landing");
-  // UK visitors try the product first (see app/trial); other tenants have no trial, so they sign up.
-  const isUk = useTenantCodeHint() === "UK";
-  const ctaHref = isUk ? "/trial" : "/signup";
-  const ctaLabel = isUk ? t("navbar.startTrial") : t("navbar.getStarted");
+  // Sites with a trial (tenant config `trial`) let visitors try the product first (see app/trial);
+  // the rest go straight to sign-up.
+  const hasTrial = getTenantCodeConfig(useTenantCodeHint()).trial;
+  const ctaHref = hasTrial ? "/trial" : "/signup";
+  const ctaLabel = hasTrial ? t("navbar.startTrial") : t("navbar.getStarted");
   const [mobileOpen, setMobileOpen] = useState(false);
   const hasAccessToken = useAuthStore((s) => !!s.accessToken);
   // The public page never runs a silent refresh, so a signed-in visitor arriving fresh has no
@@ -167,7 +169,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
                     {ctaLabel}
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent>{isUk ? "Try a consultation without an account" : "Create your free ilovelawyer account"}</TooltipContent>
+                <TooltipContent>{hasTrial ? "Try a consultation without an account" : "Create your free ilovelawyer account"}</TooltipContent>
               </Tooltip>
             )}
           </>
