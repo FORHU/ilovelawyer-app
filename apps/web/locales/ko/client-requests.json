@@ -1,0 +1,16 @@
+{
+  "cardModal": {
+    "title": "결제 수단 추가",
+    "description": "카드를 등록해 두면 조직에서 의뢰 건의 AI 충전을 구매할 수 있습니다. 충전을 승인하기 전에는 결제되지 않습니다.",
+    "changeTitle": "결제 수단 변경",
+    "changeDescription": "수락한 의뢰인 요청과 AI 충전 비용이 청구되는 조직의 카드를 교체합니다.",
+    "descriptionSolo": "카드를 등록해 두면 의뢰 건의 AI 충전을 구매할 수 있습니다. 충전을 승인하기 전에는 결제되지 않습니다.",
+    "changeDescriptionSolo": "의뢰인 요청과 AI 충전 비용이 청구되는 카드를 교체합니다.",
+    "currentCard": "현재 등록된 카드: {{brand}} (끝자리 {{last4}})",
+    "redirectNotice": "안전한 Stripe 페이지에서 카드 정보를 입력한 뒤 이 화면으로 돌아옵니다.",
+    "cancel": "취소",
+    "continue": "안전한 결제 페이지로 이동",
+    "startError": "카드 등록 페이지를 열 수 없습니다. 잠시 후 다시 시도하세요.",
+    "notAllowed": "조직의 소유자나 관리자에게 결제 수단 추가를 요청하세요."
+  }
+}

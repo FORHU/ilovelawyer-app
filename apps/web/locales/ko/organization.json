@@ -126,6 +126,100 @@
       "consultation": "상담",
       "admin": "ilovelawyer 직원"
     },
+    "actions": {
+      "auth": {
+        "signup": "가입함",
+        "signup_cancelled": "중단된 가입 삭제됨",
+        "login": "로그인",
+        "logout": "로그아웃함",
+        "email_verified": "이메일 인증됨",
+        "password_reset_requested": "비밀번호 재설정 요청됨",
+        "password_reset": "비밀번호 재설정됨",
+        "password_changed": "비밀번호 변경됨",
+        "google_linked": "Google 로그인 연결됨"
+      },
+      "account": {
+        "profile_updated": "프로필 수정됨",
+        "deletion_requested": "계정 삭제 요청됨",
+        "deletion_cancelled": "계정 삭제 취소됨",
+        "purged": "계정 삭제됨"
+      },
+      "integration": {
+        "connected": "연동 서비스 연결됨",
+        "disconnected": "연동 서비스 연결 해제됨"
+      },
+      "org": {
+        "created": "조직 생성됨",
+        "updated": "조직 정보 변경됨",
+        "member_invited": "멤버 초대됨",
+        "invite_accepted": "초대 수락됨",
+        "invite_declined": "초대 거절됨",
+        "member_role_changed": "멤버 역할 변경됨",
+        "member_removed": "멤버 제거됨",
+        "member_left": "멤버 탈퇴함",
+        "case_attached": "사건이 조직으로 이동됨"
+      },
+      "case": {
+        "access_granted": "사건 접근 권한 부여됨",
+        "access_revoked": "사건 접근 권한 회수됨",
+        "confidential_changed": "사건 비공개 설정 변경됨",
+        "deleted": "사건 삭제됨",
+        "item_deleted": "사건 항목 삭제됨"
+      },
+      "consultation": {
+        "invite_created": "상담 초대 생성됨",
+        "invite_accepted": "상담 초대 수락됨",
+        "invite_deleted": "상담 초대 취소됨",
+        "participant_removed": "상담 참여자 제거됨",
+        "deleted": "상담 삭제됨",
+        "message_deleted": "상담 메시지 삭제됨"
+      },
+      "admin": {
+        "user": {
+          "approved": "ilovelawyer가 계정을 승인함",
+          "denied": "ilovelawyer가 계정을 거부함",
+          "reactivated": "ilovelawyer가 계정을 재활성화함",
+          "blocked": "ilovelawyer가 계정을 차단함",
+          "unblocked": "ilovelawyer가 계정 차단을 해제함",
+          "email_verified": "ilovelawyer가 이메일을 인증함",
+          "tenant_changed": "ilovelawyer가 지역을 변경함",
+          "deleted": "ilovelawyer가 계정을 삭제함"
+        },
+        "settings": {
+          "signup_auto_approve_changed": "가입 자동 승인 설정 변경됨"
+        },
+        "model_settings": {
+          "updated": "AI 모델 설정 변경됨"
+        },
+        "jurisdiction_module": {
+          "toggled": "관할 모듈 전환됨"
+        }
+      },
+      "export": {
+        "case_brief": "사건 개요서 내보냄",
+        "generated_document": "문서 생성됨",
+        "audit_log": "감사 로그 내보냄"
+      },
+      "file": {
+        "accessed": "파일 열람 또는 다운로드"
+      },
+      "email": {
+        "sent": "ilovelawyer를 통해 이메일 발송됨"
+      },
+      "document": {
+        "deleted": "문서 삭제됨"
+      },
+      "transcription": {
+        "deleted": "전사 기록 삭제됨"
+      },
+      "note": {
+        "deleted": "메모 삭제됨"
+      },
+      "wallet": {
+        "payout_account_started": "정산 계좌 설정 또는 수정됨",
+        "withdrawal_requested": "수익 출금 요청됨"
+      }
+    },
     "showing": "{{total}}개 중 {{from}}–{{to}}",
     "previous": "이전",
     "next": "다음",
@@ -188,10 +282,82 @@
       "endingIn": "끝자리 {{last4}}",
       "expires": "유효기간 {{month}}/{{year}}",
       "noCardHelp": "등록된 카드가 없습니다. 조직이 의뢰를 수락하려면 먼저 카드를 추가하세요.",
+      "subheadingSolo": "AI 충전 비용이 청구되는 카드입니다.",
+      "noCardHelpSolo": "등록된 카드가 없습니다. 의뢰 건의 AI 충전을 구매하려면 카드를 추가하세요.",
       "error": "결제 카드를 불러올 수 없습니다.",
       "retry": "다시 시도",
       "savedToast": "결제 카드가 저장되었습니다.",
       "cancelledToast": "카드 등록이 취소되었습니다. 변경된 내용이 없습니다."
+    }
+  },
+  "wallet": {
+    "heading": "수익",
+    "subheading": "의뢰인이 법무법인 소속 변호사의 견적에 대해 결제한 금액과 은행 계좌로의 출금입니다.",
+    "subheadingSolo": "의뢰인이 회원님의 견적에 대해 결제한 금액과 은행 계좌로의 출금입니다.",
+    "error": "수익 정보를 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "balances": {
+      "available": "출금 가능",
+      "pending": "보류 중",
+      "pendingNote": "수임 종료 {{days}}일 후 출금 가능",
+      "reserved": "송금 중",
+      "withdrawn": "출금 완료"
+    },
+    "payouts": {
+      "none": "수익을 은행 계좌로 출금하려면 정산 계좌를 설정하세요. 은행 정보는 Stripe가 받으며 ilovelawyer에는 전달되지 않습니다.",
+      "unfinished": "정산 계좌 설정이 아직 끝나지 않았습니다. Stripe가 지급하려면 몇 가지 정보가 더 필요합니다.",
+      "enabled": "은행 계좌로 정산이 설정되었습니다.",
+      "setUp": "정산 계좌 설정",
+      "finish": "설정 마치기",
+      "update": "은행 정보 수정",
+      "ready": "정산이 설정되었습니다."
+    },
+    "withdraw": {
+      "label": "은행 계좌로 출금",
+      "submit": "출금",
+      "hint": "최소 {{min}}부터 출금 가능 잔액까지 출금할 수 있습니다.",
+      "needsPayouts": "먼저 정산 계좌를 설정하세요.",
+      "invalid": "£0보다 큰 금액을 입력하세요.",
+      "belowMinimum": "최소 출금 금액은 {{min}}입니다.",
+      "tooMuch": "출금 가능 잔액 {{available}}를 초과합니다.",
+      "paid": "{{amount}} 출금이 완료되었습니다.",
+      "processing": "{{amount}}를 은행 계좌로 송금하고 있습니다.",
+      "failed": "출금하지 못했습니다. 금액은 출금 가능 잔액으로 돌아갔습니다.",
+      "confirmTitle": "{{amount}}를 은행 계좌로 출금하시겠습니까?",
+      "confirmDescription": "Stripe가 정산용으로 설정한 은행 계좌로 송금합니다. 확인하면 취소할 수 없습니다.",
+      "confirmAmount": "출금액",
+      "confirmLeft": "출금 후 잔액",
+      "confirmAll": "출금 가능 잔액 전체를 출금합니다.",
+      "confirmCancel": "취소",
+      "confirmSubmit": "{{amount}} 출금"
+    },
+    "earnings": {
+      "heading": "의뢰인 결제",
+      "empty": "아직 의뢰인 결제가 없습니다. 의뢰인이 견적을 결제하면 수임료가 여기에 표시됩니다.",
+      "date": "날짜",
+      "clientPaid": "의뢰인 결제액",
+      "yours": "내 수임료",
+      "status": "상태",
+      "refunded": "({{amount}} 환불됨)",
+      "disputed": "이의 제기됨",
+      "availableOn": "{{date}}부터 출금 가능",
+      "heldUntilClose": "수임이 종료되고 환불이 정산될 때까지 보류됩니다",
+      "statuses": {
+        "PENDING": "보류 중",
+        "AVAILABLE": "출금 가능",
+        "REVERSED": "환불됨"
+      }
+    },
+    "withdrawals": {
+      "heading": "출금 내역",
+      "empty": "아직 출금 내역이 없습니다.",
+      "statuses": {
+        "REQUESTED": "요청됨",
+        "PROCESSING": "송금 중",
+        "PAID": "지급됨",
+        "FAILED": "실패",
+        "REJECTED": "거부됨"
+      }
     }
   }
 }

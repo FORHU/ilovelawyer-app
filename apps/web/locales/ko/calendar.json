@@ -1,7 +1,7 @@
 {
   "title": "캘린더",
   "subtitle": "심리, 마감일, 사건 메모를 한곳에서 관리하세요.",
-  "monthAppointmentCount": "이번 달 약속 {{count}}건",
+  "monthAppointmentCount_other": "이번 달 약속 {{count}}건",
   "nothingScheduledMonth": "이번 달에는 예정된 일정이 없습니다.",
   "nothingScheduledDay": "이 날짜에는 예정된 일정이 없습니다.",
   "selectDay": "날짜 선택",
@@ -75,6 +75,7 @@
     "pastReadOnly": "지난 일정은 변경할 수 없습니다.",
     "startTimeInPast": "시작 시간은 과거일 수 없습니다.",
     "appointmentSaveFailed": "약속 저장에 실패했습니다.",
+    "cannotEditCancelled": "취소된 약속은 더 이상 수정할 수 없습니다.",
     "noteRequired": "메모 내용은 필수입니다.",
     "noteSaveFailed": "메모 저장에 실패했습니다.",
     "noteDeleteFailed": "메모 삭제에 실패했습니다.",
@@ -90,5 +91,6 @@
     "descriptionMultiple": "다른 일정 {{count}}개와 시간이 겹칩니다.",
     "changeTime": "시간 변경",
     "saveAnyway": "그래도 저장"
-  }
+  },
+  "monthAppointmentCount": "이번 달 약속 {{count}}건"
 }
