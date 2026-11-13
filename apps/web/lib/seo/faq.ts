@@ -118,10 +118,10 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
   // doesn't have yet; translate and add them when Korean AI ships.
   KR: [
     {
-      question: "한국 변호사를 위한 법률 소프트웨어가 있나요?",
+      question: "한국 변호사를 위한 AI 법률 소프트웨어가 있나요?",
       answer:
-        "ilovelawyer Korea는 한국 법률 실무에 맞춰 만들고 있는 서비스입니다. 사건 기록과 문서를 한곳에서 관리할 수 있으며, 한국어와 영어로 사용할 수 있습니다.",
-      detail: "한국 법령과 대법원 판례에 근거한 AI 상담은 곧 제공될 예정입니다.",
+        "네. ilovelawyer Korea는 한국 법률 실무를 위한 서비스입니다. 사건 기록과 문서를 한곳에서 관리하고, 한국 법령·자치법규와 법원 판결을 직접 찾아 근거로 답하는 AI 상담을 이용할 수 있습니다.",
+      detail: "답변은 법령명과 조문, 사건번호로 근거를 밝힙니다. 한국어와 영어로 사용할 수 있습니다.",
     },
     {
       question: "ilovelawyer는 법률사무소인가요? 법률 자문을 제공하나요?",
@@ -137,7 +137,7 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
     {
       question: "어떤 국가와 관할을 지원하나요?",
       answer:
-        "ilovelawyer는 필리핀, 영국, 대한민국을 위한 별도의 사이트를 운영합니다. 한국 사이트(kr.ilovelawyer.com)는 한국 법률 실무에 맞춰 만들고 있습니다.",
+        "ilovelawyer는 필리핀, 영국, 대한민국을 위한 별도의 사이트를 운영합니다. 한국 사이트는 kr.ilovelawyer.com입니다.",
     },
   ],
 }
@@ -149,7 +149,7 @@ export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
 const LEDE: Record<TenantCode, string> = {
   PH: "Short, direct answers about ilovelawyer Philippines: cited Philippine jurisprudence, the statutory code library, and how citations are checked.",
   UK: "Short, direct answers about ilovelawyer UK: cited UK precedent, live TNA and legislation.gov.uk search, and how deadlines are confirmed.",
-  KR: "ilovelawyer Korea에 대한 짧고 명확한 답변: 지금 제공하는 기능과 한국 실무를 위해 준비 중인 기능.",
+  KR: "ilovelawyer Korea에 대한 짧고 명확한 답변: AI 상담의 근거, 사건 관리, 이용할 수 있는 곳.",
 }
 
 export function getFaqLede(tenantCode: TenantCode): string {

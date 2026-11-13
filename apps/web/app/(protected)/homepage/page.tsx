@@ -41,20 +41,21 @@ const UK_PROMPTS = [
   "Summarise a court judgment",
 ];
 
-// Korean practice: 내용증명 (demand letter by certified mail), 소멸시효 (limitation), 부당해고
-// (unfair dismissal) before the Labour Relations Commission, 소액사건심판 (small claims), 임대차
-// (lease) deposits. Written in English; the KR site's chat is off until its Korean persona ships.
+// Korean practice, in Korean (the KR site's default language; chat runs on Chat Wonder's legal_kr
+// persona): 내용증명 (demand letter by certified mail), 부당해고 구제 (unfair dismissal remedies before
+// the Labour Relations Commission), 소액사건심판 (small claims), 임대차 보증금 (lease deposits),
+// 소멸시효 (limitation).
 const KR_PROMPTS = [
-  "Draft a demand letter by certified mail (내용증명)",
-  "Check a citation",
-  "Assess remedies for unfair dismissal before the Labour Relations Commission",
-  "Summarise an attached contract",
-  "Explain the elements of a claim for non-performance of a contract",
-  "Review a non-disclosure agreement",
-  "Outline the small claims procedure (소액사건심판)",
-  "Explain a tenant's right to recover a lease deposit",
-  "Explain the limitation period (소멸시효) for a claim",
-  "Summarise a Supreme Court judgment",
+  "내용증명 작성하기",
+  "인용 판례 확인하기",
+  "부당해고 구제 신청 요건 검토하기",
+  "첨부한 계약서 요약하기",
+  "채무불이행에 따른 손해배상 청구 요건 설명하기",
+  "비밀유지계약서 검토하기",
+  "소액사건심판 절차 개요 정리하기",
+  "임대차 보증금 반환 청구 방법 설명하기",
+  "청구권의 소멸시효 설명하기",
+  "대법원 판결 요약하기",
 ];
 
 const PROMPTS: Record<TenantCode, string[]> = { PH: PH_PROMPTS, UK: UK_PROMPTS, KR: KR_PROMPTS };

@@ -36,9 +36,10 @@ export const krTenantCodeConfig: TenantCodeConfig = {
       ukJurisdictionOptions: [],
     },
     capabilities: {
-      // Needs a Korean persona in the API and Chat Wonder (legal_kr); until then the API would
-      // answer KR chat with the PH persona.
-      aiChat: "coming-soon",
+      // Chat Wonder's legal_kr persona (Korean Law MCP; chat-wonder-v2-api PR #141), which the API
+      // picks with the [legal ai kr] tag. No Korean doctrine guards yet, and the analysis panes have
+      // no KR prompts yet; this is chat and consultation only.
+      aiChat: "available",
       cases: "available",
       documents: "available",
       // Needs a KR law source in the API (law.go.kr) and a KR library config here.

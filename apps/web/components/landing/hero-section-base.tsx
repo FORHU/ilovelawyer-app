@@ -29,10 +29,10 @@ const HERO_H1: Record<TenantCode, { heading: string; lede: string }> = {
     heading: "ilovelawyer UK: AI legal intelligence for lawyers",
     lede: "Case management, AI consultation with cited UK precedent, and the Legal Terminal.",
   },
-  // Only what the KR site offers today; widen when Korean AI consultation ships (plan step 5).
+  // Only what the KR site offers today: chat runs on Chat Wonder's legal_kr persona (Korean Law MCP).
   KR: {
-    heading: "ilovelawyer Korea: legal intelligence for Korean lawyers",
-    lede: "Case files and documents in one workspace, with AI consultation grounded in Korean law on the way.",
+    heading: "ilovelawyer Korea: AI legal intelligence for Korean lawyers",
+    lede: "Case files, documents and AI consultation grounded in Korean statutes and court decisions.",
   },
 };
 

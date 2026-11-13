@@ -39,11 +39,11 @@ const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
     description:
       "Case management, AI consultation with cited Philippine jurisprudence, and a Legal Terminal built for practicing lawyers.",
   },
-  // Only what the KR site offers today; widen when Korean AI consultation ships (plan step 5).
+  // Only what the KR site offers today: chat runs on Chat Wonder's legal_kr persona (Korean Law MCP).
   KR: {
-    title: "ilovelawyer Korea — Legal Intelligence for Korean Lawyers",
+    title: "ilovelawyer Korea — AI Legal Intelligence for Korean Lawyers",
     description:
-      "Case files and documents in one workspace for Korean lawyers, with AI consultation grounded in Korean law on the way.",
+      "Case files, documents and AI consultation grounded in Korean statutes and court decisions, in one workspace for Korean lawyers.",
   },
 };
 
