@@ -34,7 +34,18 @@
     "save": "Save details",
     "saving": "Saving…",
     "saved": "Saved",
-    "saveContinue": "Save and continue"
+    "saveContinue": "Save and continue",
+    "firmType": "Firm type",
+    "krFirmTypes": {
+      "LAW_FIRM": "Law firm (법무법인)",
+      "LAW_FIRM_LLC": "Limited law firm (법무법인(유한))",
+      "LAW_PARTNERSHIP": "Law partnership (법무조합)",
+      "JOINT_OFFICE": "Joint law office (공동법률사무소)",
+      "SOLE_OFFICE": "Sole law office (개인 법률사무소)"
+    },
+    "businessRegistrationNumber": "Business registration number",
+    "businessRegistrationNumberHelp": "Your firm's 사업자등록번호: 10 digits.",
+    "postcodeKR": "Postcode"
   },
   "invite": {
     "title": "Invite your team",
@@ -147,7 +158,8 @@
     "UK": "Apply to take on clients from ilovelawyer.com.",
     "PH": "Apply to get verified and show an Approved badge on your profile.",
     "action": "Apply",
-    "dismiss": "Dismiss for 7 days"
+    "dismiss": "Dismiss for 7 days",
+    "KR": "Apply to get verified. You can start using ilovelawyer once it's approved."
   },
   "verification": {
     "pendingTitle": "We're checking your application",

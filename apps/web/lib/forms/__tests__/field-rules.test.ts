@@ -50,3 +50,18 @@ describe("what a finished value needs", () => {
     expect(postcodeProblem("100", "PH")).not.toBeNull()
   })
 })
+
+describe("KR firm details", () => {
+  it("checks a business registration number's check digit, and writes it as 123-45-67890", async () => {
+    const { isKrBusinessRegistrationNumber, formatKrBusinessRegistrationNumber, businessRegistrationNumberProblem, postcodeProblem } = await import("../field-rules")
+    // 220-81-62517 is a published company registration number.
+    expect(isKrBusinessRegistrationNumber("2208162517")).toBe(true)
+    expect(isKrBusinessRegistrationNumber("2208162518")).toBe(false)
+    expect(formatKrBusinessRegistrationNumber("2208162517")).toBe("220-81-62517")
+    expect(formatKrBusinessRegistrationNumber("22081")).toBe("220-81")
+    expect(businessRegistrationNumberProblem("")).toBeNull()
+    expect(businessRegistrationNumberProblem("1234567890")).not.toBeNull()
+    expect(postcodeProblem("06236", "KR")).toBeNull()
+    expect(postcodeProblem("1000", "KR")).not.toBeNull()
+  })
+})

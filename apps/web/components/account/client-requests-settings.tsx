@@ -28,6 +28,9 @@ import {
 } from "@/lib/client-requests/profile-form";
 
 // No badge before the lawyer applies: "not applied" is what the section's own call to action says.
+/** How many required fields an application has (ClientRequestProfile.missing, all of them). */
+const REQUIRED_COUNT: Record<ClientRequestProfile["country"], number> = { UK: 4, PH: 3, KR: 3 };
+
 const STATUS_TONE: Record<Exclude<VerificationStatus, "UNSUBMITTED">, "warning" | "success" | "danger"> = {
   PENDING: "warning",
   VERIFIED: "success",
@@ -104,7 +107,7 @@ function ApplyPrompt({ profile, onApply }: { profile: ClientRequestProfile; onAp
   const { t } = useTranslation("profile");
   const missingList = useMissingList();
   // Every required field missing means they haven't started; fewer means a saved, unfinished one.
-  const started = profile.missing.length < (profile.country === "PH" ? 3 : 4);
+  const started = profile.missing.length < REQUIRED_COUNT[profile.country];
 
   return (
     <div className="px-6 md:px-8 py-6 flex items-center justify-between gap-4 flex-wrap">
@@ -149,6 +152,11 @@ function ApplicationSummary({ profile, onEdit }: { profile: ClientRequestProfile
           <>
             <SummaryItem label={t("clientRequests.summary.rollNumber")} value={r.rollNumber ?? ""} />
             <SummaryItem label={t("clientRequests.summary.ibpChapter")} value={r.ibpChapter ?? ""} />
+          </>
+        ) : r.country === "KR" ? (
+          <>
+            <SummaryItem label={t("clientRequests.summary.krRegistrationNumber")} value={r.registrationNumber ?? ""} />
+            <SummaryItem label={t("clientRequests.summary.localBar")} value={r.localBar ? t(`clientRequests.krLocalBars.${r.localBar}`) : ""} />
           </>
         ) : (
           <>

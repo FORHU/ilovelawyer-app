@@ -46,7 +46,8 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     expect(isFeatureEnabled("KR", "cases")).toBe(true)
     expect(isFeatureEnabled("KR", "documents")).toBe(true)
     expect(isFeatureEnabled("KR", "citations")).toBe(true)
-    for (const feature of ["aiChat", "legalSearch", "deadlines", "clientRequests", "lawyerApplication"] as const) {
+    expect(isFeatureEnabled("KR", "lawyerApplication")).toBe(true)
+    for (const feature of ["aiChat", "legalSearch", "deadlines", "clientRequests"] as const) {
       expect(isFeatureEnabled("KR", feature)).toBe(false)
     }
   })

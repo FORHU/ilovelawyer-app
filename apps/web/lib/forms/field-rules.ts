@@ -51,6 +51,35 @@ export function phoneProblem(v: string): string | null {
 /** Korean postcodes (우편번호) have been 5 digits since 2015. */
 export const KR_POSTCODE = /^\d{5}$/;
 
+/** What a KR firm is (optional): 법무법인, 법무법인(유한), 법무조합, 공동법률사무소, or a lawyer's own
+ * office. Mirrors KR_FIRM_TYPES in the API; labels are i18n keys (onboarding: firm.krFirmTypes.*). */
+export const KR_FIRM_TYPES = ["LAW_FIRM", "LAW_FIRM_LLC", "LAW_PARTNERSHIP", "JOINT_OFFICE", "SOLE_OFFICE"] as const;
+export type KrFirmType = (typeof KR_FIRM_TYPES)[number];
+
+/** Whether ten digits are a valid Korean business registration number (사업자등록번호): the last digit
+ * is a check digit over the first nine. Same rule as the API's isKrBusinessRegistrationNumber. */
+export function isKrBusinessRegistrationNumber(value: string): boolean {
+  if (!/^\d{10}$/.test(value)) return false;
+  const d = [...value].map(Number);
+  const weights = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  let sum = weights.reduce((acc, w, i) => acc + d[i]! * w, 0);
+  sum += Math.floor((d[8]! * 5) / 10);
+  return (10 - (sum % 10)) % 10 === d[9];
+}
+
+/** A business registration number as it's usually written: 123-45-67890. */
+export function formatKrBusinessRegistrationNumber(digits: string): string {
+  const d = digits.slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
+}
+
+export function businessRegistrationNumberProblem(digits: string): string | null {
+  if (!digits) return null;
+  return isKrBusinessRegistrationNumber(digits) ? null : "Enter a valid 10-digit business registration number, e.g. 123-45-67890.";
+}
+
 const POSTCODE_RULES: Record<TenantCode, { pattern: RegExp; message: string }> = {
   UK: { pattern: UK_POSTCODE, message: "Enter a UK postcode, e.g. SW1A 1AA." },
   PH: { pattern: PH_ZIP_CODE, message: "Enter a 4-digit ZIP code." },

@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/fetch"
 import { authKeys, caseKeys, organizationKeys, sharedCaseKeys, tourKeys, userKeys } from "@/lib/query-keys"
 import { useAuthStore, type SharedWorkspace, type Workspace } from "@/lib/store/auth.store"
 import type { OrganizationRecord, OrganizationMemberRecord, OrganizationRole } from "./queries"
+import type { KrFirmType } from "@/lib/forms/field-rules"
 
 /** Query roots that belong to the signed-in account rather than its organization. */
 // The shared-with-me list too: it spans other people's portfolios, whichever workspace is open.
@@ -50,7 +51,8 @@ export function useEnterSharedWorkspace() {
 }
 
 /** A firm's optional details: onboarding's firm step and the Organization page. "" or null clears
- * one. The firm regulator and its number are UK only (the API refuses them on PH). */
+ * one. The firm regulator and its number are UK only, the firm type and business registration
+ * number KR only (the API refuses them on other sites). */
 export interface FirmDetailsPayload {
   phone?: string | null
   addressLine1?: string | null
@@ -59,6 +61,9 @@ export interface FirmDetailsPayload {
   postcode?: string | null
   firmRegulator?: "SRA" | "LSS" | "LSNI" | null
   firmRegistrationNumber?: string | null
+  firmType?: KrFirmType | null
+  /** 10 digits, no dashes. */
+  businessRegistrationNumber?: string | null
 }
 
 export interface CreateOrganizationPayload extends FirmDetailsPayload {

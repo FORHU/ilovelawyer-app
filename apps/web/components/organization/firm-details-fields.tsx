@@ -7,13 +7,29 @@ import { REGULATORS, type Regulator } from "@/lib/client-requests/profile";
 import type { FirmDetailsPayload } from "@/lib/organizations/mutations";
 import type { OrganizationRecord } from "@/lib/organizations/queries";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
-import { NUMBER_MAX_DIGITS, keepDigits, keepPhone, keepUkPostcode, keepWords, phoneProblem, postcodeProblem } from "@/lib/forms/field-rules";
+import {
+  KR_FIRM_TYPES,
+  NUMBER_MAX_DIGITS,
+  businessRegistrationNumberProblem,
+  formatKrBusinessRegistrationNumber,
+  keepDigits,
+  keepPhone,
+  keepUkPostcode,
+  keepWords,
+  phoneProblem,
+  postcodeProblem,
+  type KrFirmType,
+} from "@/lib/forms/field-rules";
 
 /** A firm's details as typed. Only the name is required. */
 export interface FirmDetailsForm {
   name: string;
   firmRegulator: Regulator | null;
   firmRegistrationNumber: string;
+  /** KR only. */
+  firmType: KrFirmType | null;
+  /** KR only: digits as typed, no dashes. */
+  businessRegistrationNumber: string;
   phone: string;
   addressLine1: string;
   addressLine2: string;
@@ -25,6 +41,8 @@ export const EMPTY_FIRM: FirmDetailsForm = {
   name: "",
   firmRegulator: null,
   firmRegistrationNumber: "",
+  firmType: null,
+  businessRegistrationNumber: "",
   phone: "",
   addressLine1: "",
   addressLine2: "",
@@ -37,6 +55,8 @@ export function firmFormFromOrganization(org: OrganizationRecord): FirmDetailsFo
     name: org.name,
     firmRegulator: org.firmRegulator,
     firmRegistrationNumber: org.firmRegistrationNumber ?? "",
+    firmType: org.firmType ?? null,
+    businessRegistrationNumber: org.businessRegistrationNumber ?? "",
     phone: org.phone ?? "",
     addressLine1: org.addressLine1 ?? "",
     addressLine2: org.addressLine2 ?? "",
@@ -45,8 +65,8 @@ export function firmFormFromOrganization(org: OrganizationRecord): FirmDetailsFo
   };
 }
 
-/** The details to send. Empty fields clear; the firm regulator and number only go to a UK firm
- * (the API refuses them elsewhere). */
+/** The details to send. Empty fields clear; the firm regulator and number only go to a UK firm, the
+ * firm type and business registration number only to a KR firm (the API refuses them elsewhere). */
 export function firmDetailsPayload(f: FirmDetailsForm, tenantCode: TenantCode | null): FirmDetailsPayload {
   const text = (v: string) => v.trim() || null;
   return {
@@ -56,23 +76,30 @@ export function firmDetailsPayload(f: FirmDetailsForm, tenantCode: TenantCode | 
     city: text(f.city),
     postcode: text(f.postcode),
     ...(tenantCode === "UK" ? { firmRegulator: f.firmRegulator, firmRegistrationNumber: text(f.firmRegistrationNumber) } : {}),
+    ...(tenantCode === "KR" ? { firmType: f.firmType, businessRegistrationNumber: text(f.businessRegistrationNumber) } : {}),
   };
 }
 
 /** Longest postcode as typed: UK "SW1A 1AA", PH 4 digits, KR 5 digits. */
 const POSTCODE_MAX_LENGTH: Record<TenantCode, number> = { UK: 8, PH: 4, KR: 5 };
+const POSTCODE_LABEL_KEY = { UK: "firm.postcodeUK", PH: "firm.postcodePH", KR: "firm.postcodeKR" } as const satisfies Record<TenantCode, string>;
 
-export type FirmDetailsErrors =Partial<Record<"phone" | "postcode", string>>;
+export type FirmDetailsErrors = Partial<Record<"phone" | "postcode" | "businessRegistrationNumber", string>>;
 
 /** What's wrong with the typed details, empty when they can be saved. Characters that never fit a
  * field can't be typed at all (lib/forms/field-rules.ts); this catches what's left: a phone number
- * too short or too long, and a postcode (UK) or ZIP code (PH) that isn't one. */
+ * too short or too long, a postcode that isn't one for the site, and (KR) a business registration
+ * number whose check digit doesn't match. */
 export function firmDetailsErrors(f: FirmDetailsForm, tenantCode: TenantCode | null): FirmDetailsErrors {
   const errors: FirmDetailsErrors = {};
   const phone = phoneProblem(f.phone);
   if (phone) errors.phone = phone;
   const postcode = postcodeProblem(f.postcode, tenantCode);
   if (postcode) errors.postcode = postcode;
+  if (tenantCode === "KR") {
+    const brn = businessRegistrationNumberProblem(f.businessRegistrationNumber.trim());
+    if (brn) errors.businessRegistrationNumber = brn;
+  }
   return errors;
 }
 
@@ -145,6 +172,30 @@ export function FirmDetailsFields({
           />
         </>
       )}
+      {tenantCode === "KR" && (
+        <>
+          <div className="flex flex-col gap-2">
+            <FieldLabel id="firm-type">{t("firm.firmType")}</FieldLabel>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="firm-type">
+              {KR_FIRM_TYPES.map((type) => (
+                <Pill key={type} selected={value.firmType === type} onClick={() => onChange({ firmType: value.firmType === type ? null : type })}>
+                  {t(`firm.krFirmTypes.${type}`)}
+                </Pill>
+              ))}
+            </div>
+          </div>
+          <TextField
+            label={t("firm.businessRegistrationNumber")}
+            helperText={t("firm.businessRegistrationNumberHelp")}
+            inputMode="numeric"
+            placeholder="123-45-67890"
+            value={formatKrBusinessRegistrationNumber(value.businessRegistrationNumber)}
+            onChange={(e) => onChange({ businessRegistrationNumber: keepDigits(e.target.value).slice(0, 10) })}
+            errorText={errors.businessRegistrationNumber}
+            maxLength={12}
+          />
+        </>
+      )}
       <TextField
         label={t("firm.phone")}
         type="tel"
@@ -161,7 +212,7 @@ export function FirmDetailsFields({
         <TextField label={t("firm.city")} autoComplete="address-level2" value={value.city} onChange={(e) => onChange({ city: keepWords(e.target.value) })} maxLength={80} />
         <TextField
           // "Postcode" on UK and KR, "ZIP code" on PH.
-          label={tenantCode === "PH" ? t("firm.postcodePH") : t("firm.postcodeUK")}
+          label={t(POSTCODE_LABEL_KEY[tenantCode ?? "PH"])}
           autoComplete="postal-code"
           inputMode={uk ? "text" : "numeric"}
           value={value.postcode}
