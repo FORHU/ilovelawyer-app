@@ -293,6 +293,7 @@
       },
       "documents": {
         "emptyTitle": "No documents yet",
+        "view": "Preview {{name}}",
         "ready": "Ready",
         "failed": "Couldn't read this file",
         "pending": "Reading…"

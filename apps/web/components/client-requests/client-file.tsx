@@ -6,6 +6,8 @@ import { FileText, ListChecks, MessageSquare } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import FilePreviewModal from "@/components/chat/file-preview-modal";
+import type { MessageAttachment } from "@/components/chat/message-attachments";
 import { useIntakePackageQuery } from "@/lib/client-requests/detail";
 import type { CaseIntake, IntakePackageDocument, IntakePackageMessage, IntakeSource } from "@/lib/client-requests/types";
 
@@ -240,28 +242,38 @@ function ConversationTab({ transcript }: { transcript: IntakePackageMessage[] })
 
 function DocumentsTab({ documents }: { documents: IntakePackageDocument[] }) {
   const { t } = useTranslation("client-request");
+  const [previewing, setPreviewing] = useState<MessageAttachment | null>(null);
   if (documents.length === 0) {
     return <EmptyState icon={<FileText />} title={t("detail.file.documents.emptyTitle")} />;
   }
   return (
-    <ul className="flex flex-col overflow-hidden rounded-xl border border-border">
-      {documents.map((d) => (
-        <li key={d.id} className="flex items-center gap-3 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0">
-          <FileText className="size-4 shrink-0 text-brand-gold" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate">
-            {d.url ? (
-              <a href={d.url} target="_blank" rel="noreferrer" className="text-foreground underline decoration-from-font underline-offset-2 hover:text-brand-gold">
-                {d.name}
-              </a>
-            ) : (
-              d.name
-            )}
-          </span>
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {d.status === "READY" ? t("detail.file.documents.ready") : d.status === "FAILED" ? t("detail.file.documents.failed") : t("detail.file.documents.pending")}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="flex flex-col overflow-hidden rounded-xl border border-border">
+        {documents.map((d) => (
+          <li key={d.id} className="flex items-center gap-3 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0">
+            <FileText className="size-4 shrink-0 text-brand-gold" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">
+              {d.url ? (
+                <button
+                  type="button"
+                  onClick={() => setPreviewing({ id: d.id, name: d.name, url: d.url, mimeType: null })}
+                  title={t("detail.file.documents.view", { name: d.name })}
+                  className="max-w-full cursor-pointer truncate text-left text-foreground underline decoration-from-font underline-offset-2 hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  {d.name}
+                </button>
+              ) : (
+                d.name
+              )}
+            </span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {d.status === "READY" ? t("detail.file.documents.ready") : d.status === "FAILED" ? t("detail.file.documents.failed") : t("detail.file.documents.pending")}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {/* Keyed by document so opening another file is a fresh preview, not the last one's zoom. */}
+      {previewing && <FilePreviewModal key={previewing.id} attachment={previewing} onClose={() => setPreviewing(null)} />}
+    </>
   );
 }
