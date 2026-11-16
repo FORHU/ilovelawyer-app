@@ -2,19 +2,19 @@
 
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, ListChecks, MessageSquare } from "lucide-react";
+import { FileText, ListChecks } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import type { MessageAttachment } from "@/components/chat/message-attachments";
 import { useIntakePackageQuery } from "@/lib/client-requests/detail";
-import type { CaseIntake, IntakePackageDocument, IntakePackageMessage, IntakeSource } from "@/lib/client-requests/types";
+import type { CaseIntake, IntakePackageDocument, IntakeSource } from "@/lib/client-requests/types";
 
 const CARD = "rounded-2xl border border-border bg-card p-5";
 const LABEL = "text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground";
 
-type FileTab = "intake" | "conversation" | "documents";
+type FileTab = "intake" | "documents";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -39,7 +39,8 @@ function provenance(sources: IntakeSource[], t: (key: string, opts?: Record<stri
 
 /**
  * The engaged lawyer's client file (ADR 0018 in the API repo): the client's organised intake
- * with where each item came from, their Interview transcript, and their documents. Everything
+ * with where each item came from, and their documents (the Interview transcript lives in the
+ * Messages drawer, so there is one place for conversation). Everything
  * here is already visible through the shared case workspace ("Open the case") — this is an
  * organised read of the same material, not a new grant.
  */
@@ -50,7 +51,6 @@ export function ClientFile({ requestId }: { requestId: string }) {
 
   const tabs: { key: FileTab; label: string; icon: typeof ListChecks }[] = [
     { key: "intake", label: t("detail.file.tabs.intake"), icon: ListChecks },
-    { key: "conversation", label: t("detail.file.tabs.conversation"), icon: MessageSquare },
     { key: "documents", label: t("detail.file.tabs.documents"), icon: FileText },
   ];
 
@@ -88,7 +88,6 @@ export function ClientFile({ requestId }: { requestId: string }) {
       {error && <p className="text-[13px] text-destructive">{t("detail.file.loadError")}</p>}
 
       {data && tab === "intake" && <IntakeTab intake={data.intake} />}
-      {data && tab === "conversation" && <ConversationTab transcript={data.transcript} />}
       {data && tab === "documents" && <DocumentsTab documents={data.documents} />}
     </section>
   );
@@ -220,23 +219,6 @@ function Row({ text, sources, dashed, warn }: { text: string; sources: IntakeSou
       <span>{text}</span>
       {sources.length > 0 && <span className="text-[11px] text-muted-foreground">{provenance(sources, t)}</span>}
     </li>
-  );
-}
-
-function ConversationTab({ transcript }: { transcript: IntakePackageMessage[] }) {
-  const { t } = useTranslation("client-request");
-  if (transcript.length === 0) {
-    return <EmptyState icon={<MessageSquare />} title={t("detail.file.conversation.emptyTitle")} />;
-  }
-  return (
-    <div className="flex max-h-[480px] flex-col gap-3 overflow-y-auto">
-      {transcript.map((m) => (
-        <div key={m.id} className={cn("flex max-w-[85%] flex-col gap-0.5", m.role === "CLIENT" ? "self-start" : "self-start opacity-80")}>
-          <span className="text-[11px] font-medium text-muted-foreground">{m.role === "CLIENT" ? t("detail.file.conversation.client") : t("detail.file.conversation.ai")}</span>
-          <p className="rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground">{m.text}</p>
-        </div>
-      ))}
-    </div>
   );
 }
 

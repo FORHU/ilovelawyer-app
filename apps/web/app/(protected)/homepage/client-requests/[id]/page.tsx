@@ -458,7 +458,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
       <EngagementAiMeter requestId={request.id} />
       <EngagementInvoice requestId={request.id} />
       <div className="flex flex-wrap gap-2">
-        <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed={false} />
+        <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed={false} interview />
         <Button type="button" variant="outline" onClick={openCase}>
           {t("detail.engaged.openCase")}
         </Button>

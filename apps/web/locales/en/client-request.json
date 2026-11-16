@@ -268,7 +268,6 @@
       "loadError": "Couldn't load the client's file.",
       "tabs": {
         "intake": "Intake",
-        "conversation": "Conversation",
         "documents": "Documents"
       },
       "provenance": {
@@ -285,11 +284,6 @@
         "people": "People involved",
         "facts": "Key facts",
         "conflicts": "Things to double-check"
-      },
-      "conversation": {
-        "emptyTitle": "No conversation yet",
-        "client": "Client",
-        "ai": "AI"
       },
       "documents": {
         "emptyTitle": "No documents yet",
@@ -340,6 +334,13 @@
     "you": "You",
     "client": "Client",
     "sharedBy": "Shared by {{name}} · {{date}}",
+    "interview": {
+      "title": "Client's interview with the AI",
+      "count_one": "{{count}} message",
+      "count_other": "{{count}} messages",
+      "client": "Client",
+      "ai": "AI"
+    },
     "placeholder": "Write a message…",
     "send": "Send",
     "closed": "This engagement has closed. You can still read the messages, but not reply."
