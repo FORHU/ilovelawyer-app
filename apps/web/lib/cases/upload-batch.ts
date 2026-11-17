@@ -53,8 +53,12 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
   mp3: "audio/mpeg",
   mp4: "video/mp4",
+  m4a: "audio/mp4",
+  wav: "audio/wav",
 }
 
 export function resolveContentType(file: File): string {
@@ -69,7 +73,9 @@ export function resolveContentType(file: File): string {
  * `isAllowedFileType`. */
 export const ALLOWED_EXTENSIONS = Object.keys(EXTENSION_CONTENT_TYPES)
 
-export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOC, DOCX, XLSX, XLSM, XLAM, TXT, JPG, PNG, MP3, MP4"
+/** Built from the same list as the check above, so the message can't name a type that is refused
+ * or leave out one that is. Reads like ilovelawyer-api's own "Supported formats" message. */
+export const ALLOWED_FILE_TYPES_LABEL = ALLOWED_EXTENSIONS.map((ext) => ext.toUpperCase()).join(", ")
 
 export const UNSUPPORTED_FILE_TYPE_MESSAGE = `Unsupported file type. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`
 
