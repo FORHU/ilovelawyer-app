@@ -38,7 +38,8 @@ export function isImageAttachment(attachment: Pick<MessageAttachment, "mimeType"
  * CORS requirement on the presigned URL, same as the <img>/<iframe> previews). */
 export function isAudioAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
   if (attachment.mimeType?.startsWith("audio/")) return true;
-  return attachment.name.toLowerCase().endsWith(".mp3");
+  const lower = attachment.name.toLowerCase();
+  return [".mp3", ".m4a", ".wav"].some((ext) => lower.endsWith(ext));
 }
 
 /** mp4 evidence — native <video> element, same reasoning as isAudioAttachment. */

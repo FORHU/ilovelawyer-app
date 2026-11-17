@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  ALLOWED_EXTENSIONS,
+  ALLOWED_FILE_TYPES_LABEL,
   assertWithinBatchLimit,
   checkUploadSelection,
+  isAllowedFileType,
+  resolveContentType,
+  UNSUPPORTED_FILE_TYPE_MESSAGE,
   formatBytes,
   MAX_BATCH_SIZE_BYTES,
   putFileToS3,
@@ -144,5 +149,27 @@ describe("putFileToS3", () => {
     await expect(putFileToS3("https://s3.example/k", fakeFile("a.pdf", 1), "application/pdf")).rejects.toThrow(
       "Network error uploading to storage",
     )
+  })
+})
+
+describe("supported file types (#990)", () => {
+  it.each(["phone-photo.heic", "IMG_0001.HEIC", "screenshot.webp", "voice-memo.m4a", "recording.wav"])("accepts %s", (name) => {
+    expect(isAllowedFileType(new File([], name))).toBe(true)
+  })
+
+  it("still refuses executables and says which formats are supported", () => {
+    expect(isAllowedFileType(new File([], "setup.exe"))).toBe(false)
+    expect(UNSUPPORTED_FILE_TYPE_MESSAGE).toMatch(/^Unsupported file type. Supported formats: .*WEBP, HEIC.*M4A.*WAV.$/)
+  })
+
+  it("names every accepted type in the message, so the list can't drift from the check", () => {
+    expect(ALLOWED_FILE_TYPES_LABEL.split(", ").sort()).toEqual(ALLOWED_EXTENSIONS.map((e) => e.toUpperCase()).sort())
+  })
+
+  it("gives a file the browser left untyped a real content type", () => {
+    expect(resolveContentType(new File([], "voice-memo.m4a"))).toBe("audio/mp4")
+    expect(resolveContentType(new File([], "recording.wav"))).toBe("audio/wav")
+    expect(resolveContentType(new File([], "phone-photo.heic"))).toBe("image/heic")
+    expect(resolveContentType(new File([], "screenshot.webp"))).toBe("image/webp")
   })
 })
