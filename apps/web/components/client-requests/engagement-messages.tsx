@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { FileText, MessageSquare } from "lucide-react"
+import { ChevronDown, FileText, MessageSquare } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { cn } from "@workspace/ui/lib/utils"
 import { useDateLocale } from "@/lib/i18n/date-locale"
 import type { EngagementMessage } from "@/lib/client-handoff"
+import { useIntakePackageQuery } from "@/lib/client-requests/detail"
 import {
   useEngagementMessagesQuery,
   useMarkEngagementMessagesReadMutation,
@@ -56,13 +57,54 @@ function MessageBubble({ message, locale }: { message: EngagementMessage; locale
   )
 }
 
+/** The client's earlier interview with the AI (read-only), folded above the thread so the lawyer has
+ * one place for everything said about the case. Collapsed by default: the live thread comes first. */
+function IntakeInterview({ requestId, locale }: { requestId: string; locale: string | undefined }) {
+  const { t } = useTranslation("client-request")
+  const [expanded, setExpanded] = useState(false)
+  const { data } = useIntakePackageQuery(requestId, true)
+  const transcript = data?.transcript ?? []
+  if (transcript.length === 0) return null
+  return (
+    <section className="mb-4 rounded-2xl border border-border bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-[12px] font-medium text-foreground"
+      >
+        <span>{t("messages.interview.title")}</span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          {t("messages.interview.count", { count: transcript.length })}
+          <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} aria-hidden="true" />
+        </span>
+      </button>
+      {expanded && (
+        <ul className="flex max-h-80 flex-col gap-3 overflow-y-auto border-t border-border px-3.5 py-3">
+          {transcript.map((m) => (
+            <li key={m.id} className={cn("flex max-w-[90%] flex-col gap-0.5 self-start", m.role === "AI" && "opacity-80")}>
+              <span className="text-[11px] text-muted-foreground">
+                {m.role === "CLIENT" ? t("messages.interview.client") : t("messages.interview.ai")} ·{" "}
+                {new Date(m.createdAt).toLocaleString(locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+              </span>
+              <p className="whitespace-pre-wrap break-words rounded-2xl border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground">{m.text}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 /**
  * The lawyer's thread with the client (FORHU/ilovelawyer-app#887, ilovelawyer-api#517): a Messages
  * button with the unread count, opening a right-side drawer with the participants, the thread
  * (documents the client shared show who shared them and when) and a composer. Opening it, or a new
  * message arriving while it's open, marks the thread read. Since phase 5b it opens when the lawyer
  * joins (`beforeHire`: the client isn't named, and a hint asks them not to share contact details).
- * Read-only once the engagement is closed (`closed`) or their claim has ended (`ended`).
+ * Read-only once the engagement is closed (`closed`) or their claim has ended (`ended`). With
+ * `interview` (engaged only, as the API refuses the intake package otherwise) the client's interview
+ * with the AI is folded in above the thread.
  */
 export function EngagementMessages({
   requestId,
@@ -70,6 +112,7 @@ export function EngagementMessages({
   closed = false,
   ended = false,
   beforeHire = false,
+  interview = false,
 }: {
   requestId: string
   /** Who the client is; left out before hire, when they aren't named. */
@@ -77,6 +120,7 @@ export function EngagementMessages({
   closed?: boolean
   ended?: boolean
   beforeHire?: boolean
+  interview?: boolean
 }) {
   const { t } = useTranslation("client-request")
   const locale = useDateLocale()
@@ -130,6 +174,7 @@ export function EngagementMessages({
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
+            {interview && <IntakeInterview requestId={requestId} locale={locale} />}
             {thread.isLoading ? (
               <p className="text-[13px] text-muted-foreground">{t("messages.loading")}</p>
             ) : thread.isError ? (
