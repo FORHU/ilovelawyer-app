@@ -262,7 +262,12 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
   function confirmAccept() {
     claim.mutate(request.id, {
       onSettled: () => setConfirmingAccept(false),
-      onError: (err) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+      onError: (err) => {
+        // Gone while the lawyer was deciding (the client deleted the case, or someone else took it):
+        // say so plainly rather than with the API's "not found". The page itself shows it's gone.
+        if (isNotFoundError(err)) toast.info(t("card.acceptGone"));
+        else toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
+      },
     });
   }
 
@@ -671,7 +676,7 @@ export default function ClientRequestDetailPage() {
   const { t } = useTranslation("client-request");
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const { data: request, isLoading, isError, refetch } = useClientRequestQuery(id);
+  const { data: request, isLoading, isError, error, refetch } = useClientRequestQuery(id);
   const showSkeleton = useDelayedLoading(isLoading);
   const organizationId = useAuthStore((s) => s.organization?.id);
   const retry = useRetryClientRequestChargeMutation(id);
@@ -693,7 +698,7 @@ export default function ClientRequestDetailPage() {
           {t("detail.back")}
         </Link>
 
-        {isError ? (
+        {isError && !isNotFoundError(error) ? (
           <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => refetch()} />
         ) : isLoading ? (
           showSkeleton ? (
@@ -702,7 +707,9 @@ export default function ClientRequestDetailPage() {
               <Skeleton className="h-40 w-full" />
             </div>
           ) : null
-        ) : !request ? (
+        ) : !request || isError ? (
+          // A 404 after the page had loaded (isError keeps the last data): the request is gone, so
+          // none of its actions are shown any more.
           <EmptyState icon={<Users />} title={t("detail.notFound")} description={t("detail.notFoundDescription")} />
         ) : (
           <RequestDetail request={request} />
