@@ -39,6 +39,7 @@
     "open": "Open {{hours}}h more",
     "openMinutes": "Open {{minutes}}m more",
     "passGone": "This request has already left your inbox.",
+    "acceptGone": "This request is no longer available. The client may have deleted it.",
     "passError": "Couldn’t pass on this request. Try again.",
     "closed": "Closing now",
     "expired": "Closed"
@@ -110,7 +111,8 @@
   "detail": {
     "back": "Back to requests",
     "notFound": "This request isn’t available",
-    "notFoundDescription": "It may have been taken by another lawyer, released, or withdrawn.",
+    "notFoundDescription": "It may have been taken by another lawyer, released, withdrawn, or deleted by the client.",
+    "deletedToast": "The client deleted this case, so the request is no longer available.",
     "deadline": "deadline {{date}}",
     "status": {
       "REQUESTED": "Finding a lawyer",
@@ -293,6 +295,7 @@
       },
       "documents": {
         "emptyTitle": "No documents yet",
+        "view": "Preview {{name}}",
         "ready": "Ready",
         "failed": "Couldn't read this file",
         "pending": "Reading…"

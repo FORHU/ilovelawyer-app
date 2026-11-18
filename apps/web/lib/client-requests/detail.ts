@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { isNotFoundError } from "@/lib/fetch"
 import { clientRequestKeys } from "@/lib/query-keys"
 import {
   closeClientRequest,
@@ -20,6 +21,9 @@ export function useClientRequestQuery(id: string, enabled = true) {
     queryKey: clientRequestKeys.detail(id),
     queryFn: () => getClientRequest(id),
     enabled,
+    // A request that's gone (the client deleted the case, or it left the lawyer's inbox) stays gone:
+    // retrying would only delay saying so.
+    retry: (failures, error) => !isNotFoundError(error) && failures < 1,
   })
 }
 

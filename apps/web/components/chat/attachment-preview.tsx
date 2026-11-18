@@ -33,6 +33,14 @@ interface AttachmentPreviewProps {
   page?: number | null;
   /** Highlight this passage on the page (or find it, when no page is given). PDF only. */
   quote?: string | null;
+  /** Scale for the formats this component draws itself (see isZoomableAttachment); 1 = fit. */
+  zoom?: number;
+}
+
+/** Whether AttachmentPreview can scale this file. PDFs are left out: the browser's own viewer has
+ * its own zoom, and the cited-page view is fixed to the page width. */
+export function isZoomableAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  return isImageAttachment(attachment) || isDocxAttachment(attachment) || isXlsxAttachment(attachment) || isLegacyDocAttachment(attachment);
 }
 
 // xlsx-preview's genColor() (src/CSSStyles/inline.ts) converts a cell's ARGB font/fill color
@@ -65,7 +73,7 @@ function fixTransparentCellColors(html: string): string {
  * inline Documents preview, so neither has to duplicate the fetch/render logic below. Fills its
  * parent's height — the caller decides whether that's a modal's fixed h-[80vh] body or a
  * resizable sidebar's available height. */
-export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, quote }: AttachmentPreviewProps) {
+export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, quote, zoom = 1 }: AttachmentPreviewProps) {
   const { t } = useTranslation("homepage");
   const { t: tTerminal } = useTranslation("terminal");
   const [inlineFailed, setInlineFailed] = useState(false);
@@ -302,8 +310,8 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
         </div>
       ) : null}
       {canInlinePreview && isImage ? (
-        <div className="h-full p-4">
-          <div className="relative h-full w-full">
+        <div className="h-full overflow-auto p-4">
+          <div className="relative" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}>
             {/* `fill` because an attachment's dimensions aren't known up front; `unoptimized` because
              * the src is a presigned or token-proxied URL for a private file, which Next's image
              * optimizer can't (and shouldn't) fetch — the browser loads it directly, as before. */}
@@ -384,7 +392,7 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
            * narrow sidebar that just read as a mismatched solid-color box sitting behind the
            * document — plain white here instead, same as xlsx's wrapper below. Hidden rather
            * than unmounted while loading so the ref stays attached for renderAsync to target. */}
-          <div ref={docxContainerRef} className={docxLoading ? "hidden" : "mx-auto max-w-3xl"} />
+          <div ref={docxContainerRef} style={{ zoom }} className={docxLoading ? "hidden" : "mx-auto max-w-3xl"} />
         </div>
       ) : canXlsxPreview ? (
         <div className="flex h-full flex-col">
@@ -433,7 +441,7 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
                * and otherwise inherits whatever this app's own (possibly dark-mode) text color
                * is, rendering invisible against the forced-white background below. */}
               <div className="min-h-0 flex-1 overflow-auto bg-white p-4 text-black sm:p-8">
-                <div dangerouslySetInnerHTML={{ __html: xlsxSheets?.[activeSheetIndex] ?? "" }} />
+                <div style={{ zoom }} dangerouslySetInnerHTML={{ __html: xlsxSheets?.[activeSheetIndex] ?? "" }} />
               </div>
             </>
           )}
@@ -450,7 +458,7 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
             // (see DocumentSvc.getTextPreview on the backend), so this is a plain text dump
             // rather than docx-preview's paginated rendering. whitespace-pre-wrap keeps the
             // extractor's own line breaks instead of collapsing them like normal HTML text flow.
-            <p className="mx-auto max-w-3xl whitespace-pre-wrap text-sm text-neutral-900">{docText}</p>
+            <p style={{ zoom }} className="mx-auto max-w-3xl whitespace-pre-wrap text-sm text-neutral-900">{docText}</p>
           )}
         </div>
       ) : (
