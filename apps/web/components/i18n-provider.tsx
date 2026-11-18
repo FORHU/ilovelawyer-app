@@ -3,21 +3,28 @@
 import { useEffect } from "react"
 import { I18nextProvider } from "react-i18next"
 import i18n from "@/lib/i18n/i18n"
-import { isSupportedLanguage } from "@/lib/i18n/languages"
+import { getTenantCodeConfig } from "@/config/tenant-codes"
+import { DEFAULT_LANGUAGE, isSupportedLanguage } from "@/lib/i18n/languages"
+import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 import { getStoredLanguage, useLanguageStore } from "@/lib/store/language.store"
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
+export function I18nProvider({ children, tenantCode }: { children: React.ReactNode; tenantCode?: TenantCode | null }) {
   const language = useLanguageStore((state) => state.language)
   const setLanguage = useLanguageStore((state) => state.setLanguage)
 
   // Reconciles against the persisted Language Preference once, client-only, after
   // the first render — keeps the server-rendered English markup and the client's
-  // first render in agreement, then switches if the user had picked something else.
+  // first render in agreement, then switches if the user had picked something else. A visitor
+  // with no stored choice gets the host tenant's default language (Korean on the KR site); that
+  // default is not written to storage, so it never reads as a choice the visitor made.
   useEffect(() => {
     const stored = getStoredLanguage()
-    if (isSupportedLanguage(stored) && stored !== language) {
-      setLanguage(stored)
+    if (isSupportedLanguage(stored)) {
+      if (stored !== language) setLanguage(stored)
+      return
     }
+    const tenantDefault = tenantCode ? getTenantCodeConfig(tenantCode).defaultLanguage : DEFAULT_LANGUAGE
+    if (tenantDefault !== language) useLanguageStore.setState({ language: tenantDefault })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

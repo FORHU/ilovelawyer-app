@@ -16,6 +16,12 @@ import { UkTerminalShowcaseSection } from "@/components/landing/uk/terminal-show
 import { UkConsultationSection } from "@/components/landing/uk/consultation-section";
 import { UkFirmsSection } from "@/components/landing/uk/firms-section";
 import { UkLandingFooter } from "@/components/landing/uk/footer";
+import { KrHeroSection } from "@/components/landing/kr/hero-section";
+import { KrFirmQuoteSection } from "@/components/landing/kr/firm-quote-section";
+import { KrTerminalShowcaseSection } from "@/components/landing/kr/terminal-showcase-section";
+import { KrConsultationSection } from "@/components/landing/kr/consultation-section";
+import { KrFirmsSection } from "@/components/landing/kr/firms-section";
+import { KrLandingFooter } from "@/components/landing/kr/footer";
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint";
 import { getRequestOrigin } from "@/lib/tenant-code/get-request-origin";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -45,11 +51,15 @@ const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
     description:
       "Case management, AI consultation with cited Philippine jurisprudence, and a Legal Terminal built for practicing lawyers.",
   },
+  KR: {
+    title: "ilovelawyer 코리아 — 변호사를 위한 AI 리걸 인텔리전스",
+    description: "사건 관리, 국내 판례·법령을 인용하는 AI 자문, 그리고 변호사를 위해 만든 리걸 터미널.",
+  },
 };
 
 // ISO 3166-1 alpha-2, per schema.org's `areaServed` convention — not the tenant code itself
 // ("UK" isn't the ISO country code; "GB" is).
-const AREA_SERVED: Record<TenantCode, string> = { UK: "GB", PH: "PH" };
+const AREA_SERVED: Record<TenantCode, string> = { UK: "GB", PH: "PH", KR: "KR" };
 
 // This is a SaaS product used BY lawyers, not a provider of legal services to the public —
 // deliberately `SoftwareApplication`, not schema.org's `LegalService` type, so the structured
@@ -91,6 +101,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = headersList.get("host") ?? "";
   const protocol = protocolForHost(host);
   const ukUrl = `${protocol}://${hostForTenantCode("UK", host)}/`;
+  const krUrl = `${protocol}://${hostForTenantCode("KR", host)}/`;
   const phUrl = `${protocol}://${hostForTenantCode("PH", host)}/`;
 
   return {
@@ -105,6 +116,7 @@ export async function generateMetadata(): Promise<Metadata> {
       languages: {
         "en-GB": ukUrl,
         "en-PH": phUrl,
+        "ko-KR": krUrl,
         // Tells Google which version to fall back to for a searcher whose locale matches
         // neither annotated variant — points at PH since getTenantCodeConfig() already
         // treats PH as the display default when a tenant is unresolved.
@@ -189,6 +201,29 @@ export default async function LandingPage() {
             <DeveloperCredit />
           </main>
           <UkLandingFooter />
+        </ScrollSmootherProvider>
+      </div>
+    );
+  }
+
+  if (tenantCode === "KR") {
+    return (
+      <div className="flex flex-col min-h-screen w-full bg-background">
+        {jsonLdScript}
+        <LandingNavbar />
+        <div id="footer-reveal-portal-target" />
+        <ScrollSmootherProvider>
+          <main className="flex-1 pointer-events-auto">
+            <KrHeroSection />
+            <CapabilitiesSection />
+            {SHOW_TESTIMONIALS && <KrFirmQuoteSection />}
+            <KrTerminalShowcaseSection />
+            <KrConsultationSection />
+            <KrFirmsSection />
+            {faqSection}
+            <DeveloperCredit />
+          </main>
+          <KrLandingFooter />
         </ScrollSmootherProvider>
       </div>
     );

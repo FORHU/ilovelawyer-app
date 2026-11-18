@@ -46,7 +46,7 @@ export function phoneProblem(v: string): string | null {
   return digits < PHONE_MIN_DIGITS || digits > PHONE_MAX_DIGITS ? `Enter a phone number of ${PHONE_MIN_DIGITS} to ${PHONE_MAX_DIGITS} digits.` : null;
 }
 
-export function postcodeProblem(v: string, country: "UK" | "PH" | null | undefined): string | null {
+export function postcodeProblem(v: string, country: "UK" | "PH" | "KR" | null | undefined): string | null {
   const value = v.trim().toUpperCase();
   if (!value) return null;
   if (country === "UK") return UK_POSTCODE.test(value) ? null : "Enter a UK postcode, e.g. SW1A 1AA.";

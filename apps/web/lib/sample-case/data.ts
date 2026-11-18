@@ -404,7 +404,12 @@ const UK_CASE: SampleCase = {
   },
 }
 
-const SAMPLE_CASES: Record<TenantCode, SampleCase> = { PH: PH_CASE, UK: UK_CASE }
+const SAMPLE_CASES: Record<TenantCode, SampleCase> = {
+  PH: PH_CASE,
+  UK: UK_CASE,
+  // No Korean sample case yet; PH is the display default (see sampleCaseFor).
+  KR: PH_CASE,
+}
 
 /** The sample case for the user's tenant. PH when it isn't known yet, matching
  * getTenantCodeConfig's display default. */

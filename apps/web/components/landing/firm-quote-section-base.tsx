@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
+import { copyContext } from "@/lib/landing/copy-context";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render identical markup/motion here too (see hero-section-base.tsx for why
@@ -22,7 +23,7 @@ const AUTOPLAY_MS = 6000;
 
 export function FirmQuoteSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
+  const tCtx = copyContext(tenantCode);
   const firmWorkspaceImage = getTenantCodeConfig(tenantCode).landingAssets.firmWorkspace;
   const quotes = t("quotes.items", { ...tCtx, returnObjects: true }) as Quote[];
   const [displayed, setDisplayed] = useState(0);

@@ -10,11 +10,12 @@ import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import type { RelatedCase } from "@/lib/chat/mutations";
+import { copyContext, copyKey } from "@/lib/landing/copy-context";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render identical markup (see hero-section-base.tsx for why this is one component
+// PH, UK and KR render identical markup (see hero-section-base.tsx for why this is one component
 // instead of two hand-copied files), but each tenant gets its own sample case and citations via
-// the `_UK` locale keys.
+// the `_UK` / `_KR` locale keys.
 //
 // The citation card carries the `dark` class so it always uses the dark theme tokens, matching the
 // handoff (a permanently dark card, like the rest of the page's chrome) in both light and dark mode.
@@ -35,11 +36,10 @@ interface MockCitation {
 
 export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const isUk = tenantCode === "UK";
-  const tCtx = isUk ? { context: "UK" as const } : undefined;
+  const tCtx = copyContext(tenantCode);
   // Explicit `_UK` key rather than i18next's `context` option: context is not applied when the
   // value is a nested object, so it would silently keep returning the Philippine sample data.
-  const relatedCases = t(isUk ? "consultation.relatedCasesItems_UK" : "consultation.relatedCasesItems", {
+  const relatedCases = t(copyKey("consultation.relatedCasesItems", tenantCode), {
     returnObjects: true,
   }) as MockCitation[];
   const entries: RelatedCase[] = relatedCases.map((c) => ({

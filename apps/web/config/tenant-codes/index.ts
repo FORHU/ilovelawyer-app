@@ -2,12 +2,14 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 import type { TenantCodeConfig } from "./types"
 import { phTenantCodeConfig } from "./ph"
 import { ukTenantCodeConfig } from "./uk"
+import { krTenantCodeConfig } from "./kr"
 
 export type { TenantCodeConfig } from "./types"
 
 const CONFIGS: Record<TenantCode, TenantCodeConfig> = {
   PH: phTenantCodeConfig,
   UK: ukTenantCodeConfig,
+  KR: krTenantCodeConfig,
 }
 
 /** Components should prefer `getTenantCodeConfig(tenantCode).ui.xyz` over inline

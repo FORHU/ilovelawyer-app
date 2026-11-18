@@ -6,15 +6,18 @@ import { useTranslation } from "react-i18next";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { EASE_EXPO_OUT, LANDING_DURATIONS, LANDING_STAGGERS } from "@/lib/landing/motion-tokens";
 import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
+import { copyContext } from "@/lib/landing/copy-context";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render identical hero markup/motion, differing only in tenant asset paths and
+// PH, UK and KR render identical hero markup/motion, differing only in tenant asset paths and
 // the i18next context suffix on copy keys — kept as one component (per redesign handoff
 // §2 Hero) rather than duplicated across ph/ and uk/, since the kinetic-type animation and
 // slide-progression logic below is exactly the kind of thing that drifts out of sync between
 // two hand-copied files.
 
 const SLIDE_KEYS = ["slideOne", "slideTwo", "slideThree"] as const;
+// How long a still-image slide (a tenant with no hero videos) stays up before the next one.
+const IMAGE_SLIDE_MS = 7000;
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#221f1a]";
 
 // The animated slide headlines below are decoration (they rotate, and only the first slide is in
@@ -28,6 +31,10 @@ const HERO_H1: Record<TenantCode, { heading: string; lede: string }> = {
   UK: {
     heading: "ilovelawyer UK: AI legal intelligence for lawyers",
     lede: "Case management, AI consultation with cited UK precedent, and the Legal Terminal.",
+  },
+  KR: {
+    heading: "ilovelawyer 코리아: 변호사를 위한 AI 리걸 인텔리전스",
+    lede: "사건 관리, 국내 판례·법령을 인용하는 AI 자문, 그리고 리걸 터미널.",
   },
 };
 
@@ -53,14 +60,16 @@ const lineVariants = {
 
 export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" } : undefined;
+  const tCtx = copyContext(tenantCode);
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const { heroVideos, heroPosters } = getTenantCodeConfig(tenantCode).landingAssets;
+  const hasVideos = !!heroVideos;
 
   // Loads/restarts the active slide's video. With reduced motion on, nothing autoplays.
   useEffect(() => {
+    if (!hasVideos) return;
     const active = videoRefs.current[index];
     if (!active) return;
     videoRefs.current.forEach((v, i) => {
@@ -71,33 +80,59 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
     // The browser may refuse or interrupt autoplay (power saving, a background tab, autoplay
     // policy) — the slide's poster stays up, so that's not an error worth surfacing.
     if (!reduce) active.play().catch(() => {});
-  }, [index, reduce]);
+  }, [index, reduce, hasVideos]);
+
+  // Image slides have no "ended" event to advance on, so they move on a timer instead (not at all
+  // with reduced motion, where the visitor uses the next button).
+  useEffect(() => {
+    if (hasVideos || reduce) return;
+    const timer = setTimeout(() => setIndex((i) => (i + 1) % SLIDE_KEYS.length), IMAGE_SLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [index, hasVideos, reduce]);
 
   const advance = () => setIndex((i) => (i + 1) % SLIDE_KEYS.length);
 
   return (
     <section id="hero" className="relative h-[92dvh] min-h-[620px] flex items-end overflow-hidden bg-[#221f1a]">
-      {heroVideos.map((src, i) => (
-        <motion.div
-          key={src}
-          className="absolute inset-0"
-          animate={{ opacity: index === i ? 1 : 0 }}
-          transition={{ duration: reduce ? 0 : LANDING_DURATIONS.heroBgCrossfade, ease: "easeInOut" }}
-        >
-          <video
-            ref={(el) => {
-              videoRefs.current[i] = el;
-            }}
-            src={src}
-            poster={heroPosters[i]}
-            muted
-            playsInline
-            preload={i === 0 ? "auto" : "metadata"}
-            onEnded={reduce ? undefined : advance}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        </motion.div>
-      ))}
+      {heroVideos
+        ? heroVideos.map((src, i) => (
+            <motion.div
+              key={src}
+              className="absolute inset-0"
+              animate={{ opacity: index === i ? 1 : 0 }}
+              transition={{ duration: reduce ? 0 : LANDING_DURATIONS.heroBgCrossfade, ease: "easeInOut" }}
+            >
+              <video
+                ref={(el) => {
+                  videoRefs.current[i] = el;
+                }}
+                src={src}
+                poster={heroPosters[i]}
+                muted
+                playsInline
+                preload={i === 0 ? "auto" : "metadata"}
+                onEnded={reduce ? undefined : advance}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </motion.div>
+          ))
+        : heroPosters.map((src, i) => (
+            <motion.div
+              key={src}
+              className="absolute inset-0"
+              animate={{ opacity: index === i ? 1 : 0 }}
+              transition={{ duration: reduce ? 0 : LANDING_DURATIONS.heroBgCrossfade, ease: "easeInOut" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- a full-bleed hero still; next/image would add a layout wrapper */}
+              <img
+                src={src}
+                alt=""
+                fetchPriority={i === 0 ? "high" : "auto"}
+                loading={i === 0 ? "eager" : "lazy"}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </motion.div>
+          ))}
 
       {/* Two scrims (handoff §2): a full-bleed gradient for text legibility, plus a bottom
           fade that melts the hero into the black section below with no visible seam. */}

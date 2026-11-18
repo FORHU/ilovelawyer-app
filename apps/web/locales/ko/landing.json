@@ -18,16 +18,25 @@
     "slideOne": {
       "line1": "사건이",
       "line2": "명확해지는 곳",
+      "line1_KR": "사건에,",
+      "line2_KR": "명확함을",
+      "subtext_KR": "AI 자문은 작성되는 즉시 스트리밍되며, 인용된 국내 판례와 법령이 함께 제시됩니다.",
       "subtext": "AI 상담은 작성되는 즉시 스트리밍되며, 인용된 판례가 함께 제시됩니다."
     },
     "slideTwo": {
       "line1": "당신의 사건들을,",
       "line2": "한눈에 관리하세요",
+      "line1_KR": "모든 사건을,",
+      "line2_KR": "한눈에",
+      "subtext_KR": "리걸 터미널은 최대 열아홉 가지 사건 정보 패널을 원하는 대로 배치합니다.",
       "subtext": "리걸 터미널은 열아홉 가지 사건 정보 패널을 원하는 대로 배치합니다."
     },
     "slideThree": {
       "line1": "변호사와 AI가",
       "line2": "만나는 곳",
+      "line1_KR": "변호사와",
+      "line2_KR": "AI가 만나는 곳",
+      "subtext_KR": "사건 워크스페이스는 자료, 대화, 작업물을 한 화면에 모아둡니다.",
       "subtext": "Case Workspace는 자료, 채팅, 결과물을 하나의 화면에 모아둡니다."
     },
     "slideLabel": "슬라이드 {{number}}",
@@ -87,6 +96,237 @@
     "heading": "하나의 워크스페이스, 원하는 대로 배치하세요",
     "body": "리걸 터미널은 스스로 배치하는 소송 조종석입니다. 열아홉 가지 패널 유형을 격자에 고정되지 않고 자유롭게 끌어다 놓고 크기를 조절할 수 있습니다. 하나, 둘, 넷, 여섯 개의 패널 중 원하는 구성으로 시작한 뒤, 나만의 레이아웃을 저장하고 어떤 기기에서든 불러오세요.",
     "cta": "터미널 열기",
+    "categories": {
+      "all": "전체",
+      "facts": "사실관계",
+      "law": "법리",
+      "strategy": "전략",
+      "risk": "리스크",
+      "team": "팀"
+    },
+    "cards": {
+      "command": "사건 헤더, 다음 기일, 리스크 체크리스트와 다음 할 일.",
+      "evidence": "출처 링크가 있는 서면과 이를 뒷받침하는 사건 타임라인.",
+      "witnesses": "역할, 연락처, 메모가 있는 증인 명단.",
+      "caseReconstruction": "AI가 작성하고 직접 수정할 수 있는 시간순 사건 서사.",
+      "law": "사건의 근거가 되는 법령, 판례, 인용.",
+      "legalIssues": "사건이 제기하는 법적 쟁점과 청구원인.",
+      "decisions": "각 답변의 이유: 규칙, 찬반 증거, 결론을 바꿀 요인.",
+      "procedure": "사건을 궤도에 올려 두는 기한과 제출 체크리스트.",
+      "mindMap": "상담에서 생성된 마인드맵 형태의 사건 전략.",
+      "attackStrategy": "사건을 앞으로 이끄는 적극적 수단.",
+      "defenseStrategy": "사건의 입장을 지키기 위한 수단.",
+      "theories": "각 변호사의 사건 이론을 합치지 않고 나란히 비교.",
+      "audioOverview": "요청 시 생성되는 두 진행자의 음성 사건 토론.",
+      "redTeam": "요청 시 생성되는 상대방 대리인의 예상 공격.",
+      "weaknesses": "사건의 설득력을 해치는 요소.",
+      "strengths": "사건의 설득력을 높이는 요소.",
+      "damages": "항목별 청구 손해와 구제, 누적 합계.",
+      "chat": "질문하면 사건에 근거한 답변을 받습니다.",
+      "chatResponse": "사건 질문에 대한 전체 답변과 근거 출처."
+    },
+    "titles_KR": {
+      "command": "사건 요약",
+      "evidence": "증거·타임라인",
+      "witnesses": "증인",
+      "caseReconstruction": "사건 재구성",
+      "law": "법령·판례",
+      "legalIssues": "쟁점",
+      "decisions": "판단 근거",
+      "procedure": "소송 전략",
+      "mindMap": "전략 맵",
+      "attackStrategy": "공격 전략",
+      "defenseStrategy": "방어 전략",
+      "theories": "이론",
+      "audioOverview": "오디오 브리핑",
+      "redTeam": "레드팀 분석",
+      "weaknesses": "취약점",
+      "strengths": "강점",
+      "damages": "손해·구제",
+      "chat": "AI 법률 자문",
+      "chatResponse": "AI 법률 응답"
+    },
+    "mocks_KR": {
+      "caseSummary": {
+        "partyOne": "신청인",
+        "partyOneName": "김민지",
+        "partyTwo": "피신청인",
+        "partyTwoName": "㈜한빛물류",
+        "claims": "청구",
+        "claimsValue": "부당해고 구제신청 · 보복성 해고",
+        "riskRegister": "리스크 등록부 · 3",
+        "add": "+ 추가",
+        "risks": [
+          {"level": "높음", "percent": 78, "text": "이유서 제출 기한이 계산만 되었을 뿐 노동위원회 확인 전"},
+          {"level": "중간", "percent": 54, "text": "8/4~8/11 이의 서면 없음"},
+          {"level": "낮음", "percent": 22, "text": "박 팀장 진술서 미확보"}
+        ]
+      },
+      "evidenceTimeline": {
+        "documents": "서면 · 6",
+        "hint": "행을 클릭하세요",
+        "docs": [
+          {"name": "해고통지서.pdf", "status": "완료"},
+          {"name": "구제신청서-0412.pdf", "status": "대기"},
+          {"name": "출퇴근기록-2018-2026.xlsx", "status": "완료"}
+        ],
+        "timeline": "타임라인",
+        "events": [
+          {"date": "7/28", "tone": "gold", "text": "직장 내 괴롭힘 신고 접수."},
+          {"date": "8/4", "tone": "red", "text": "사용자가 이 날부터 무단결근을 주장."},
+          {"date": "8/11", "tone": "red", "text": "무단결근을 이유로 한 해고통지서 발송."}
+        ]
+      },
+      "redTeam": {
+        "intro": "㈜한빛물류 측 최선의 논리, 영향도 순.",
+        "arguments": [
+          {"title": "8/4부터 무단결근", "strength": "강함", "note": "외형상 정당한 해고 사유"},
+          {"title": "8/4~8/11 이의 서면 없음", "strength": "강함", "note": "묵시적 수용으로 해석"},
+          {"title": "8/6 이메일은 해석이 엇갈림", "strength": "보통", "note": "양측 모두에 양날의 검"}
+        ]
+      },
+      "chat": {
+        "anchored": "고정됨",
+        "thread": "보복성 해고 ▾",
+        "scope": "● 사건 + 패널 5개",
+        "question": "무단결근 주장을 약화시키는 모순점은?",
+        "source": "ilovelawyer · 증거·타임라인, 모순점에서",
+        "answer": "두 가지입니다. 해고통지서는 8월 4일부터 무단결근이라고 하지만, 출퇴근기록에는 8월 8일까지 출근이 남아 있습니다. 또 인사팀은 8월 6일 이메일로 면담 참석을 요청했습니다.",
+        "chips": ["증거 ↗"],
+        "placeholder": "이 사건에 대해 질문하세요…",
+        "send": "보내기 ↗"
+      },
+      "chatResponse": {
+        "status": "근거 3건 기반",
+        "question": "사용자가 무단결근을 해고 사유로 계속 주장할 수 있나요?",
+        "source": "ilovelawyer · 증거·타임라인, 법령·판례에서",
+        "answer": "어렵습니다. 무단결근이 인정되려면 정당한 사유 없는 결근이 입증되어야 하는데, 출퇴근기록에는 8월 8일까지 출근 사실이 남아 있고 해고는 신고 후 14일 만에 이루어졌습니다.",
+        "citationsLabel": "근거",
+        "citations": [
+          {"title": "출퇴근기록-2018-2026.xlsx", "note": "증거 · HB-PR-000015", "status": "뒷받침"},
+          {"title": "근로기준법 제27조", "note": "법령 · 해고사유 서면통지", "status": "법령"},
+          {"title": "근로기준법 제76조의3", "note": "법령 · 신고자 불리한 처우 금지", "status": "법령"}
+        ]
+      }
+    },
+    "samples_KR": {
+      "witnesses": {
+        "intro": "구제신청서에 기재된 증인.",
+        "rows": [
+          {"title": "김민지", "note": "신청인 · 8/6 면담", "status": "준비"},
+          {"title": "정 인사팀장", "note": "피신청인 측 · 이메일 발신", "status": "적대적"},
+          {"title": "박 팀장", "note": "현장 관리자 · 8/4~8/8", "status": "미확보"}
+        ]
+      },
+      "caseReconstruction": {
+        "intro": "제출 서면과 메타데이터로 재구성.",
+        "rows": [
+          {"title": "7/28 · 직장 내 괴롭힘 신고", "note": "HB-HR-000870", "status": "확인"},
+          {"title": "8/4 · 무단결근 주장", "note": "해고통지서에만 기재", "status": "다툼"},
+          {"title": "8/6 · 인사팀 면담 요청", "note": "HB-EM-004417", "status": "확인"},
+          {"title": "8/11 · 해고 효력 발생", "note": "무단결근 사유", "status": "확인"}
+        ]
+      },
+      "law": {
+        "intro": "부당해고 및 절차 위반 쟁점.",
+        "rows": [
+          {"title": "근로기준법 제23조", "note": "해고 등의 제한", "status": "법령"},
+          {"title": "근로기준법 제27조", "note": "해고사유 서면통지", "status": "부합"},
+          {"title": "근로기준법 제76조의3", "note": "괴롭힘 신고자 불리한 처우 금지", "status": "부합"},
+          {"title": "취업규칙 제41조", "note": "무단결근 3일 이상 징계", "status": "불리"}
+        ]
+      },
+      "legalIssues": {
+        "intro": "노동위원회 판단 쟁점.",
+        "rows": [
+          {"title": "무단결근이 입증되었는가?", "note": "사용자에게 입증책임", "status": "다툼"},
+          {"title": "서면통지 요건을 충족했는가?", "note": "징계 절차 기록 없음", "status": "서면 준비"},
+          {"title": "신고 14일 후 해고는 보복인가?", "note": "7/28 → 8/11", "status": "미정"}
+        ]
+      },
+      "decisions": {
+        "intro": "최근 답변의 근거 · 규칙, 증거, 배제된 대안",
+        "rows": [
+          {"title": "무단결근은 입증되지 않았다", "note": "근거: 8/8까지 출근 기록", "status": "유리"},
+          {"title": "서면통지 요건을 충족하지 못했다", "note": "징계 절차 기록 없음", "status": "유리"},
+          {"title": "대안: 정당한 징계해고", "note": "배제 · 무단결근 입증 없음", "status": "배제"}
+        ]
+      },
+      "procedure": {
+        "intro": "타임라인을 사실관계의 중심으로.",
+        "rows": [
+          {"title": "구제신청서 접수", "note": "8/20 접수 완료", "status": "완료"},
+          {"title": "이유서 제출 기한 확인", "note": "노동위원회 확인", "status": "진행"},
+          {"title": "출퇴근기록 사실확인서 확보", "note": "인사팀", "status": "진행"},
+          {"title": "인사팀 이메일 전체 제출 요구", "note": "HB-EM 시리즈", "status": "진행"}
+        ]
+      },
+      "mindMap": {
+        "intro": "김민지 v. ㈜한빛물류 · 구조 보기",
+        "rows": [
+          {"title": "법적 근거", "note": "해고 제한 · 서면통지 · 보복", "status": "노드"},
+          {"title": "핵심 사실", "note": "신고 · 인사팀 이메일 · 출퇴근기록", "status": "노드"},
+          {"title": "구제", "note": "원직복직 · 임금상당액 · 금전보상", "status": "노드"},
+          {"title": "리스크", "note": "이의 서면 없음 · 박 팀장 진술", "status": "노드"}
+        ]
+      },
+      "attackStrategy": {
+        "intro": "9/24 심문기일 기준 순서.",
+        "rows": [
+          {"title": "출퇴근기록으로 무단결근 반박", "note": "사실확인서 미확보", "status": "보류"},
+          {"title": "서면통지 하자 주장", "note": "이유서 반영 준비 완료", "status": "준비"},
+          {"title": "신고 후 14일 해고를 보복으로", "note": "신고 접수 증빙 필요", "status": "작성 중"}
+        ]
+      },
+      "defenseStrategy": {
+        "intro": "사용자 측 예상 항변.",
+        "rows": [
+          {"title": "8/4부터 무단결근", "note": "8/8까지 출근 기록", "status": "대응"},
+          {"title": "8/6 이메일은 통상 업무", "note": "근로관계 존속을 전제", "status": "대응"},
+          {"title": "이의 서면 없음", "note": "신고가 해고보다 먼저", "status": "일부"}
+        ]
+      },
+      "theories": {
+        "intro": "2개의 이론을 나란히 · 합치지 않음",
+        "rows": [
+          {"title": "김서연 · 보복성 해고", "note": "신고 후 14일이라는 시점에 근거", "status": "이론"},
+          {"title": "이지은 · 정당한 이유 없음", "note": "8/8까지의 출퇴근기록에 근거", "status": "이론"},
+          {"title": "의견이 갈리는 지점", "note": "보복 의도를 입증해야 하는지", "status": "미정"}
+        ]
+      },
+      "audioOverview": {
+        "intro": "생성된 브리핑 · 3분 41초",
+        "rows": [
+          {"title": "rec-01-쟁점과-청구.mp3", "note": "00:00 – 01:02", "status": "완료"},
+          {"title": "rec-02-무단결근.mp3", "note": "01:02 – 02:30", "status": "완료"},
+          {"title": "rec-03-구제.mp3", "note": "02:30 – 03:41", "status": "갱신 필요"}
+        ]
+      },
+      "weaknesses": {
+        "intro": "드러날 시점 순.",
+        "rows": [
+          {"title": "8/4~8/11 이의 서면 없음", "note": "신고서에만 의존", "status": "중대"},
+          {"title": "박 팀장 진술서 미확보", "note": "출퇴근기록만 존재", "status": "중대"},
+          {"title": "출퇴근기록 사실확인서 없음", "note": "이유서 제출 전 필요", "status": "미해결"},
+          {"title": "불리한 판례 검색 미실행", "note": "인용 맵 미완성", "status": "미해결"}
+        ]
+      },
+      "strengths": {
+        "intro": "부당해고 주장을 뒷받침하는 사실.",
+        "rows": [
+          {"title": "8/8까지 출근 기록", "note": "HB-PR-000015", "status": "핵심"},
+          {"title": "인사팀의 8/6 이메일", "note": "HB-EM-004417", "status": "핵심"}
+        ]
+      },
+      "damages": {
+        "intro": "사실확인서 확보 전까지 잠정.",
+        "rows": [
+          {"title": "임금상당액", "note": "₩14,400,000", "status": "산정"},
+          {"title": "금전보상(원직복직 대신)", "note": "₩8,000,000", "status": "잠정"},
+          {"title": "위자료(민사 별소)", "note": "₩5,000,000", "status": "다툼"}
+        ]
+      }
+    },
     "panels": {
       "caseSummary": {
         "title": "사건 요약",
@@ -111,6 +351,14 @@
     "body": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 사건 번호 또는 R.A. 번호, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
     "body_UK": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 중립 인용 또는 판례집 인용, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
     "cta": "상담 시작하기",
+    "body_KR": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 법령과 판례가 사건번호, 조문 링크, 핵심 발췌문과 함께 옆에 표시되고 원문 대조가 끝난 인용은 별도로 표시됩니다. 서면을 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
+    "caseName_KR": "김민지 v. ㈜한빛물류",
+    "relatedCases_KR": "관련 법령·판례",
+    "relatedCasesItems_KR": [
+      {"title": "근로기준법 제27조", "citation": "해고사유 등의 서면통지", "snippet": "해고는 사유와 시기를 서면으로 통지해야 효력이 있습니다.", "vetted": true},
+      {"title": "근로기준법 제23조", "citation": "해고 등의 제한", "snippet": "사용자는 정당한 이유 없이 근로자를 해고하지 못합니다.", "vetted": false}
+    ],
+    "attachment_KR": "해고통지서.pdf",
     "caseName": "Reyes v. Northbridge Logistics",
     "caseName_UK": "Hughes v Northbridge Logistics Ltd",
     "relatedCases": "관련 사건",
@@ -130,6 +378,14 @@
     "teamsHeading": "로펌 및 팀",
     "teamsBody": "단독으로 활동하거나, Solo·Professional·Enterprise 세 가지 플랜 중 하나로 로펌을 만드세요. 이메일로 동료를 초대하고 소유자, 관리자, 구성원 중 역할을 지정할 수 있습니다. 되돌릴 수 없는 작업은 항상 먼저 확인을 요청하며, 소유자는 떠나기 전에 후임자를 지정해야 합니다.",
     "teamsCta": "팀 초대하기",
+    "jurisdictionsHeading_KR": "한국 실무에 맞춘 제품",
+    "jurisdictionsBody_KR": "조직마다 고유한 주소와 용어 체계를 가지며, 한국 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 대한민국 법에 맞게 구성되어 있습니다.",
+    "roster_KR": [
+      {"initials": "김", "name": "김서연 변호사", "email": "seoyeon@hangyeol.kr", "role": "owner", "you": true},
+      {"initials": "박", "name": "박준호", "email": "junho@hangyeol.kr", "role": "admin", "you": false},
+      {"initials": "이", "name": "이지은", "email": "jieun@hangyeol.kr", "role": "member", "you": false},
+      {"initials": "최", "name": "최민수", "email": "minsu@hangyeol.kr", "role": "member", "you": false, "pending": true}
+    ],
     "jurisdictionsHeading": "필리핀 실무에 맞춘 제품",
     "jurisdictionsBody": "조직마다 고유한 주소와 용어 체계를 가지며, 필리핀 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 필리핀 법에 맞게 구성되어 있습니다.",
     "jurisdictionsHeading_UK": "영국 실무에 맞춘 제품",
@@ -151,14 +407,17 @@
       "subtitle": "이 조직에 접근 권한이 있는 사람들입니다.",
       "organization": "조직",
       "orgName": "Cruz & Partners",
+      "orgName_KR": "법무법인 한결",
       "orgName_UK": "Sinclair & Wycombe LLP",
       "plan": "플랜",
       "planName": "Professional",
+      "planName_KR": "Professional",
       "planName_UK": "Enterprise",
       "you": "나",
       "pending": "대기 중",
       "invite": "구성원 초대",
       "invitePlaceholder": "colleague@lawfirm.ph",
+      "invitePlaceholder_KR": "colleague@lawfirm.kr",
       "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
       "sendInvite": "초대 보내기",
       "roles": {
@@ -193,6 +452,7 @@
         "heading": "관할권",
         "links": {
           "philippines": "필리핀",
+          "southKorea": "대한민국",
           "unitedKingdom": "영국"
         }
       },

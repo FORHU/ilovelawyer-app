@@ -10,5 +10,5 @@ import type { TenantCode } from "./resolve-host"
 export async function getTenantCodeHint(): Promise<TenantCode | null> {
   const headersList = await headers()
   const value = headersList.get("x-tenant-code")
-  return value === "PH" || value === "UK" ? value : null
+  return value === "PH" || value === "UK" || value === "KR" ? value : null
 }

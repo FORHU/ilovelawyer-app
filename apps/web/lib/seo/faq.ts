@@ -113,6 +113,8 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
     },
     ...SHARED,
   ],
+  // No KR-specific questions until the Korean product's capabilities are real.
+  KR: [...SHARED],
 }
 
 export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
@@ -122,6 +124,7 @@ export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
 const LEDE: Record<TenantCode, string> = {
   PH: "Short, direct answers about ilovelawyer Philippines: cited Philippine jurisprudence, the statutory code library, and how citations are checked.",
   UK: "Short, direct answers about ilovelawyer UK: cited UK precedent, live TNA and legislation.gov.uk search, and how deadlines are confirmed.",
+  KR: "Short, direct answers about ilovelawyer.",
 }
 
 export function getFaqLede(tenantCode: TenantCode): string {

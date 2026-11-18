@@ -47,6 +47,8 @@ export interface TenantCodeConfig {
   /** Display languages offered on this tenant's site (language menu, landing footer). Korean and
    * Tagalog serve the PH market; the UK site is English-only. */
   languages: readonly SupportedLanguage[]
+  /** The language a first-time visitor sees on this tenant's site (no stored choice yet). */
+  defaultLanguage: SupportedLanguage
   branding: {
     flag: string
   }
@@ -54,8 +56,11 @@ export interface TenantCodeConfig {
    * mock content belong in i18n (`_UK` context suffix); only asset paths live here,
    * following the same philosophy as `ui`. */
   landingAssets: {
-    heroVideos: [string, string, string]
-    /** Poster frames shown before each hero video's first frame decodes. */
+    /** Omitted for a tenant whose hero is still images: the posters below are then the slides,
+     * advanced on a timer. */
+    heroVideos?: [string, string, string]
+    /** Poster frames shown before each hero video's first frame decodes, or the slides
+     * themselves when there are no videos. */
     heroPosters: [string, string, string]
     firmWorkspace: string
   }

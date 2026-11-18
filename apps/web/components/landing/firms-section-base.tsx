@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
+import { copyContext } from "@/lib/landing/copy-context";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render identical markup (see hero-section-base.tsx for why this is one
+// PH, UK and KR render identical markup (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files) — differing only in i18next context.
 
 const ORGANIZATION_ROUTE = "/homepage/organization";
@@ -28,7 +29,7 @@ interface Member {
 
 export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
+  const tCtx = copyContext(tenantCode);
   const members = t("firms.roster", { ...tCtx, returnObjects: true }) as Member[];
   const [ref, y] = useScrollDrift([-20, 20]);
   const router = useRouter();

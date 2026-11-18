@@ -1,4 +1,4 @@
-export type TenantCode = "PH" | "UK"
+export type TenantCode = "PH" | "UK" | "KR"
 
 /**
  * Explicit hostname → Tenant code map. No substring/`.includes()` matching — an unrecognized
@@ -37,6 +37,13 @@ const HOST_TENANT_CODE_MAP: Record<string, TenantCode> = {
   "uk-local.ilovelawyer.com": "UK",
   "uk.ilovelawyer": "UK",
   "uk.localhost": "UK",
+  // KR omits `kr.ilovelawyer.com` and `kr.ilovelawyer.local`: the client app (ilovelawyer-client)
+  // already serves its Korea site from those two, so the lawyer app must not claim them.
+  "kr-dev.ilovelawyer.com": "KR",
+  "kr-dev.ilovelawyer.local": "KR",
+  "kr-local.ilovelawyer.com": "KR",
+  "kr.ilovelawyer": "KR",
+  "kr.localhost": "KR",
 }
 
 /** Strips a trailing `:port` (present on `Host` in local dev, e.g. `ph.ilovelawyer.local:3002`)
@@ -65,8 +72,8 @@ export function protocolForHost(host: string): "http" | "https" {
  * the browser is currently on, including the bare apex (no prefix to strip) and `app.` (no
  * longer exempt from the mismatch redirect — see app/(protected)/layout.tsx). */
 export function hostForTenantCode(tenantCode: TenantCode, currentHost: string): string {
-  const prefixMatch = currentHost.match(/^(?:ph|uk|app)(-dev|-local)?\./i)
+  const prefixMatch = currentHost.match(/^(?:ph|uk|kr|app)(-dev|-local)?\./i)
   const devSuffix = prefixMatch?.[1] ?? ""
-  const suffix = currentHost.replace(/^(?:ph|uk|app)(?:-dev|-local)?\./i, "")
+  const suffix = currentHost.replace(/^(?:ph|uk|kr|app)(?:-dev|-local)?\./i, "")
   return `${tenantCode.toLowerCase()}${devSuffix}.${suffix}`
 }
