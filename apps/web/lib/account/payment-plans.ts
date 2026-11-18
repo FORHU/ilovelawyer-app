@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 import { accountAiAllowanceKey } from "@/lib/account/ai-allowance"
+import type { Price } from "@/lib/money"
 
 // A lawyer's monthly subscription to one of their tenant's tiers (ilovelawyer-api's
 // PaymentPlanBillingSvc). The tiers are admin-edited per tenant, so they're always read from the API.
@@ -11,10 +12,12 @@ export interface PaymentPlan {
   /** What this tier is for — set by the admin, shown on the plan picker. */
   description: string | null
   level: number
-  /** Per month, in US dollars. */
-  feeUsd: number
-  /** The AI usage included each month, in dollars of token consumption. */
+  /** Per month, in the site's currency's smallest unit: USD on PH and UK, won on KR. */
+  price: Price
+  /** The AI usage included each month, in dollars of token consumption (on every site). */
   includedAllowanceUsd: number
+  /** The same AI usage in the site's currency, for display (₩14,000 on KR, $10 elsewhere). */
+  aiUsage: Price
   /** How many cases the account can own. 0 = no limit. */
   caseLimit: number
   /** Client requests (the UK client hand-off) the lawyer can take on per calendar month. 0 = no limit. */
@@ -44,7 +47,8 @@ export type PlanChangeKind = "UPGRADE" | "DOWNGRADE" | "KEEP"
 export interface PlanChangePreview {
   kind: PlanChangeKind
   planCode: string
-  /** Charged to the saved card now, for an upgrade (the prorated rest of this period); 0 otherwise. */
+  /** Charged to the saved card now, for an upgrade (the prorated rest of this period); 0 otherwise.
+   * In major units of `currency`: dollars, or whole won on KR. */
   amountDueNow: number
   currency: string
   /** When a downgrade takes effect (ISO); null for an upgrade, which is immediate. */

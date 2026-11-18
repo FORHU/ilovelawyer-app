@@ -1,5 +1,5 @@
 import { headers } from "next/headers"
-import type { TenantCode } from "./resolve-host"
+import { isTenantCode, type TenantCode } from "./resolve-host"
 
 /**
  * Server Component-only read of the `x-tenant-code` header proxy.ts already resolved from
@@ -10,5 +10,5 @@ import type { TenantCode } from "./resolve-host"
 export async function getTenantCodeHint(): Promise<TenantCode | null> {
   const headersList = await headers()
   const value = headersList.get("x-tenant-code")
-  return value === "PH" || value === "UK" ? value : null
+  return isTenantCode(value) ? value : null
 }

@@ -26,10 +26,24 @@ export function useAccountAiAllowanceQuery() {
   })
 }
 
+/** What a lawyer can top up on their site (ilovelawyer-api's AccountTopUpPricingSvc.terms): in the
+ * site's currency, major units — dollars on PH and UK, whole won on KR. */
+export interface AccountTopUpTerms {
+  currency: string
+  minAmount: number
+  maxAmount: number
+  /** The amounts offered as buttons. */
+  presets: number[]
+}
+
+/** A top-up's figures in the site's currency, major units. The AI usage it buys is counted in
+ * dollars inside the app (creditUsd), never shown to the lawyer. */
 export interface AccountTopUpQuote {
-  topUpAmountUsd: number
-  feeAmountUsd: number
-  totalChargedUsd: number
+  currency: string
+  topUpAmount: number
+  feeAmount: number
+  totalCharged: number
+  creditUsd: number
 }
 
 export type AccountTopUpStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "EXPIRED"
@@ -54,19 +68,29 @@ export interface AccountTopUpStatusResult extends AccountTopUpQuote {
 
 const STATUS_POLL_MS = 2000
 
-export function useAccountTopUpQuoteQuery(topUpAmountUsd: number | null) {
+export function useAccountTopUpTermsQuery(enabled: boolean) {
   return useQuery({
-    queryKey: ["account-topup", "quote", topUpAmountUsd],
-    queryFn: () => apiFetch<AccountTopUpQuote>("/api/account-topups/quote", { method: "POST", body: JSON.stringify({ topUpAmountUsd }) }),
-    enabled: topUpAmountUsd !== null && topUpAmountUsd > 0,
+    queryKey: ["account-topup", "terms"],
+    queryFn: () => apiFetch<AccountTopUpTerms>("/api/account-topups/terms"),
+    enabled,
+    staleTime: 5 * 60_000,
+  })
+}
+
+/** `topUpAmount` is in the site's currency, major units. */
+export function useAccountTopUpQuoteQuery(topUpAmount: number | null) {
+  return useQuery({
+    queryKey: ["account-topup", "quote", topUpAmount],
+    queryFn: () => apiFetch<AccountTopUpQuote>("/api/account-topups/quote", { method: "POST", body: JSON.stringify({ topUpAmount }) }),
+    enabled: topUpAmount !== null && topUpAmount > 0,
     retry: false,
   })
 }
 
 export function useStartAccountTopUpMutation() {
   return useMutation({
-    mutationFn: (topUpAmountUsd: number) =>
-      apiFetch<AccountTopUpStartResult>("/api/account-topups/checkout", { method: "POST", body: JSON.stringify({ topUpAmountUsd }) }),
+    mutationFn: (topUpAmount: number) =>
+      apiFetch<AccountTopUpStartResult>("/api/account-topups/checkout", { method: "POST", body: JSON.stringify({ topUpAmount }) }),
   })
 }
 

@@ -27,8 +27,8 @@
     "categories": {
       "jurisprudence": "판례",
       "republicActs": "공화국법",
-      "ukCaseLaw": "Case law",
-      "ukLegislation": "Legislation"
+      "ukCaseLaw": "판례",
+      "ukLegislation": "법령"
     },
     "resultCount": "결과: {{count}}",
     "resultRange": "{{from}}–{{to}}번째 결과",
@@ -43,9 +43,10 @@
     "notAvailable": "귀하의 조직에서는 법률 검색을 사용할 수 없습니다.",
     "filterCaseType": "사건 유형",
     "filterTopics": "주제",
+    "filterCourt": "법원",
     "filterAll": "전체",
     "filterDone": "완료",
-    "filterSelectedCount": "{{count}}개 선택됨",
+    "filterSelectedCount_other": "{{count}}개 선택됨",
     "loadMore": "더 보기",
     "pageFirst": "첫 페이지",
     "pagePrevious": "이전",
@@ -55,17 +56,17 @@
     "backToBrowse": "탐색으로 돌아가기",
     "openRecord": "판례 열기",
     "openAct": "법률 열기",
-    "filterCourt": "Court",
-    "openJudgment": "Open judgment",
-    "openLegislation": "Open legislation",
-    "ponenteLabel": "Ponente",
-    "judgeLabel": "Judge",
-    "searchOnlyHint": "Search above to find a specific record.",
-    "ukLegislationSearchHint": "Search by title to find a UK Act or Statutory Instrument, e.g. \"Data Protection Act 2018\" or \"Equality Act\".",
-    "ukTitle": "Search UK case law & legislation",
-    "ukSubtitle": "Browse judgments from the UK courts and tribunals, or search UK Acts and Statutory Instruments by title or citation.",
-    "ukSearchAriaLabel": "Search UK case law and legislation",
-    "ukSearchPlaceholder": "Case name, neutral citation, or Act title…"
+    "openJudgment": "판결 열기",
+    "openLegislation": "법령 열기",
+    "ponenteLabel": "주심",
+    "judgeLabel": "판사",
+    "searchOnlyHint": "특정 자료를 찾으려면 위에서 검색하세요.",
+    "ukLegislationSearchHint": "제목으로 영국 법률(Act) 또는 위임입법(Statutory Instrument)을 검색하세요. 예: \"Data Protection Act 2018\" 또는 \"Equality Act\".",
+    "ukTitle": "영국 판례 및 법령 검색",
+    "ukSubtitle": "영국 법원과 심판소의 판결을 찾아보거나, 제목이나 인용으로 영국 법률과 위임입법을 검색하세요.",
+    "ukSearchAriaLabel": "영국 판례 및 법령 검색",
+    "ukSearchPlaceholder": "Case name, neutral citation, or Act title…",
+    "filterSelectedCount": "{{count}}개 선택됨"
   },
   "documents": {
     "pageTitle": "판례 문서",
@@ -137,8 +138,34 @@
     "noSummary": "이 문서에 저장된 요약이 아직 없습니다.",
     "sheetTitle": "인용 미리보기"
   },
+  "citationBadge": {
+    "law": "법령",
+    "jurisprudence": "판례"
+  },
+  "citationRank": {
+    "high": "질문과 관련성 높음",
+    "medium": "질문과 관련성 보통",
+    "low": "질문과 관련성 낮음",
+    "srPrefix": "관련성: ",
+    "relevanceLabel": "관련성",
+    "importanceLabel": "중요도",
+    "relevance": {
+      "high": "질문에 정확히 해당함",
+      "medium": "질문의 일부와 관련됨",
+      "low": "일반적인 배경 자료로, 사실관계와는 무관함"
+    },
+    "importance": {
+      "high": "자문하는 변호사라면 반드시 읽어야 함",
+      "medium": "시간이 허락하면 읽어볼 만함",
+      "low": "이 사실관계에 대한 자문에는 필요하지 않음"
+    },
+    "disclaimer": "질문을 기준으로 한 읽기 보조 자료입니다. 자문 내용이나 근거 자료가 정확한지는 확인하지 않습니다."
+  },
   "lawDoc": {
     "back": "라이브러리로 돌아가기",
+    "sectionHeading": "제{{section}}조",
+    "viewWholeAct": "법령 전체 보기",
+    "viewSection": "제{{section}}조로 돌아가기",
     "loading": "문서 불러오는 중…",
     "error": "이 문서를 불러올 수 없습니다. 다시 시도해 주세요.",
     "viewSource": "출처 보기",

@@ -6,10 +6,9 @@ import { toast } from "sonner";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { useChangePlanMutation, usePlanChangePreviewQuery, type PaymentPlan } from "@/lib/account/payment-plans";
-
-function formatMoney(amount: number, currency: string): string {
-  return amount.toLocaleString("en-US", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { useAuthStore } from "@/lib/store/auth.store";
+import { formatAmount, formatPrice } from "@/lib/money";
 
 /**
  * Confirming a change to a lawyer's paid plan (ilovelawyer-api's PaymentPlanBillingSvc.changePlan),
@@ -22,6 +21,9 @@ export function PlanChangeDialog({ target, current, onClose }: { target: Payment
   const { t, i18n } = useTranslation("onboarding");
   const preview = usePlanChangePreviewQuery(target?.code ?? null);
   const change = useChangePlanMutation();
+  // Amounts in the plan's own currency (won on KR, with no decimals), grouped the site's way.
+  const locale = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).locale;
+  const formatMoney = (amount: number, currency: string) => formatAmount(amount, currency, { locale, cents: true });
   const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(i18n.language, { day: "numeric", month: "long", year: "numeric" }) : "");
 
   function close() {
@@ -48,7 +50,7 @@ export function PlanChangeDialog({ target, current, onClose }: { target: Payment
 
   const data = preview.data;
   const title = !data || !target ? "" : data.kind === "UPGRADE" ? t("planChange.upgradeTitle", { plan: target.name }) : data.kind === "DOWNGRADE" ? t("planChange.downgradeTitle", { plan: target.name }) : t("planChange.keepTitle", { plan: target.name });
-  const fee = target ? formatMoney(target.feeUsd, "USD") : "";
+  const fee = target ? formatPrice(target.price, { locale }) : "";
 
   return (
     <Dialog open={!!target} onOpenChange={(open) => !open && !change.isPending && close()}>

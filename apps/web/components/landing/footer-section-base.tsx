@@ -9,7 +9,7 @@ import { useTenantLanguages } from "@/lib/i18n/use-tenant-languages";
 import { useLanguageStore } from "@/lib/store/language.store";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render the same footer shell (see hero-section-base.tsx for why this is one
+// PH, UK and KR render the same footer shell (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files), but their column links genuinely differ
 // (different jurisdiction, different support email) —
 // so, unlike the other merged sections, this one branches on real per-tenant data rather
@@ -71,12 +71,33 @@ const UK_COLUMNS = [
   PH_COLUMNS[4],
 ] as const;
 
+// No help-centre link on KR yet: there is no KR support address to point it at.
+const KR_COLUMNS = [
+  PH_COLUMNS[0],
+  PH_COLUMNS[1],
+  { columnKey: "jurisdictions", links: [{ key: "southKorea", href: "#business" }] },
+  {
+    columnKey: "resources",
+    links: [
+      { key: "documentUpload", href: "#capabilities" },
+      { key: "calendar", href: "#capabilities" },
+    ],
+  },
+  PH_COLUMNS[4],
+] as const;
+
+const COLUMNS: Record<TenantCode, typeof PH_COLUMNS | typeof UK_COLUMNS | typeof KR_COLUMNS> = {
+  PH: PH_COLUMNS,
+  UK: UK_COLUMNS,
+  KR: KR_COLUMNS,
+};
+
 export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
   // The Company links (About, Careers, Terms, Privacy, Accessibility) have no public page yet —
   // a link to "#" went nowhere, so they're left out until those pages exist, and a column with
   // nothing left in it is dropped.
-  const columns = (tenantCode === "UK" ? UK_COLUMNS : PH_COLUMNS)
+  const columns = (COLUMNS[tenantCode] as readonly { columnKey: string; links: readonly { key: string; href: string }[] }[])
     .map((col) => ({ ...col, links: col.links.filter((link) => (link.href as string) !== "#") }))
     .filter((col) => col.links.length > 0);
   const language = useLanguageStore((s) => s.language);

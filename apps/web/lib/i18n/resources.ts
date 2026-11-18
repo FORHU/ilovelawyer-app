@@ -19,6 +19,8 @@ import enTranscription from "@/locales/en/transcription.json"
 import koAuth from "@/locales/ko/auth.json"
 import koCalendar from "@/locales/ko/calendar.json"
 import koCasePortfolio from "@/locales/ko/case-portfolio.json"
+import koClientRequest from "@/locales/ko/client-request.json"
+import koClientRequests from "@/locales/ko/client-requests.json"
 import koCommon from "@/locales/ko/common.json"
 import koCreateCase from "@/locales/ko/create-case.json"
 import koHomepage from "@/locales/ko/homepage.json"
@@ -28,6 +30,8 @@ import koOrganization from "@/locales/ko/organization.json"
 import koProfile from "@/locales/ko/profile.json"
 import koTerm from "@/locales/ko/term.json"
 import koTerminal from "@/locales/ko/terminal.json"
+import koTour from "@/locales/ko/tour.json"
+import koOnboarding from "@/locales/ko/onboarding.json"
 import koTranscription from "@/locales/ko/transcription.json"
 
 import tlAuth from "@/locales/tl/auth.json"
@@ -72,6 +76,8 @@ export const I18N_RESOURCES = {
     landing: koLanding,
     homepage: koHomepage,
     calendar: koCalendar,
+    "client-request": koClientRequest,
+    "client-requests": koClientRequests,
     "case-portfolio": koCasePortfolio,
     "create-case": koCreateCase,
     library: koLibrary,
@@ -80,6 +86,8 @@ export const I18N_RESOURCES = {
     organization: koOrganization,
     term: koTerm,
     terminal: koTerminal,
+    tour: koTour,
+    onboarding: koOnboarding,
   },
   tl: {
     common: tlCommon,

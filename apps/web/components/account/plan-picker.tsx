@@ -12,6 +12,8 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { setupHeadingClass, setupPrimaryButtonClass, setupSecondaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles";
 import { PlanChangeDialog } from "@/components/account/plan-change-dialog";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { formatPrice } from "@/lib/money";
 import { useAuthStore } from "@/lib/store/auth.store";
 import {
   usePaymentPlanCheckoutStatusQuery,
@@ -32,9 +34,6 @@ const PLAN_GLOWS = [
   "bg-[radial-gradient(130%_85%_at_50%_100%,#8b5cf6_0%,#4c1d95_38%,#0f0a1a_78%)]",
 ];
 
-function formatUsd(amount: number): string {
-  return amount.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 /** One plan's card. `label` replaces "Choose {plan}" on its button (Upgrade, Switch, Keep), `badge`
  * marks it (the current plan, or the one a downgrade moves to), `current` outlines it on the page,
@@ -62,10 +61,13 @@ function PlanCard({
 }) {
   const { t } = useTranslation("onboarding");
   // Client requests come from the client app on the UK site only.
-  const clientRequests = isFeatureEnabled(useAuthStore((s) => s.organization?.tenantCode), "clientRequests");
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
+  const clientRequests = isFeatureEnabled(tenantCode, "clientRequests");
+  // The plan's own currency (won on KR), grouped the site's way; the AI usage is shown in it too.
+  const fee = formatPrice(plan.price, { locale: getTenantCodeConfig(tenantCode).locale });
   const features = [
     plan.caseLimit > 0 ? t("plan.cases", { count: plan.caseLimit }) : t("plan.casesUnlimited"),
-    t("plan.aiUsage", { amount: formatUsd(plan.includedAllowanceUsd) }),
+    t("plan.aiUsage", { amount: formatPrice(plan.aiUsage, { locale: getTenantCodeConfig(tenantCode).locale }) }),
     ...(clientRequests
       ? [plan.clientRequestLimit > 0 ? t("plan.clientRequests", { count: plan.clientRequestLimit }) : t("plan.clientRequestsUnlimited")]
       : []),
@@ -89,7 +91,7 @@ function PlanCard({
           )}
         </div>
         <p className="mt-4 flex items-baseline gap-1.5">
-          <span className="font-['Libre_Caslon_Text'] text-[40px] leading-none text-foreground">{formatUsd(plan.feeUsd)}</span>
+          <span className="font-['Libre_Caslon_Text'] text-[40px] leading-none text-foreground">{fee}</span>
           <span className="text-sm text-muted-foreground">{t("plan.perMonth")}</span>
         </p>
         <p className="mt-1.5 text-xs text-muted-foreground">{t("plan.billedMonthly")}</p>
@@ -119,7 +121,7 @@ function PlanCard({
         {badge && <span className="mt-1.5 shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">{badge}</span>}
       </div>
       <p className="mt-2 flex items-baseline gap-1.5">
-        <span className="text-[26px] leading-none">{formatUsd(plan.feeUsd)}</span>
+        <span className="text-[26px] leading-none">{fee}</span>
         <span className="text-xs text-white/60">{t("plan.perMonth")}</span>
       </p>
       <p className="mt-1 text-xs text-white/60">{t("plan.billedMonthly")}</p>
@@ -261,7 +263,7 @@ export function PlanPicker({
           : { label: t("planChange.yours"), badge: t("planChange.current"), current: true, disabled: true };
       }
       if (plan.code === scheduledPlanCode) return { label: t("planChange.scheduledLabel"), badge: t("planChange.from", { date: renewsOn }), disabled: true };
-      return { label: current && plan.feeUsd > current.feeUsd ? t("planChange.upgrade", { plan: plan.name }) : t("planChange.switch", { plan: plan.name }) };
+      return { label: current && plan.price.amountMinor > current.price.amountMinor ? t("planChange.upgrade", { plan: plan.name }) : t("planChange.switch", { plan: plan.name }) };
     };
     return (
       <>

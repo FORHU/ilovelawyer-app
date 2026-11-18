@@ -25,6 +25,8 @@ export interface Wallet {
     withdrawn: Money
   }
   payoutAccount: {
+    /** False while the wallet's currency has no payout route (won): no set-up, no withdrawals. */
+    available: boolean
     provider: "STRIPE" | "DUMMY" | null
     connected: boolean
     detailsSubmitted: boolean
@@ -122,11 +124,12 @@ export function useRefreshPayoutAccountMutation(organizationId: string) {
 export function useWithdrawMutation(organizationId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ amountMinor, idempotencyKey }: { amountMinor: number; idempotencyKey: string }) =>
+    // In the wallet's own currency (Wallet.currency): GBP on UK, KRW on KR.
+    mutationFn: ({ amountMinor, currency = "GBP", idempotencyKey }: { amountMinor: number; currency?: string; idempotencyKey: string }) =>
       apiFetch<Withdrawal>(`${walletPath(organizationId)}/withdrawals`, {
         method: "POST",
         headers: { "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ amount: { amountMinor, currency: "GBP" } }),
+        body: JSON.stringify({ amount: { amountMinor, currency } }),
       }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: walletKeys.all(organizationId) }),
   })

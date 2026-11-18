@@ -1,4 +1,13 @@
-export type TenantCode = "PH" | "UK"
+/** Every Tenant code this frontend knows. Keep in sync with ilovelawyer-api's
+ * src/types/tenant-code.ts. */
+export const TENANT_CODES = ["PH", "UK", "KR"] as const
+
+export type TenantCode = (typeof TENANT_CODES)[number]
+
+/** Narrows an untrusted string (a header, a cookie) to a known Tenant code. */
+export function isTenantCode(value: unknown): value is TenantCode {
+  return TENANT_CODES.includes(value as TenantCode)
+}
 
 /**
  * Explicit hostname → Tenant code map. No substring/`.includes()` matching — an unrecognized
@@ -37,6 +46,15 @@ const HOST_TENANT_CODE_MAP: Record<string, TenantCode> = {
   "uk-local.ilovelawyer.com": "UK",
   "uk.ilovelawyer": "UK",
   "uk.localhost": "UK",
+  // Korea: prod kr.ilovelawyer.com, hosted dev kr-dev.ilovelawyer.com, local
+  // http://kr-dev.ilovelawyer.local:3002 — plus the same extra dev forms PH and UK have.
+  "kr.ilovelawyer.com": "KR",
+  "kr-dev.ilovelawyer.com": "KR",
+  "kr.ilovelawyer.local": "KR",
+  "kr-dev.ilovelawyer.local": "KR",
+  "kr-local.ilovelawyer.com": "KR",
+  "kr.ilovelawyer": "KR",
+  "kr.localhost": "KR",
 }
 
 /** Strips a trailing `:port` (present on `Host` in local dev, e.g. `ph.ilovelawyer.local:3002`)
@@ -60,13 +78,13 @@ export function protocolForHost(host: string): "http" | "https" {
 /** The target host for a given Tenant code, used by the tenant switcher and the
  * domain-mismatch redirect. Preserves whichever convention `currentHost` is already using
  * (`.com`, `-dev.ilovelawyer.com`, `.local:port`, or the bare `.ilovelawyer:port` dev form) by
- * swapping only the `ph`/`uk`/`app` prefix (keeping a trailing `-dev` if present), rather than
+ * swapping only the `ph`/`uk`/`kr`/`app` prefix (keeping a trailing `-dev` if present), rather than
  * assuming one fixed shape — so it works regardless of which of the recognized host conventions
  * the browser is currently on, including the bare apex (no prefix to strip) and `app.` (no
  * longer exempt from the mismatch redirect — see app/(protected)/layout.tsx). */
 export function hostForTenantCode(tenantCode: TenantCode, currentHost: string): string {
-  const prefixMatch = currentHost.match(/^(?:ph|uk|app)(-dev|-local)?\./i)
+  const prefixMatch = currentHost.match(/^(?:ph|uk|kr|app)(-dev|-local)?\./i)
   const devSuffix = prefixMatch?.[1] ?? ""
-  const suffix = currentHost.replace(/^(?:ph|uk|app)(?:-dev|-local)?\./i, "")
+  const suffix = currentHost.replace(/^(?:ph|uk|kr|app)(?:-dev|-local)?\./i, "")
   return `${tenantCode.toLowerCase()}${devSuffix}.${suffix}`
 }

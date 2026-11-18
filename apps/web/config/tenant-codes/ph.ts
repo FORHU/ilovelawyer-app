@@ -6,6 +6,11 @@ export const phTenantCodeConfig: TenantCodeConfig = {
   countryName: "Philippines",
   locale: "en-PH",
   languages: ["en", "ko", "tl"],
+  defaultLanguage: "en",
+  currency: "PHP",
+  i18nContext: null,
+  weekStartsOn: 0,
+  trial: false,
   branding: {
     flag: "🇵🇭",
   },

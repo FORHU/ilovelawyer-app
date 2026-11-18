@@ -12,6 +12,9 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useTenantCodeHint } from "@/components/tenant-code-provider";
+import { tenantI18nContext } from "@/config/tenant-codes";
+import { siteVariantKey } from "@/lib/i18n/site-variant-key";
 
 interface Section {
   number: string;
@@ -37,7 +40,11 @@ export function TermsReviewDialog({
 }) {
   const { t } = useTranslation("term");
   const { t: tAuth } = useTranslation("auth");
-  const SECTIONS = t("sections", { returnObjects: true }) as Section[];
+  // The site's own terms (sections_UK, sections_KR, …), as the in-app Terms page shows them. Read by
+  // explicit key: i18next's context isn't applied to arrays and objects.
+  const tenantCode = useTenantCodeHint();
+  const SECTIONS = t(siteVariantKey("term", "sections", tenantCode), { returnObjects: true }) as Section[];
+  const effectiveDate = t("effectiveDate", tenantI18nContext(tenantCode));
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [reachedEnd, setReachedEnd] = useState(false);
@@ -65,7 +72,7 @@ export function TermsReviewDialog({
       <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col gap-0 p-0">
         <DialogHeader className="border-b border-border px-6 pb-4 pt-6">
           <DialogTitle className="font-['Libre_Caslon_Text'] text-2xl font-normal">{t("title")}</DialogTitle>
-          <DialogDescription>{t("effectiveDate")}</DialogDescription>
+          <DialogDescription>{effectiveDate}</DialogDescription>
         </DialogHeader>
 
         <div ref={scrollRef} onScroll={handleScroll} className="flex flex-col overflow-y-auto px-6 py-4">

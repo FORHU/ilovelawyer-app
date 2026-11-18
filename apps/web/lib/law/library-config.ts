@@ -1,4 +1,5 @@
 import { LAW_CASE_TYPES, LAW_TOPICS, UK_COURTS, type LawCategoryParam } from "@/lib/law/queries"
+import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 
 /**
  * Per-tenant configuration for the Library's `<LawSearchPanel/>` and the law-document detail
@@ -81,8 +82,12 @@ const UK_CONFIG: LibraryTenantConfig = {
   topics: [],
 }
 
-export function getLibraryConfig(tenantCode: string | null | undefined): LibraryTenantConfig {
-  return tenantCode === "UK" ? UK_CONFIG : PH_CONFIG
+/** KR has no Library yet: its `legalSearch` capability is "coming-soon", so the Library pages are
+ * guarded off and never ask for a KR config. Add `KR: KR_CONFIG` here when its law source ships. */
+const LIBRARY_CONFIGS: Partial<Record<TenantCode, LibraryTenantConfig>> = { PH: PH_CONFIG, UK: UK_CONFIG }
+
+export function getLibraryConfig(tenantCode: TenantCode | null | undefined): LibraryTenantConfig {
+  return (tenantCode && LIBRARY_CONFIGS[tenantCode]) || PH_CONFIG
 }
 
 /** Division segments that are initialisms, written in capitals in neutral citations

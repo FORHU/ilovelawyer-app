@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { getTenantCodeConfig, tenantI18nContext } from "@/config/tenant-codes";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
@@ -22,7 +22,7 @@ const AUTOPLAY_MS = 6000;
 
 export function FirmQuoteSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
+  const tCtx = tenantI18nContext(tenantCode);
   const firmWorkspaceImage = getTenantCodeConfig(tenantCode).landingAssets.firmWorkspace;
   const quotes = t("quotes.items", { ...tCtx, returnObjects: true }) as Quote[];
   const [displayed, setDisplayed] = useState(0);

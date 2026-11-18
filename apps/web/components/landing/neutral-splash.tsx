@@ -3,13 +3,18 @@ import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-ho
 
 /**
  * Shown on any host that didn't resolve to a Tenant — the bare apex (ilovelawyer.com) and
- * app.ilovelawyer.com alike (see app/page.tsx). Deliberately carries no PH- or UK-specific
+ * app.ilovelawyer.com alike (see app/page.tsx). Deliberately carries no site-specific
  * copy/branding of its own; it only exists to route the visitor to the design that does.
  */
+/** The sites a visitor can pick, in the order shown. */
+const SITES = [
+  { tenantCode: "UK", label: "🇬🇧 United Kingdom" },
+  { tenantCode: "PH", label: "🇵🇭 Philippines" },
+  { tenantCode: "KR", label: "🇰🇷 South Korea" },
+] as const;
+
 export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
   const protocol = protocolForHost(currentHost);
-  const ukHref = `${protocol}://${hostForTenantCode("UK", currentHost)}`;
-  const phHref = `${protocol}://${hostForTenantCode("PH", currentHost)}`;
 
   return (
     <section className="flex-1 flex flex-col items-center justify-center gap-12 px-8 py-24 text-center bg-background">
@@ -24,20 +29,16 @@ export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-6">
-        <a
-          href={ukHref}
-          className="flex items-center justify-center gap-3 border border-foreground text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-foreground/5 transition-colors duration-200"
-          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-        >
-          🇬🇧 United Kingdom
-        </a>
-        <a
-          href={phHref}
-          className="flex items-center justify-center gap-3 border border-foreground text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-foreground/5 transition-colors duration-200"
-          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-        >
-          🇵🇭 Philippines
-        </a>
+        {SITES.map((site) => (
+          <a
+            key={site.tenantCode}
+            href={`${protocol}://${hostForTenantCode(site.tenantCode, currentHost)}`}
+            className="flex items-center justify-center gap-3 border border-foreground text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-foreground/5 transition-colors duration-200"
+            style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+          >
+            {site.label}
+          </a>
+        ))}
       </div>
     </section>
   );

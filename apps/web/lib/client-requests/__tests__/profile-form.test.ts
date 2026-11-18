@@ -46,6 +46,11 @@ const blank: ProfileForm = {
   ibpMembershipNumber: "",
   mcleNumber: "",
   mclePeriod: "",
+  localBar: null,
+  qualificationRoute: null,
+  qualificationCohort: "",
+  specialties: [],
+  registeredOn: "",
   practiceAreaIds: [],
   bio: "",
   languages: [],
@@ -141,5 +146,46 @@ describe("Lawyer Application form", () => {
   it("toggles a value in a list", () => {
     expect(toggle(["A"], "B")).toEqual(["A", "B"])
     expect(toggle(["A", "B"], "A")).toEqual(["B"])
+  })
+})
+
+const krProfile: ClientRequestProfile = {
+  ...profile,
+  country: "KR",
+  registration: { country: "KR", registrationNumber: "12345", localBar: "SEOUL", qualificationRoute: "BAR_EXAM", qualificationCohort: 9, specialties: ["가사법"], registeredOn: "2020-04-01" },
+  practiceAreas: [{ id: "kr-civil", name: "민사 (Civil Law)", isActive: true }],
+  firstConsultationFee: { amountMinor: 100000, currency: "KRW" },
+}
+
+describe("Lawyer Application form (KR)", () => {
+  it("round-trips a saved KR profile, with the fee in whole won", () => {
+    const form = formFromProfile(krProfile)
+    expect(form).toMatchObject({ registrationNumber: "12345", localBar: "SEOUL", qualificationRoute: "BAR_EXAM", qualificationCohort: "9", specialties: ["가사법"], registeredOn: "2020-04-01", fee: "100000" })
+    expect(applicationPatchFromForm(form)).toMatchObject({
+      registration: { country: "KR", registrationNumber: "12345", localBar: "SEOUL", qualificationRoute: "BAR_EXAM", qualificationCohort: 9, specialties: ["가사법"], registeredOn: "2020-04-01" },
+      firstConsultationFee: { amountMinor: 100000, currency: "KRW" },
+    })
+  })
+
+  it("needs the registration number, local bar and a practice area", () => {
+    expect(missingFromForm({ ...blank, country: "KR" })).toEqual(["registrationNumber", "localBar", "practiceAreas"])
+    expect(missingFromForm(formFromProfile(krProfile))).toEqual([])
+  })
+
+  it("takes whole won only, a cohort from 1 to 200 and a registration date that isn't in the future", () => {
+    const form = { ...formFromProfile(krProfile) }
+    expect(validateForm(form, "2026-11-13")).toEqual({})
+    expect(validateForm({ ...form, fee: "1000.50" }, "2026-11-13").fee).toBeDefined()
+    expect(validateForm({ ...form, fee: "₩10,000,000" }, "2026-11-13").fee).toBeUndefined()
+    expect(validateForm({ ...form, fee: "10000001" }, "2026-11-13").fee).toBeDefined()
+    expect(validateForm({ ...form, qualificationCohort: "0" }, "2026-11-13").qualificationCohort).toBeDefined()
+    expect(validateForm({ ...form, registeredOn: "2026-11-14" }, "2026-11-13").registeredOn).toBeDefined()
+  })
+
+  it("sends an approved application back for review on the number or local bar, not the optional fields", () => {
+    const form = formFromProfile(krProfile)
+    expect(needsRecheck(krProfile, { ...form, specialties: ["가사법", "이혼"], qualificationCohort: "10" })).toBe(false)
+    expect(needsRecheck(krProfile, { ...form, localBar: "BUSAN" })).toBe(true)
+    expect(needsRecheck(krProfile, { ...form, registrationNumber: "54321" })).toBe(true)
   })
 })

@@ -1,0 +1,435 @@
+{
+  "choosePlan": "요금제 선택",
+  "eyebrow": "의뢰인 요청",
+  "title": "의뢰인 요청",
+  "subtitle": "변호사를 찾는 의뢰인의 익명 처리된 사건 중 회원님의 업무 분야와 일치하는 사건입니다. 요청을 수락하면 의뢰인에게 견적을 보낼 수 있습니다.",
+  "tabs": {
+    "inbox": "받은 요청",
+    "mine": "내 요청",
+    "history": "지난 요청",
+    "count": "{{label}} · {{count}}"
+  },
+  "accepting": {
+    "on": "요청 받는 중 · 켜짐",
+    "paused": "요청 받기 · 일시 중지됨",
+    "pause": "일시 중지",
+    "resume": "다시 받기",
+    "pauseTooltip": "새 의뢰인 요청 받기를 중지합니다",
+    "resumeTooltip": "새 의뢰인 요청을 다시 받습니다",
+    "onSlots": "요청 받는 중 · 의뢰인 슬롯 {{limit}}개 중 {{used}}개 사용"
+  },
+  "urgency": {
+    "routine": "일반",
+    "soon": "곧 필요",
+    "urgent": "긴급"
+  },
+  "card": {
+    "received": "{{ago}} 받음",
+    "assignedTo": "담당: {{name}}",
+    "pass": "넘기기",
+    "passTooltip": "이 요청을 받은 요청함에서 영구히 삭제합니다",
+    "passOnlyForYouTooltip": "넘기기: 조건이 맞는 다른 변호사에게 바로 전달됩니다",
+    "accept": "수락",
+    "acceptTooltip": "이 요청에 참여합니다. 최대 3명의 변호사가 견적을 낼 수 있습니다",
+    "acceptOnlyForYouTooltip": "이 요청을 맡습니다. 24시간 안에 의뢰인에게 견적을 보내야 합니다",
+    "askedForYou": "회원님 지정 요청",
+    "askedForYouTooltip": "의뢰인이 ilovelawyer에서 회원님을 선택했습니다. 마감 전까지는 회원님만 맡을 수 있으며, 이후에는 조건이 맞는 다른 변호사에게 전달됩니다.",
+    "ready": "변호사 검토 준비 · {{total}}개 중 {{met}}개",
+    "notReady": "변호사 검토 준비 {{total}}개 중 {{met}}개 충족",
+    "open": "{{hours}}시간 더 열림",
+    "openMinutes": "{{minutes}}분 더 열림",
+    "passGone": "이 요청은 이미 받은 요청함에서 사라졌습니다.",
+    "passError": "이 요청을 넘기지 못했습니다. 다시 시도하세요.",
+    "closed": "곧 마감",
+    "expired": "마감됨"
+  },
+  "confirmAccept": {
+    "title": "이 요청을 수락하시겠습니까?",
+    "description": "한 요청에 최대 3명의 변호사가 수락할 수 있습니다. 수락 후 24시간 안에 의뢰인에게 견적을 보내야 합니다. 의뢰인이 회원님을 선임하면 ilovelawyer를 통해 견적 금액을 결제하며, ilovelawyer 플랫폼 수수료를 제외한 금액이 회원님의 수익으로 들어갑니다.",
+    "cancel": "취소",
+    "confirm": "요청 수락"
+  },
+  "confirmPass": {
+    "title": "이 요청을 넘기시겠습니까?",
+    "description": "이 요청은 받은 요청함에서 영구히 사라지며 다시 열거나 수락할 수 없습니다. 다른 변호사는 계속 맡을 수 있습니다.",
+    "cancel": "요청 유지",
+    "confirm": "넘기기",
+    "reasonLabel": "넘기는 이유가 무엇인가요? (선택)",
+    "reasons": {
+      "CONFLICT": "이해충돌",
+      "CAPACITY": "여력 없음",
+      "OUT_OF_SCOPE": "전문 분야가 아님",
+      "FEE_MISMATCH": "수임료가 맞지 않음",
+      "NOT_ENOUGH_INFO": "정보 부족",
+      "OTHER": "기타"
+    },
+    "notePlaceholder": "메모 추가 (선택)",
+    "noteHint": "ilovelawyer만 볼 수 있습니다. 의뢰인에게는 알리지 않습니다."
+  },
+  "feeNote": "회원님에게 청구되는 금액은 없습니다. 의뢰인이 견적 금액을 결제하며, ilovelawyer 플랫폼 수수료는 회원님이 받는 금액에서 공제됩니다.",
+  "noMatches": "이 필터에 맞는 요청이 없습니다.",
+  "empty": {
+    "inbox": {
+      "title": "현재 요청이 없습니다",
+      "description": "회원님의 업무 분야와 맞는 의뢰인 사건이 있으면 이메일과 이곳에서 알려 드립니다."
+    },
+    "mine": {
+      "title": "아직 맡은 요청이 없습니다",
+      "description": "수락했거나 수임 중인 요청이 여기에 표시됩니다."
+    },
+    "history": {
+      "title": "아직 지난 요청이 없습니다",
+      "description": "반환했거나 거절했거나 종료된 요청이 여기에 표시됩니다."
+    },
+    "editPracticeAreas": "업무 분야 수정"
+  },
+  "loadError": "의뢰인 요청을 불러오지 못했습니다.",
+  "retry": "다시 시도",
+  "notVerified": {
+    "PENDING": {
+      "title": "신청서를 검토하고 있습니다",
+      "description": "등록 정보를 확인하고 있습니다. 인증이 완료되면 의뢰인 요청이 여기에 표시되며, 완료 즉시 이메일로 알려 드립니다.",
+      "action": "신청서 보기"
+    },
+    "REJECTED": {
+      "title": "신청서 수정이 필요합니다",
+      "description": "등록 정보를 인증하지 못했습니다. 변호사 신청서에서 사유를 확인하고, 수정한 뒤 다시 제출하세요.",
+      "action": "신청서 수정"
+    },
+    "UNSUBMITTED": {
+      "title": "먼저 변호사 신청서를 제출하세요",
+      "description": "의뢰인 요청은 인증된 변호사만 받을 수 있습니다. 변호사 신청서를 완료하면 등록 정보를 확인해 드립니다.",
+      "action": "신청서 완료하기"
+    }
+  },
+  "pagination": {
+    "previous": "이전",
+    "next": "다음",
+    "pageOf": "{{total}}페이지 중 {{page}}페이지"
+  },
+  "detail": {
+    "back": "요청 목록으로",
+    "notFound": "이 요청을 볼 수 없습니다",
+    "notFoundDescription": "다른 변호사가 맡았거나, 반환되었거나, 철회되었을 수 있습니다.",
+    "deadline": "기한 {{date}}",
+    "status": {
+      "REQUESTED": "변호사 찾는 중",
+      "ROUTED": "변호사에게 공개됨",
+      "CLAIMED": "내가 수락함",
+      "QUOTED": "견적 보냄",
+      "CONFIRMED": "확정됨 · 결제 중",
+      "ENGAGED": "수임 중",
+      "CLOSED": "종료됨",
+      "EXPIRED": "만료됨",
+      "WITHDRAWN": "의뢰인이 철회함"
+    },
+    "aiSummary": "사건 요약 · 익명 처리",
+    "ai": "AI",
+    "onlyForYou": "의뢰인이 회원님을 직접 지정했습니다. 마감 전까지는 회원님만 맡을 수 있으며, 이후에는 조건이 맞는 다른 변호사에게 전달됩니다.",
+    "lawyersOn_other": "변호사 {{max}}명 중 {{count}}명이 이 요청을 수락했습니다",
+    "notChosen": {
+      "badge": "선택되지 않음",
+      "title": "의뢰인이 다른 변호사를 선택했습니다",
+      "body": "의뢰인이 이 요청에 다른 변호사를 선임했거나 기한 안에 선택하지 않았습니다. 회원님에게 청구된 금액은 없습니다."
+    },
+    "ended": {
+      "RELEASED": {
+        "badge": "반환함",
+        "title": "이 요청을 반환했습니다",
+        "body": "이 요청을 반환하여 다른 변호사에게 돌아갔습니다. 다시 볼 수 없으며 회원님에게 청구된 금액은 없습니다."
+      },
+      "LAPSED": {
+        "badge": "시간 초과",
+        "title": "24시간이 지났습니다",
+        "body": "24시간 안에 견적을 보내지 않아 요청이 다른 변호사에게 돌아갔습니다. 다시 볼 수 없으며 회원님에게 청구된 금액은 없습니다."
+      },
+      "DECLINED": {
+        "badge": "견적 거절됨",
+        "title": "의뢰인이 견적을 거절했습니다",
+        "body": "의뢰인이 회원님의 견적으로 진행하지 않기로 했습니다. 이 요청은 다시 볼 수 없으며 회원님에게 청구된 금액은 없습니다."
+      },
+      "WITHDRAWN": {
+        "badge": "철회됨",
+        "title": "의뢰인이 요청을 철회했습니다",
+        "body": "회원님이 진행하던 중 의뢰인이 요청을 철회했습니다. 회원님에게 청구된 금액은 없습니다."
+      },
+      "REASSIGNED": {
+        "badge": "재배정됨",
+        "title": "이 요청이 다른 변호사에게 넘어갔습니다",
+        "body": "이 요청은 더 이상 회원님의 요청이 아닙니다. 회원님에게 청구된 금액은 없습니다."
+      }
+    },
+    "intake": {
+      "title": "의뢰인 개요 · 익명 처리",
+      "timeline": "타임라인",
+      "goals": "의뢰인이 원하는 것",
+      "concerns": "의뢰인이 걱정하는 것",
+      "questions": "변호사에게 묻는 질문",
+      "deadlines": "언급된 기한",
+      "missing": "아직 부족한 정보",
+      "completeness": "상담 정보 완성도",
+      "ready": "변호사 검토 준비 {{total}}개 중 {{met}}개 충족",
+      "done": "완료",
+      "stillNeeded": "필요함"
+    },
+    "clientNote": "의뢰인 메모",
+    "heldForYou": "회원님에게 배정됨 · {{time}}",
+    "claimExpired": "이 요청에 대한 24시간 배정이 끝났습니다.",
+    "quote": {
+      "title": "내 견적",
+      "fixed": "정액 수임료",
+      "consultation": "첫 상담",
+      "amount": "견적 금액",
+      "incVat": "부가세 포함",
+      "message": "의뢰인에게 보낼 메시지",
+      "messageHint": "회원님의 프로필과 함께 의뢰인에게 표시됩니다. 연락처는 넣지 마세요.",
+      "send": "견적 보내기",
+      "sendTooltip": "이 견적을 의뢰인에게 보냅니다",
+      "amountInvalid": "£0보다 큰 금액을 입력하세요.",
+      "amountInvalidConsultation": "금액을 입력하세요. 첫 상담이 무료라면 £0을 입력하세요.",
+      "sent": "견적을 보냈습니다.",
+      "sentTitle": "견적 보냄",
+      "sentDescription": "의뢰인이 수락 후 결제하거나 거절하기를 기다리고 있습니다.",
+      "willSee": "의뢰인에게 표시되는 내용",
+      "fixedQuote": "정액 수임료 견적",
+      "consultationQuote": "첫 상담 견적",
+      "willSeeNote": "회원님의 프로필과 위 메시지가 함께 표시되며 연락처는 표시되지 않습니다. 의뢰인은 이 금액을 그대로 결제하고, 플랫폼 수수료는 회원님이 받는 금액에서 공제됩니다. 회원님에게 청구되는 금액은 없습니다.",
+      "amountPlaceholder": "£—",
+      "expiresAt": "유효 기한",
+      "expiresHint": "의뢰인은 이 날짜가 끝나기 전에 수락하고 결제해야 합니다. 최대 {{days}}일 후까지 설정할 수 있습니다.",
+      "expiryInvalid": "오늘부터 {{days}}일 후 사이의 날짜를 선택하세요.",
+      "yourFee": "수령액",
+      "platformFee": "ilovelawyer 플랫폼 수수료 공제 ({{rate}}, 최소 {{min}})",
+      "validUntil": "{{date}}까지 유효",
+      "youReceive": "플랫폼 수수료 {{fee}}를 제외하고 {{amount}}를 받습니다.",
+      "withdraw": "견적 철회",
+      "withdrawn": "견적을 철회했습니다. 요청이 다른 변호사에게 돌아갔습니다.",
+      "withdrawTitle": "이 견적을 철회하시겠습니까?",
+      "withdrawConfirm": "의뢰인은 더 이상 이 견적을 수락할 수 없으며, 요청도 반환됩니다. 당사자 이름을 더 이상 볼 수 없고 이 요청을 다시 맡을 수 없습니다.",
+      "keepQuote": "견적 유지"
+    },
+    "confirmed": {
+      "title": "확정됨",
+      "description": "사건별 수수료를 지금 결제하고 있습니다 (견적 결제 도입 전에 의뢰인이 확정한 요청).",
+      "failed": "등록된 카드가 거절되었습니다.",
+      "retry": "다시 결제",
+      "addCard": "카드 추가 또는 변경",
+      "acceptedTitle": "견적이 수락되었습니다",
+      "awaitingPayment": "의뢰인이 견적을 수락하고 ilovelawyer를 통해 {{total}}를 결제하고 있습니다. 결제가 완료되면 바로 수임이 시작됩니다. 결제 기한은 {{date}}입니다.",
+      "paid": "의뢰인이 {{total}}를 결제했습니다. 수임을 준비하고 있으며 곧 시작됩니다."
+    },
+    "engaged": {
+      "title": "수임 중",
+      "client": "의뢰인",
+      "openCase": "사건 열기",
+      "copy": "내 작업 공간에 복사",
+      "copying": "복사하는 중…",
+      "close": "수임 종료",
+      "closeTooltip": "이 사건에 대한 읽기 전용 접근을 종료합니다",
+      "completion": {
+        "sent": "의뢰인에게 업무 완료 확인을 요청했습니다.",
+        "waiting": "의뢰인의 업무 완료 확인을 기다리고 있습니다",
+        "waitingHint": "{{asked}}에 의뢰인에게 알렸습니다. 답변이 없으면 {{closes}}에 자동으로 종료되며, 그때까지 접근 권한이 유지됩니다.",
+        "asked": "{{asked}}에 의뢰인에게 알렸습니다.",
+        "declined": "{{date}}에 의뢰인이 업무가 끝나지 않았다고 답했습니다",
+        "declinedHint": "업무를 계속하고, 완료되면 다시 수임을 종료하세요."
+      }
+    },
+    "closed": {
+      "title": "종료됨",
+      "byLawyer": "회원님이 이 수임을 종료했습니다.",
+      "byLawyerExit": "회원님이 이 사건의 대리를 중단했습니다.",
+      "byClient": "의뢰인이 이 수임을 종료했습니다.",
+      "exit": {
+        "claimed": "{{amount}} 청구함",
+        "refunded": "의뢰인에게 {{amount}} 환불됨",
+        "status": {
+          "REFUNDING": "의뢰인에게 환불을 진행하고 있습니다",
+          "AWAITING_REVIEW": "ilovelawyer가 의뢰인 환불액을 정하기 위해 중도 종료를 검토하고 있습니다",
+          "WAITING_ON_DISPUTE": "의뢰인의 카드사가 이의 제기를 검토하고 있어 기다리는 중입니다",
+          "NEEDS_ATTENTION": "ilovelawyer가 의뢰인 환불을 처리하고 있습니다",
+          "SETTLED": "정산 완료: 남은 수임료는 통상적인 보류 기간이 끝나면 지급됩니다"
+        }
+      },
+      "confirmedByClient": "의뢰인이 업무 완료를 확인하여 수임이 종료되었습니다.",
+      "confirmedAuto": "의뢰인이 7일 안에 답변하지 않아 업무 완료로 수임이 종료되었습니다."
+    },
+    "expired": {
+      "title": "만료됨",
+      "description": "기한 안에 이 요청을 맡은 변호사가 없습니다."
+    },
+    "withdrawn": {
+      "title": "철회됨",
+      "description": "의뢰인이 이 요청을 철회했습니다."
+    },
+    "file": {
+      "title": "의뢰인 자료",
+      "loadError": "의뢰인 자료를 불러오지 못했습니다.",
+      "tabs": {
+        "intake": "상담 정보",
+        "conversation": "대화",
+        "documents": "문서"
+      },
+      "provenance": {
+        "caseDetails": "의뢰인이 입력함",
+        "client": "의뢰인 진술",
+        "document": "출처: {{name}}",
+        "documentPage": "출처: {{name}}, {{page}}쪽",
+        "aDocument": "문서",
+        "aiSummary": "AI 요약"
+      },
+      "intake": {
+        "emptyTitle": "아직 수집된 정보가 없습니다",
+        "emptyDescription": "의뢰인이 AI에게 상황을 설명하면 여기에 표시됩니다.",
+        "people": "관련 인물",
+        "facts": "주요 사실",
+        "conflicts": "다시 확인할 사항"
+      },
+      "conversation": {
+        "emptyTitle": "아직 대화가 없습니다",
+        "client": "의뢰인",
+        "ai": "AI"
+      },
+      "documents": {
+        "emptyTitle": "아직 문서가 없습니다",
+        "ready": "준비됨",
+        "failed": "이 파일을 읽을 수 없습니다",
+        "pending": "읽는 중…"
+      }
+    },
+    "lockedFile": "의뢰인이 견적을 수락하고 결제하면 문서와 전체 상담 내용을 볼 수 있습니다.",
+    "steps": {
+      "label": "요청 진행 상황",
+      "clientSees": "의뢰인 화면: {{what}}",
+      "now": "현재",
+      "received": "요청 접수",
+      "accepted": "수락",
+      "quoted": "견적 보냄",
+      "confirmed": "의뢰인 확정 · 수수료",
+      "engaged": "수임",
+      "see": {
+        "received": "변호사 찾는 중",
+        "accepted": "변호사가 검토 중",
+        "quoted": "견적 검토",
+        "confirmed": "마무리 중",
+        "engaged": "변호사와 진행 중"
+      },
+      "state": {
+        "done": "완료",
+        "current": "현재 단계",
+        "upcoming": "예정"
+      }
+    },
+    "lockedConfirmed": "의뢰인이 결제하면 문서와 전체 상담 내용을 볼 수 있습니다."
+  },
+  "messages": {
+    "open": "메시지",
+    "unread": "읽지 않음 {{count}}개",
+    "title": "메시지",
+    "participants": "회원님과 의뢰인 {{client}} 님의 대화입니다.",
+    "participantsBeforeHire": "회원님과 의뢰인의 대화입니다. 의뢰인이 회원님을 선임하면 이름이 표시됩니다.",
+    "emptyBeforeHire": "아직 메시지가 없습니다. 견적을 보내기 전에 의뢰인에게 궁금한 점을 물어보세요. 의뢰인은 자신의 사건 화면에서 볼 수 있습니다.",
+    "contactHint": "연락처를 공유하지 마세요. 의뢰인이 회원님을 선임할 때까지 이곳에서 대화하세요.",
+    "ended": "이 요청에서 빠졌습니다. 메시지는 계속 읽을 수 있지만 답장할 수는 없습니다.",
+    "beforeHireTitle": "의뢰인에게 질문하기",
+    "beforeHireBody": "견적을 보내기 전에 사건에 대해 물어보세요. 의뢰인은 회원님의 이름을 볼 수 있으며, 회원님은 선임된 후 의뢰인의 이름을 볼 수 있습니다.",
+    "loading": "메시지를 불러오는 중…",
+    "empty": "아직 메시지가 없습니다. 여기에서 {{client}} 님에게 메시지를 보내세요. 의뢰인 앱에서 확인할 수 있습니다.",
+    "you": "나",
+    "client": "의뢰인",
+    "sharedBy": "{{name}} 님이 공유 · {{date}}",
+    "placeholder": "메시지 입력…",
+    "send": "보내기",
+    "closed": "이 수임은 종료되었습니다. 메시지는 계속 읽을 수 있지만 답장할 수는 없습니다."
+  },
+  "aiBudget": {
+    "title": "AI 예산",
+    "ok": "{{remaining}} 남음",
+    "warning": "잔액 부족: {{remaining}} 남음",
+    "exhausted": "모두 사용했습니다. 충전할 때까지 이 사건의 AI 작업이 일시 중지됩니다.",
+    "used": "{{total}} 중 {{used}} 사용",
+    "topUp": "충전",
+    "topUpTitle": "AI 예산 충전",
+    "topUpDescription": "이 수임 건에 AI 크레딧을 추가합니다. 확인을 누를 때만 등록된 카드로 결제됩니다.",
+    "loadingPacks": "충전 상품을 불러오는 중…",
+    "noPacks": "현재 제공되는 충전 상품이 없습니다.",
+    "packCredit": "AI 크레딧 {{credit}} 추가",
+    "chargeNote": "등록된 카드로 {{price}}가 결제됩니다. 가격이 확정될 때까지 표시된 가격은 임시 가격입니다.",
+    "notNow": "나중에",
+    "confirm": "{{price}} 결제",
+    "topUpDone": "충전 완료: AI 크레딧 {{credit}}가 추가되었습니다.",
+    "topUpPending": "결제를 처리하고 있습니다. 결제가 완료되면 바로 크레딧이 추가됩니다."
+  },
+  "closeEngagement": {
+    "title": "수임 종료",
+    "description": "수임이 어떻게 끝나는지 알려 주세요.",
+    "outcomeLabel": "어떻게 종료되나요?",
+    "outcomeRequired": "수임 종료 방식을 선택하세요.",
+    "finished": "업무를 마쳤습니다",
+    "finishedHint": "의뢰인에게 확인을 요청합니다. 의뢰인이 확인하면 종료됩니다.",
+    "cantContinue": "계속할 수 없습니다",
+    "cantContinueHint": "이해충돌, 여력 부족, 또는 업무 범위를 벗어난 경우입니다.",
+    "reasonLabel": "계속할 수 없는 이유는 무엇인가요?",
+    "reasonRequired": "이유를 선택하세요.",
+    "reasons": {
+      "CONFLICT": "이해충돌",
+      "CAPACITY": "여력 없음",
+      "OUT_OF_SCOPE": "전문 분야가 아님",
+      "OTHER": "기타"
+    },
+    "workDoneLabel": "진행한 업무가 있나요?",
+    "workDoneRequired": "진행한 업무가 있는지 선택하세요.",
+    "noWork": "진행한 업무 없음",
+    "someWork": "일부 업무 진행함",
+    "claimLabel": "청구 금액 (최대 {{max}})",
+    "claimInvalid": "£0보다 크고 {{max}} 이하인 금액을 입력하세요.",
+    "claimNoteLabel": "진행한 업무",
+    "claimNotePlaceholder": "예: 계약서를 검토하고 소송 전 내용증명을 작성했습니다.",
+    "noteLabel": "의뢰인에게 보낼 메모 (선택)",
+    "noteHint": "확인 요청과 함께 의뢰인에게 전송됩니다.",
+    "exitNoteLabel": "ilovelawyer에 남길 메모 (선택)",
+    "exitNoteHint": "ilovelawyer만 볼 수 있습니다. 의뢰인에게는 중단 사유를 알리지 않습니다.",
+    "effect": {
+      "finished": "의뢰인에게 업무 완료 확인을 요청합니다. 의뢰인이 확인하거나 7일이 지나면 자동으로 종료되며, 그때까지 접근 권한이 유지됩니다. 환불은 없으며, 수임료는 종료 후 통상적인 보류 기간이 끝나면 지급됩니다.",
+      "finishedUnpaid": "의뢰인에게 업무 완료 확인을 요청합니다. 의뢰인이 확인하거나 7일이 지나면 자동으로 종료되며, 그때까지 접근 권한이 유지됩니다. ilovelawyer를 통해 결제된 금액이 없으므로 환불할 금액도 없습니다.",
+      "noWork": "ilovelawyer가 사유를 검토하여 의뢰인에게 돌려줄 금액을 정합니다. ilovelawyer 수수료를 포함해 결제액 전액까지 환불될 수 있습니다. 그때까지 수임료는 보류됩니다.",
+      "claimed": "ilovelawyer가 사유와 청구 금액을 검토하여 회원님의 몫에서 의뢰인에게 돌려줄 금액을 정합니다. 그때까지 수임료는 보류됩니다.",
+      "exitUnpaid": "ilovelawyer를 통해 결제된 금액이 없으므로 환불할 금액도 없습니다. 이 사건에서 의뢰인에게 회원님이 다시 추천되지 않습니다."
+    },
+    "finishedPending": "이미 완료를 알렸습니다. 의뢰인의 확인을 기다리고 있습니다.",
+    "askClient": "의뢰인에게 확인 요청"
+  },
+  "invoice": {
+    "title": "청구서",
+    "clientPaid": "의뢰인 결제액 {{amount}}",
+    "view": "청구서 보기",
+    "from": "발행인",
+    "billedTo": "청구 대상",
+    "issued": "결제일",
+    "matter": "사건",
+    "total": "총 결제액",
+    "refunded": "의뢰인에게 환불된 금액",
+    "netPaid": "순 결제액",
+    "yourFee": "수령액",
+    "yourFeeNote": "의뢰인 결제액에서 ilovelawyer 플랫폼 수수료 {{fee}}를 뺀 금액이 수익으로 적립됩니다. 수임이 종료되고 이후 보류 기간이 끝나면 출금할 수 있습니다.",
+    "paidByStripe": "의뢰인이 Stripe를 통해 결제했습니다.",
+    "paidByTest": "테스트 결제: 실제로 결제된 금액은 없습니다.",
+    "reference": "결제 참조 번호",
+    "print": "인쇄 또는 PDF로 저장",
+    "close": "닫기",
+    "statuses": {
+      "PAID": "결제 완료",
+      "PARTIALLY_REFUNDED": "부분 환불",
+      "REFUNDED": "환불 완료",
+      "DISPUTED": "이의 제기됨"
+    }
+  },
+  "openRequests": {
+    "title": "열린 요청",
+    "hint": "회원님의 업무 분야와 일치하는 모든 변호사에게 전송됩니다. 요청마다 최대 3명이 수락할 수 있습니다.",
+    "sort": "정렬",
+    "closing": "마감 임박순",
+    "newest": "최신순",
+    "pageOnly": "이 페이지의 요청만 정렬합니다."
+  }
+}

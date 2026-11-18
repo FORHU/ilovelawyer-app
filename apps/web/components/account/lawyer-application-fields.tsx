@@ -8,7 +8,18 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { TagInput } from "@/components/ui/tag-input";
-import { REGULATORS, UK_JURISDICTIONS, usePracticeAreasQuery, type LawyerPracticeArea } from "@/lib/client-requests/profile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import {
+  KR_LOCAL_BARS,
+  KR_QUALIFICATION_ROUTES,
+  KR_SPECIALTIES_MAX,
+  KR_SPECIALTY_MAX_LENGTH,
+  REGULATORS,
+  UK_JURISDICTIONS,
+  usePracticeAreasQuery,
+  type KrLocalBar,
+  type LawyerPracticeArea,
+} from "@/lib/client-requests/profile";
 import { keepAmount, keepDigits, keepMcleNumber, keepRomanNumeral, keepWords } from "@/lib/forms/field-rules";
 import {
   BIO_MAX_LENGTH,
@@ -141,9 +152,114 @@ function PracticeAreaPicker({ form, set, held }: { form: ProfileForm; set: (patc
 const sectionTitle = "mb-4 text-[15px] font-medium text-foreground";
 
 /**
+ * The KR registration: the Korean Bar Association number and local bar (both required), then the
+ * optional qualification route with its round or class, registered specialist areas and the date of
+ * registration.
+ */
+function KrRegistrationFields({
+  form,
+  set,
+  errors,
+  pairs,
+}: {
+  form: ProfileForm;
+  set: (patch: Partial<ProfileForm>) => void;
+  errors: ProfileFormErrors;
+  pairs: string;
+}) {
+  const { t } = useTranslation("profile");
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <>
+      <div className={pairs}>
+        <TextField
+          label={t("clientRequests.fields.krRegistrationNumber")}
+          helperText={t("clientRequests.fields.krRegistrationNumberHelp")}
+          inputMode="numeric"
+          value={form.registrationNumber}
+          onChange={(e) => set({ registrationNumber: keepDigits(e.target.value) })}
+          errorText={errors.registrationNumber}
+          maxLength={TEXT_MAX_LENGTH.registrationNumber}
+        />
+        <div className="flex flex-col gap-2">
+          <label htmlFor="cr-local-bar" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+            {t("clientRequests.fields.localBar")}
+          </label>
+          <Select value={form.localBar ?? undefined} onValueChange={(v) => set({ localBar: v as KrLocalBar })}>
+            <SelectTrigger id="cr-local-bar" className="rounded-xl px-3 py-2.5 text-base sm:text-sm">
+              <SelectValue placeholder={t("clientRequests.fields.localBarPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {KR_LOCAL_BARS.map((bar) => (
+                <SelectItem key={bar} value={bar}>
+                  {t(`clientRequests.krLocalBars.${bar}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <FieldLabel id="cr-route">{t("clientRequests.fields.qualificationRoute")}</FieldLabel>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="cr-route">
+          {KR_QUALIFICATION_ROUTES.map((route) => (
+            <Pill
+              key={route}
+              selected={form.qualificationRoute === route}
+              onClick={() => set(form.qualificationRoute === route ? { qualificationRoute: null, qualificationCohort: "" } : { qualificationRoute: route })}
+            >
+              {t(`clientRequests.krRoutes.${route}`)}
+            </Pill>
+          ))}
+        </div>
+      </div>
+
+      <div className={pairs}>
+        <TextField
+          label={t(form.qualificationRoute === "JRTI" ? "clientRequests.fields.cohortJrti" : "clientRequests.fields.cohortBarExam")}
+          helperText={t("clientRequests.fields.cohortHelp")}
+          inputMode="numeric"
+          value={form.qualificationCohort}
+          onChange={(e) => set({ qualificationCohort: keepDigits(e.target.value) })}
+          errorText={errors.qualificationCohort}
+          disabled={!form.qualificationRoute}
+          maxLength={3}
+        />
+        <TextField
+          label={t("clientRequests.fields.registeredOn")}
+          helperText={t("clientRequests.fields.registeredOnHelp")}
+          type="date"
+          max={today}
+          value={form.registeredOn}
+          onChange={(e) => set({ registeredOn: e.target.value })}
+          errorText={errors.registeredOn}
+        />
+      </div>
+
+      <TagInput
+        label={t("clientRequests.fields.specialties")}
+        helperText={t("clientRequests.fields.specialtiesHelp")}
+        placeholder={t("clientRequests.fields.specialtiesPlaceholder")}
+        value={form.specialties}
+        onChange={(specialties) => set({ specialties })}
+        max={KR_SPECIALTIES_MAX}
+        maxTagLength={KR_SPECIALTY_MAX_LENGTH}
+        keep={keepWords}
+        removeLabel={(specialty) => t("clientRequests.fields.removeSpecialty", { specialty })}
+      />
+    </>
+  );
+}
+
+/** The fee field's label key and what it accepts: won are whole numbers. */
+const FEE_LABEL_KEY = { UK: "clientRequests.fields.feeUK", PH: "clientRequests.fields.feePH", KR: "clientRequests.fields.feeKR" } as const;
+
+/**
  * The Lawyer Application's fields, for the form's own country: the registration the admin checks
  * (UK: regulator, number, jurisdictions; PH: Roll number, IBP chapter and the optional IBP and MCLE
- * details), what the lawyer takes on, and what clients see. Shared by the Profile page's Apply
+ * details; KR: Korean Bar Association number, local bar and the optional qualification, specialties
+ * and registration date), what the lawyer takes on, and what clients see. Shared by the Profile page's Apply
  * dialog and onboarding's Apply step so the two can't drift apart. Each field only takes what fits
  * it: digits for the numbers, letters for the IBP chapter and languages (lib/forms/field-rules.ts).
  */
@@ -216,6 +332,8 @@ export function LawyerApplicationFields({
               />
             </div>
           </div>
+        ) : country === "KR" ? (
+          <KrRegistrationFields form={form} set={set} errors={errors} pairs={pairs} />
         ) : (
           <>
             <div className="flex flex-col gap-2">
@@ -290,11 +408,11 @@ export function LawyerApplicationFields({
             removeLabel={(language) => t("clientRequests.fields.removeLanguage", { language })}
           />
           <TextField
-            label={t(country === "PH" ? "clientRequests.fields.feePH" : "clientRequests.fields.feeUK")}
+            label={t(FEE_LABEL_KEY[country])}
             helperText={t("clientRequests.fields.feeHelp")}
-            inputMode="decimal"
+            inputMode={country === "KR" ? "numeric" : "decimal"}
             value={form.fee}
-            onChange={(e) => set({ fee: keepAmount(e.target.value) })}
+            onChange={(e) => set({ fee: country === "KR" ? keepDigits(e.target.value) : keepAmount(e.target.value) })}
             errorText={errors.fee}
           />
         </div>

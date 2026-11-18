@@ -282,7 +282,7 @@ function PanelCard({
           {t(`terminal.categories.${panel.category}`)}
         </span>
         <h3 className="font-display text-white text-[22px] whitespace-nowrap [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-          {cardTitleOf(panel)}
+          {tenantCode === "KR" ? t(`terminal.titles_KR.${cardKeyOf(panel)}`, { defaultValue: cardTitleOf(panel) }) : cardTitleOf(panel)}
         </h3>
         {/* Two lines max — a third runs under the mini window; the full line is the card's title tooltip. */}
         <p className="mt-2 max-w-[260px] line-clamp-2 text-white/85 text-[13px] leading-[1.5] [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">

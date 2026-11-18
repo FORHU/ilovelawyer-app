@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { cn } from "@workspace/ui/lib/utils"
 import { RELEASE_REASONS, type CloseOutcome, type ReleaseReason } from "@/lib/client-handoff"
 import type { CloseInput } from "@/lib/client-requests/api"
-import { formatMoney } from "@/lib/money"
+import { amountPlaceholder, currencyDecimals, currencySymbol, formatMoney, toMinor } from "@/lib/money"
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[1px] text-muted-foreground"
 const NOTE_MAX_LENGTH = 1000
@@ -20,6 +20,8 @@ interface CloseEngagementModalProps {
   paid: boolean
   /** The lawyer's share of the fee: the most they can claim for work done. */
   maxClaimMinor: number
+  /** What the request was paid in: GBP on UK, KRW on KR. Left out: GBP. */
+  currency?: string
   /** They've already said the work is finished and it waits on the client: only "can't continue" is left. */
   completionPending?: boolean
   onConfirm: (input: CloseInput) => void
@@ -87,7 +89,7 @@ function Pill({ selected, disabled, onClick, children }: { selected: boolean; di
   )
 }
 
-function CloseForm({ isPending, paid, maxClaimMinor, completionPending, onConfirm, onClose }: CloseEngagementModalProps) {
+function CloseForm({ isPending, paid, maxClaimMinor, currency = "GBP", completionPending, onConfirm, onClose }: CloseEngagementModalProps) {
   const { t } = useTranslation("client-request")
   const [outcome, setOutcome] = useState<CloseOutcome | null>(completionPending ? "CANT_CONTINUE" : null)
   const [reason, setReason] = useState<ReleaseReason | null>(null)
@@ -101,7 +103,8 @@ function CloseForm({ isPending, paid, maxClaimMinor, completionPending, onConfir
   // Work done only matters on money paid through ilovelawyer: there's nothing to refund otherwise.
   const claiming = exit && paid && workDone === true
   const claimedValue = Number(claimed)
-  const claimedMinor = claimed.trim() !== "" && Number.isFinite(claimedValue) ? Math.round(claimedValue * 100) : null
+  const wholeUnits = currencyDecimals(currency) === 0
+  const claimedMinor = claimed.trim() !== "" && Number.isFinite(claimedValue) && (!wholeUnits || Number.isInteger(claimedValue)) ? toMinor(claimedValue, currency) : null
   const claimError = claiming && (claimedMinor === null || claimedMinor <= 0 || claimedMinor > maxClaimMinor)
 
   const missing =
@@ -127,7 +130,7 @@ function CloseForm({ isPending, paid, maxClaimMinor, completionPending, onConfir
       outcome: "CANT_CONTINUE",
       reason: reason!,
       workDone: claiming,
-      ...(claiming ? { claimed: { amountMinor: claimedMinor!, currency: "GBP" as const }, claimNote: claimNote.trim() } : {}),
+      ...(claiming ? { claimed: { amountMinor: claimedMinor!, currency: currency as "GBP" }, claimNote: claimNote.trim() } : {}),
       ...(trimmed ? { note: trimmed } : {}),
     })
   }
@@ -178,24 +181,24 @@ function CloseForm({ isPending, paid, maxClaimMinor, completionPending, onConfir
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="exit-claimed" className={LABEL}>
-                    {t("closeEngagement.claimLabel", { max: formatMoney(maxClaimMinor) })}
+                    {t("closeEngagement.claimLabel", { max: formatMoney(maxClaimMinor, currency) })}
                   </label>
                   <div className={cn("flex items-center gap-2 rounded-full border bg-background px-4 focus-within:border-foreground", showErrors && claimError ? "border-red-500" : "border-border")}>
                     <span className="text-sm text-muted-foreground" aria-hidden="true">
-                      £
+                      {currencySymbol(currency)}
                     </span>
                     <input
                       id="exit-claimed"
                       inputMode="decimal"
                       value={claimed}
-                      placeholder="0.00"
+                      placeholder={amountPlaceholder(currency)}
                       disabled={isPending}
                       aria-invalid={showErrors && claimError}
                       onChange={(e) => setClaimed(e.target.value.replace(/[^\d.]/g, ""))}
                       className="h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"
                     />
                   </div>
-                  {showErrors && claimError && <p className="text-xs text-red-600">{t("closeEngagement.claimInvalid", { max: formatMoney(maxClaimMinor) })}</p>}
+                  {showErrors && claimError && <p className="text-xs text-red-600">{t("closeEngagement.claimInvalid", { max: formatMoney(maxClaimMinor, currency) })}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="exit-claim-note" className={LABEL}>

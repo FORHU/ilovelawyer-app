@@ -19,16 +19,25 @@
     "slideOne": {
       "line1": "Where",
       "line2": "cases get clarity",
+      "line1_KR": "Where",
+      "line2_KR": "cases get clarity",
+      "subtext_KR": "AI consultation streams in as it's written, with cited Korean precedent and statute alongside.",
       "subtext": "AI consultation streams in as it's written, with cited precedent alongside."
     },
     "slideTwo": {
       "line1": "Your caseload,",
       "line2": "under control",
+      "line1_KR": "Your caseload,",
+      "line2_KR": "under control",
+      "subtext_KR": "Legal Terminal arranges nineteen panes of case intelligence your way.",
       "subtext": "Legal Terminal arranges nineteen panes of case intelligence your way."
     },
     "slideThree": {
       "line1": "Where",
       "line2": "counsel meets AI",
+      "line1_KR": "Where",
+      "line2_KR": "counsel meets AI",
+      "subtext_KR": "Case Workspace keeps sources, chat, and work product on one screen.",
       "subtext": "Case Workspace keeps sources, chat, and work product on one screen."
     },
     "slideLabel": "Slide {{number}}",
@@ -82,12 +91,200 @@
         "firm": "Cruz & Associates Law Offices"
       }
     ],
+    "items_KR": [
+      {
+        "text": "ilovelawyer changed how we prepare civil cases. Every answer cites the Civil Act articles and the pages of the case file it relies on, so we check sources instead of hunting for them.",
+        "author": "Managing Partner",
+        "firm": "Daonsol Law Firm"
+      }
+    ],
     "quoteLabel": "Quote {{number}}"
   },
   "terminal": {
     "heading": "One workspace, arranged your way",
     "body": "The Legal Terminal is a litigation cockpit you arrange yourself. {{count}} pane types, dragged and resized freely, not locked to a grid. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
     "cta": "Open the terminal",
+    "mocks_KR": {
+      "caseSummary": {
+        "partyOne": "Applicant",
+        "partyOneName": "Kim Min-ji",
+        "partyTwo": "Respondent",
+        "partyTwoName": "Hanbit Logistics",
+        "claims": "Claims",
+        "claimsValue": "Unfair dismissal remedy · retaliatory termination",
+        "riskRegister": "Risk Register · 3",
+        "add": "+ Add",
+        "risks": [
+          {"level": "HIGH", "percent": 78, "text": "Reasons brief deadline is computed, not confirmed with the Commission"},
+          {"level": "MEDIUM", "percent": 54, "text": "No written objection, 4–11 Aug"},
+          {"level": "LOW", "percent": 22, "text": "Team lead Park statement outstanding"}
+        ]
+      },
+      "evidenceTimeline": {
+        "documents": "Documents · 6",
+        "hint": "Click a row",
+        "docs": [
+          {"name": "termination-notice.pdf", "status": "READY"},
+          {"name": "remedy-application-0412.pdf", "status": "PENDING"},
+          {"name": "attendance-2018-2026.xlsx", "status": "READY"}
+        ],
+        "timeline": "Timeline",
+        "events": [
+          {"date": "28 JUL", "tone": "gold", "text": "Workplace bullying report filed."},
+          {"date": "04 AUG", "tone": "red", "text": "Employer dates the absence from this day."},
+          {"date": "11 AUG", "tone": "red", "text": "Termination notice issued citing absence."}
+        ]
+      },
+      "redTeam": {
+        "intro": "Best arguments available to Hanbit Logistics, ranked by expected impact.",
+        "arguments": [
+          {"title": "Absent from 4 August", "strength": "STRONG", "note": "Facially valid ground"},
+          {"title": "No written objection", "strength": "STRONG", "note": "Read as acquiescence"},
+          {"title": "The 6 Aug email is ambiguous", "strength": "MODERATE", "note": "Double-edged for both sides"}
+        ]
+      },
+      "chat": {
+        "anchored": "Anchored",
+        "thread": "Retaliatory dismissal ▾",
+        "scope": "● Case + 5 panels",
+        "question": "Which contradictions undercut the absence claim?",
+        "source": "ilovelawyer · from evidence & timeline, contradictions",
+        "answer": "Two. The termination notice dates the absence from 4 August, but the attendance log shows her at work through 8 August. HR’s 6 August email also asks her to attend a meeting.",
+        "chips": ["EVIDENCE ↗"],
+        "placeholder": "Ask about this case…",
+        "send": "Send ↗"
+      },
+      "chatResponse": {
+        "status": "Grounded · 3 sources",
+        "question": "Can the employer still rely on absence as a ground for dismissal?",
+        "source": "ilovelawyer · from evidence & timeline, law & precedent",
+        "answer": "Unlikely. Absence without good reason must be proven, yet the attendance log shows her at work through 8 August and the dismissal came 14 days after her report.",
+        "citationsLabel": "Sources",
+        "citations": [
+          {"title": "attendance-2018-2026.xlsx", "note": "Evidence · HB-PR-000015", "status": "SUPPORTS"},
+          {"title": "Labor Standards Act, Art. 27", "note": "Statute · written notice of grounds", "status": "STATUTE"},
+          {"title": "Labor Standards Act, Art. 76-3", "note": "Statute · no adverse treatment of reporters", "status": "STATUTE"}
+        ]
+      }
+    },
+    "samples_KR": {
+      "witnesses": {
+        "intro": "Witnesses named in the application.",
+        "rows": [
+          {"title": "Kim Min-ji", "note": "Applicant · 6 Aug meeting", "status": "READY"},
+          {"title": "HR Manager Jung", "note": "Respondent side · sent the email", "status": "ADVERSE"},
+          {"title": "Team lead Park", "note": "Floor supervisor · 4–8 Aug", "status": "OUTSTANDING"}
+        ]
+      },
+      "caseReconstruction": {
+        "intro": "Assembled from produced documents and metadata.",
+        "rows": [
+          {"title": "28 Jul · workplace bullying report", "note": "HB-HR-000870", "status": "VERIFIED"},
+          {"title": "04 Aug · absence alleged", "note": "Termination notice only", "status": "DISPUTED"},
+          {"title": "06 Aug · HR requests meeting", "note": "HB-EM-004417", "status": "VERIFIED"},
+          {"title": "11 Aug · dismissal effective", "note": "Cites unauthorised absence", "status": "VERIFIED"}
+        ]
+      },
+      "law": {
+        "intro": "Unfair dismissal and procedure grounds.",
+        "rows": [
+          {"title": "Labor Standards Act, Art. 23", "note": "Limits on dismissal", "status": "STATUTE"},
+          {"title": "Labor Standards Act, Art. 27", "note": "Written notice of grounds", "status": "ON POINT"},
+          {"title": "Labor Standards Act, Art. 76-3", "note": "No adverse treatment of reporters", "status": "ON POINT"},
+          {"title": "Employment rules, Art. 41", "note": "3+ days absence is a disciplinary ground", "status": "ADVERSE"}
+        ]
+      },
+      "legalIssues": {
+        "intro": "Open questions for the Commission.",
+        "rows": [
+          {"title": "Was the absence proven?", "note": "Employer bears the burden", "status": "CONTESTED"},
+          {"title": "Was written notice proper?", "note": "No disciplinary hearing on record", "status": "BRIEFING"},
+          {"title": "Is dismissal 14 days after the report retaliation?", "note": "28 Jul → 11 Aug", "status": "OPEN"}
+        ]
+      },
+      "decisions": {
+        "intro": "From the latest answer · rule, evidence and the alternative rejected.",
+        "rows": [
+          {"title": "Absence is not established", "note": "For: attendance logged to 8 Aug", "status": "FAVOURS"},
+          {"title": "Written notice was not properly given", "note": "No disciplinary hearing on record", "status": "FAVOURS"},
+          {"title": "Alternative: dismissal for just cause", "note": "Rejected · no proof of absence", "status": "REJECTED"}
+        ]
+      },
+      "procedure": {
+        "intro": "Plead the timeline as the factual core.",
+        "rows": [
+          {"title": "File the remedy application", "note": "Filed 20 August", "status": "DONE"},
+          {"title": "Confirm brief deadline", "note": "With the Commission", "status": "OPEN"},
+          {"title": "Obtain attendance certification", "note": "From HR", "status": "OPEN"},
+          {"title": "Request full HR email thread", "note": "HB-EM series", "status": "OPEN"}
+        ]
+      },
+      "mindMap": {
+        "intro": "Kim v. Hanbit Logistics · structure view",
+        "rows": [
+          {"title": "Legal basis", "note": "Dismissal · notice · retaliation", "status": "NODE"},
+          {"title": "Key facts", "note": "Report · HR email · attendance", "status": "NODE"},
+          {"title": "Remedies", "note": "Reinstatement · back pay · compensation", "status": "NODE"},
+          {"title": "Risks", "note": "No objection · Park statement", "status": "NODE"}
+        ]
+      },
+      "attackStrategy": {
+        "intro": "Sequenced against the 24 September hearing.",
+        "rows": [
+          {"title": "Rebut absence with attendance log", "note": "Certification not obtained", "status": "BLOCKED"},
+          {"title": "Press the notice defect", "note": "Ready for the brief", "status": "READY"},
+          {"title": "Frame the 14 days as retaliation", "note": "Needs the report receipt", "status": "DRAFTING"}
+        ]
+      },
+      "defenseStrategy": {
+        "intro": "Anticipated employer defenses.",
+        "rows": [
+          {"title": "Absent from 4 August", "note": "Attendance logged to 8 Aug", "status": "ANSWERED"},
+          {"title": "The 6 Aug email was routine", "note": "It presumes ongoing employment", "status": "ANSWERED"},
+          {"title": "No written objection", "note": "Report predates dismissal", "status": "PARTIAL"}
+        ]
+      },
+      "theories": {
+        "intro": "2 theories side by side · never merged",
+        "rows": [
+          {"title": "S. Kim · retaliatory dismissal", "note": "Rests on the 14-day gap", "status": "THEORY"},
+          {"title": "J. Lee · no just cause", "note": "Rests on attendance to 8 Aug", "status": "THEORY"},
+          {"title": "Where they differ", "note": "Whether retaliatory intent must be proven", "status": "OPEN"}
+        ]
+      },
+      "audioOverview": {
+        "intro": "Generated briefing · 3 min 41 sec",
+        "rows": [
+          {"title": "rec-01-posture-and-claims.mp3", "note": "00:00 – 01:02", "status": "READY"},
+          {"title": "rec-02-absence.mp3", "note": "01:02 – 02:30", "status": "READY"},
+          {"title": "rec-03-remedies.mp3", "note": "02:30 – 03:41", "status": "STALE"}
+        ]
+      },
+      "weaknesses": {
+        "intro": "Ordered by how early it will surface.",
+        "rows": [
+          {"title": "No written objection, 4–11 Aug", "note": "Rests on the report", "status": "MATERIAL"},
+          {"title": "Park statement outstanding", "note": "Attendance log stands alone", "status": "MATERIAL"},
+          {"title": "Attendance certification missing", "note": "Needed before the brief", "status": "OPEN"},
+          {"title": "No adverse-citation check", "note": "Citation Map incomplete", "status": "OPEN"}
+        ]
+      },
+      "strengths": {
+        "intro": "Findings that carry the unfair-dismissal theory.",
+        "rows": [
+          {"title": "Attendance logged through 8 Aug", "note": "HB-PR-000015", "status": "KEY"},
+          {"title": "HR’s own 6 August email", "note": "HB-EM-004417", "status": "KEY"}
+        ]
+      },
+      "damages": {
+        "intro": "Provisional until attendance certification lands.",
+        "rows": [
+          {"title": "Back pay", "note": "₩14,400,000", "status": "MODELED"},
+          {"title": "Compensation in lieu of reinstatement", "note": "₩8,000,000", "status": "PROVISIONAL"},
+          {"title": "Consolation money (separate civil claim)", "note": "₩5,000,000", "status": "CONTESTED"}
+        ]
+      }
+    },
     "categories": {
       "all": "All",
       "facts": "Facts",
@@ -513,6 +710,14 @@
     "body": "Every consultation streams in as it's written, with related case law listed beside it — title, case or R.A. number, source link, and an excerpt, with vetted citations marked. Attach a document and the assistant searches inside it once indexing finishes.",
     "body_UK":"Every consultation streams in as it's written, with related case law listed beside it — title, neutral citation or law report reference, source link, and an excerpt, with vetted citations marked. Attach a document and the assistant searches inside it once indexing finishes.",
     "cta": "Start a consultation",
+    "body_KR": "Every consultation streams in as it's written, with related statutes and precedent listed beside it — case number, article link, and a key excerpt, with source-checked citations marked. Attach a filing and the assistant searches inside it once indexing finishes.",
+    "caseName_KR": "Kim v. Hanbit Logistics",
+    "relatedCases_KR": "Related Law",
+    "relatedCasesItems_KR": [
+      {"title": "Labor Standards Act, Art. 27", "citation": "Written notice of dismissal grounds", "snippet": "A dismissal takes effect only if its grounds and date are notified in writing.", "vetted": true},
+      {"title": "Labor Standards Act, Art. 23", "citation": "Limits on dismissal", "snippet": "An employer may not dismiss a worker without just cause.", "vetted": false}
+    ],
+    "attachment_KR": "termination-notice.pdf",
     "caseName": "Reyes v. Northbridge Logistics",
     "caseName_UK": "Hughes v Northbridge Logistics Ltd",
     "relatedCases": "Related Cases",
@@ -534,10 +739,18 @@
     "teamsHeading": "Firms and teams",
     "teamsBody": "Practise solo, or create a firm on one of three plans — Solo, Professional, Enterprise — and invite colleagues by email with a role: Owner, Admin, or Member. Every destructive step asks for confirmation first, and an owner names a successor before they can leave.",
     "teamsCta": "Invite your team",
+    "roster_KR": [
+      {"initials": "KS", "name": "Atty. Kim Seoyeon", "email": "seoyeon@hangyeol.kr", "role": "owner", "you": true},
+      {"initials": "PJ", "name": "Park Junho", "email": "junho@hangyeol.kr", "role": "admin", "you": false},
+      {"initials": "LJ", "name": "Lee Jieun", "email": "jieun@hangyeol.kr", "role": "member", "you": false},
+      {"initials": "CM", "name": "Choi Minsu", "email": "minsu@hangyeol.kr", "role": "member", "you": false, "pending": true}
+    ],
     "jurisdictionsHeading": "Built for Philippine practice",
     "jurisdictionsBody": "Your organization gets its own address, its own vocabulary, and only the tools that genuinely apply to Philippine practice — cases, documents, AI consultation and citation checking, all tailored to Philippine law.",
     "jurisdictionsHeading_UK": "Built for UK practice",
+    "jurisdictionsHeading_KR": "Built for Korean practice",
     "jurisdictionsBody_UK": "Your organization gets its own address, its own vocabulary, and only the tools that genuinely apply to UK practice — cases, documents, AI consultation and citation checking, all tailored to UK law.",
+    "jurisdictionsBody_KR": "Your organization gets its own address, its own vocabulary, and only the tools that genuinely apply to Korean practice — cases, documents, AI consultation and citation checking, all tailored to Korean law.",
     "roster": [
       { "initials": "AC", "name": "Atty. Ana Cruz", "email": "ana@cruzpartners.ph", "role": "owner", "you": true },
       { "initials": "RS", "name": "Ramon Santos", "email": "ramon@cruzpartners.ph", "role": "admin", "you": false },
@@ -555,14 +768,17 @@
       "subtitle": "People with access to this organization.",
       "organization": "Organization",
       "orgName": "Cruz & Partners",
+      "orgName_KR": "Hangyeol Law Group",
       "orgName_UK": "Sinclair & Wycombe LLP",
       "plan": "Plan",
       "planName": "Professional",
+      "planName_KR": "Professional",
       "planName_UK": "Enterprise",
       "you": "YOU",
       "pending": "PENDING",
       "invite": "Invite a member",
       "invitePlaceholder": "colleague@lawfirm.ph",
+      "invitePlaceholder_KR": "colleague@lawfirm.kr",
       "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
       "sendInvite": "Send Invite",
       "roles": {
@@ -597,7 +813,8 @@
         "heading": "Jurisdiction",
         "links": {
           "philippines": "Philippines",
-          "unitedKingdom": "United Kingdom"
+          "unitedKingdom": "United Kingdom",
+          "southKorea": "South Korea"
         }
       },
       "resources": {

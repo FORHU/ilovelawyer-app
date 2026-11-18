@@ -5,6 +5,45 @@
   "dismissError": "오류 닫기",
   "filingInitialized": "“{{title}}”에 대한 접수가 시작되었습니다.",
   "submitFailed": "사건 접수 제출에 실패했습니다.",
+  "newCaseHeading": "새 사건",
+  "newCaseSubheading": "사건명과 당사자를 입력하고 색인할 문서를 첨부하세요. 등록 후에도 모두 수정할 수 있습니다.",
+  "backToCases": "사건",
+  "continue": "계속",
+  "back": "뒤로",
+  "draftPrompt": {
+    "withTitle": "작성 중인 사건 “{{title}}”이(가) 있습니다. 이어서 작성하시겠습니까, 아니면 새로 시작하시겠습니까?",
+    "untitled": "작성 중인 사건이 있습니다. 이어서 작성하시겠습니까, 아니면 새로 시작하시겠습니까?",
+    "resume": "이어서 작성",
+    "startOver": "새로 시작"
+  },
+  "filingSummary": {
+    "title": "사건",
+    "parties": "당사자",
+    "noParties": "입력된 당사자 없음",
+    "moreParties": "+{{count}}명 더 보기",
+    "fewerParties": "간략히 보기",
+    "clientSide": "대리하는 쪽",
+    "edit": "수정"
+  },
+  "confidentialLabel": "비공개",
+  "confidentialHint": "조직의 소유자와 추가한 사람만 이 사건을 볼 수 있습니다. 등록 후 공유 메뉴에서 팀원을 추가할 수 있습니다.",
+  "steps": {
+    "identity": {
+      "numeral": "I",
+      "title": "사건 정보",
+      "hint": "사건명과 관할 법원"
+    },
+    "parties": {
+      "numeral": "II",
+      "title": "당사자",
+      "hint": "양측의 모든 당사자"
+    },
+    "documents": {
+      "numeral": "III",
+      "title": "문서",
+      "hint": "채팅과 분석을 위해 색인할 파일"
+    }
+  },
   "sectionIdentity": {
     "heading": "I. 사건 개요",
     "subheading": "이 사건의 표제와 관할.",
@@ -12,8 +51,11 @@
     "required": "(필수)",
     "caseTitlePlaceholder": "예: {{example}}",
     "caseTitleError": "제출을 시작하기 전에 사건명을 입력해 주세요.",
+    "ukJurisdictionLabel": "관할",
+    "selectUkJurisdiction": "관할 선택",
     "jurisdictionLabel": "법원 / 관할 지부",
-    "jurisdictionPlaceholder": "예: {{example}}"
+    "jurisdictionPlaceholder": "예: {{example}}",
+    "persistenceNotice": "법원 / 관할 지원 정보는 아직 저장되지 않습니다. 지원 작업이 진행 중입니다."
   },
   "sectionParties": {
     "heading": "II. 당사자 정보",
@@ -49,6 +91,11 @@
     "petitionerPlaintiff": "청구인 / 원고",
     "respondentDefendant": "피청구인 / 피고",
     "intervenorThirdParty": "참가인 / 제3자"
+  },
+  "ukJurisdictions": {
+    "englandAndWales": "잉글랜드 및 웨일스",
+    "scotland": "스코틀랜드",
+    "northernIreland": "북아일랜드"
   },
   "fieldLimit": {
     "reached": "최대 {{max}}자까지 입력할 수 있습니다.",

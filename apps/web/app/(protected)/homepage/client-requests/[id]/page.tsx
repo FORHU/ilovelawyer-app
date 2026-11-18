@@ -34,7 +34,7 @@ import {
 import { QUOTE_DEFAULT_VALIDITY_DAYS, QUOTE_MAX_VALIDITY_DAYS, dateInputValue, endOfDayIso, formatRate, platformFeeOf } from "@/lib/client-requests/quote-terms";
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { formatCountdown, useCountdown } from "@/lib/client-requests/use-countdown";
-import { formatMoney } from "@/lib/money";
+import { amountPlaceholder, currencyDecimals, currencySymbol, formatMoney, toMinor } from "@/lib/money";
 import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
@@ -78,11 +78,12 @@ function useLongDate() {
   return (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** A quote amount the form can send: a fixed fee needs more than £0, a first consultation may be
- * free (£0). Never left blank, which Number() would read as 0. */
-function quoteAmountOk(amount: string, type: QuoteType): boolean {
+/** A quote amount the form can send: a fixed fee needs more than 0, a first consultation may be
+ * free (0). Never left blank, which Number() would read as 0. Whole won only on KR. */
+function quoteAmountOk(amount: string, type: QuoteType, currency: string): boolean {
   const value = Number(amount);
   if (amount.trim() === "" || !Number.isFinite(value)) return false;
+  if (currencyDecimals(currency) === 0 && !Number.isInteger(value)) return false;
   return type === "FIRST_CONSULTATION" ? value >= 0 : value > 0;
 }
 
@@ -96,7 +97,10 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
   const profile = useClientRequestProfileQuery(true);
   const [typedAmount, setTypedAmount] = useState<string | null>(null);
   const fee = profile.data?.firstConsultationFee;
-  const amount = typedAmount ?? (fee?.currency === "GBP" ? (fee.amountMinor / 100).toFixed(2) : "");
+  // The site's currency (GBP on UK, KRW on KR): the API gives its terms in it.
+  const currency = request.quoteTerms.minPlatformFee.currency;
+  const decimals = currencyDecimals(currency);
+  const amount = typedAmount ?? (fee?.currency === currency ? (fee.amountMinor / 10 ** decimals).toFixed(decimals) : "");
   const [message, setMessage] = useState("");
   const [amountError, setAmountError] = useState(false);
   // The lawyer's own expiry: the client accepts and pays before the end of this day.
@@ -105,9 +109,9 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
 
   const validUntil = useLongDate();
   const previewAmount = Number(amount);
-  const hasPreviewAmount = quoteAmountOk(amount, type);
+  const hasPreviewAmount = quoteAmountOk(amount, type, currency);
   // What the lawyer types is what the client pays; the platform fee comes out of it.
-  const quotedMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
+  const quotedMinor = hasPreviewAmount ? toMinor(previewAmount, currency) : 0;
   const platformFeeMinor = platformFeeOf(quotedMinor, request.quoteTerms);
   const expiresAt = endOfDayIso(expiry);
 
@@ -115,11 +119,11 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
     e.preventDefault();
     const value = Number(amount);
     // What the preview shows is what the client is sent: a real amount, or £0 for a free first consultation.
-    if (!quoteAmountOk(amount, type)) return setAmountError(true);
+    if (!quoteAmountOk(amount, type, currency)) return setAmountError(true);
     if (!expiresAt || expiry < dateInputValue(0) || expiry > dateInputValue(QUOTE_MAX_VALIDITY_DAYS)) return setExpiryError(true);
-    const amountMinor = Math.round(value * 100);
+    const amountMinor = toMinor(value, currency);
     quote.mutate(
-      { type, amount: { amountMinor, currency: "GBP" }, message: message.trim(), expiresAt },
+      { type, amount: { amountMinor, currency: currency as "GBP" }, message: message.trim(), expiresAt },
       {
         onSuccess: () => toast.success(t("detail.quote.sent")),
         onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")),
@@ -155,16 +159,16 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
           </label>
           <div className={cn("flex items-center gap-2 rounded-full border bg-background px-4 focus-within:border-foreground", amountError ? "border-red-500" : "border-border")}>
             <span className="text-sm text-muted-foreground" aria-hidden="true">
-              £
+              {currencySymbol(currency)}
             </span>
             <input
               id="quote-amount"
-              inputMode="decimal"
+              inputMode={decimals === 0 ? "numeric" : "decimal"}
               value={amount}
-              placeholder="0.00"
+              placeholder={amountPlaceholder(currency)}
               aria-invalid={amountError}
               onChange={(e) => {
-                setTypedAmount(e.target.value.replace(/[^\d.]/g, ""));
+                setTypedAmount(e.target.value.replace(decimals === 0 ? /[^\d]/g : /[^\d.]/g, ""));
                 setAmountError(false);
               }}
               className="h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"
@@ -217,18 +221,18 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
           <span className={LABEL}>{t("detail.quote.willSee")}</span>
           <span className="text-[13px] text-muted-foreground">{type === "FIXED_FEE" ? t("detail.quote.fixedQuote") : t("detail.quote.consultationQuote")}</span>
           <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">
-            {hasPreviewAmount ? formatMoney(quotedMinor) : t("detail.quote.amountPlaceholder")}
+            {hasPreviewAmount ? formatMoney(quotedMinor, currency) : t("detail.quote.amountPlaceholder")}
           </span>
           <div className="flex flex-col gap-1 text-[13px]">
             <div className="flex justify-between gap-3 text-muted-foreground">
               <span>
-                {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor) })}
+                {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor, request.quoteTerms.minPlatformFee.currency) })}
               </span>
-              <span>{hasPreviewAmount ? `−${formatMoney(platformFeeMinor)}` : "—"}</span>
+              <span>{hasPreviewAmount ? `−${formatMoney(platformFeeMinor, currency)}` : "—"}</span>
             </div>
             <div className="flex justify-between gap-3 text-foreground">
               <span>{t("detail.quote.yourFee")}</span>
-              <span className="font-semibold">{hasPreviewAmount ? formatMoney(quotedMinor - platformFeeMinor) : "—"}</span>
+              <span className="font-semibold">{hasPreviewAmount ? formatMoney(quotedMinor - platformFeeMinor, currency) : "—"}</span>
             </div>
           </div>
           {expiresAt && <span className="text-xs text-muted-foreground">{t("detail.quote.validUntil", { date: validUntil(expiresAt) })}</span>}
@@ -317,10 +321,10 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
   return (
     <section className={CARD}>
       <div className={LABEL}>{t("detail.quote.sentTitle")}</div>
-      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.total.amountMinor ?? request.quote.amount.amountMinor)}</div>
+      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.total.amountMinor ?? request.quote.amount.amountMinor, quotation?.total.currency ?? request.quote.amount.currency)}</div>
       {quotation && (
         <div className="mt-2 flex flex-col gap-1 text-[13px] text-muted-foreground">
-          <span>{t("detail.quote.youReceive", { amount: formatMoney(quotation.serviceFee.amountMinor), fee: formatMoney(quotation.platformFee.amountMinor) })}</span>
+          <span>{t("detail.quote.youReceive", { amount: formatMoney(quotation.serviceFee.amountMinor, quotation.serviceFee.currency), fee: formatMoney(quotation.platformFee.amountMinor, quotation.platformFee.currency) })}</span>
           <span>{t("detail.quote.validUntil", { date: validUntil(quotation.expiresAt) })}</span>
         </div>
       )}
@@ -374,7 +378,8 @@ function ConfirmedCard({ request }: { request: ClientRequestForLawyer }) {
   // the lawyer. Only a request accepted before quotation payments has a per-case fee (a charge).
   if (!request.charge && request.quotation) {
     const quotation = request.quotation;
-    const total = formatMoney((quotation.acceptedAmount ?? quotation.total).amountMinor);
+    const accepted = quotation.acceptedAmount ?? quotation.total;
+    const total = formatMoney(accepted.amountMinor, accepted.currency);
     return (
       <section className={CARD}>
         <div className={LABEL}>{t("detail.confirmed.acceptedTitle")}</div>
@@ -507,6 +512,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         // An older API leaves `paid` out: ask for the outcome anyway, which it ignores.
         paid={engagement.paid ?? true}
         maxClaimMinor={request.quotation?.serviceFee.amountMinor ?? 0}
+        currency={request.quotation?.serviceFee.currency ?? request.quoteTerms.minPlatformFee.currency}
         completionPending={!!engagement.completion?.requestedAt}
         onClose={() => setClosing(false)}
         onConfirm={(input) =>
@@ -533,8 +539,8 @@ function ExitSummary({ exit }: { exit: NonNullable<NonNullable<ClientRequestForL
       <div className="font-semibold text-foreground">{t(`detail.closed.exit.status.${exit.status}`)}</div>
       <div className="text-muted-foreground">
         {t(`closeEngagement.reasons.${exit.reason}`)}
-        {exit.claimed && ` · ${t("detail.closed.exit.claimed", { amount: formatMoney(exit.claimed.amountMinor) })}`}
-        {exit.refunded.amountMinor > 0 && ` · ${t("detail.closed.exit.refunded", { amount: formatMoney(exit.refunded.amountMinor) })}`}
+        {exit.claimed && ` · ${t("detail.closed.exit.claimed", { amount: formatMoney(exit.claimed.amountMinor, exit.claimed.currency) })}`}
+        {exit.refunded.amountMinor > 0 && ` · ${t("detail.closed.exit.refunded", { amount: formatMoney(exit.refunded.amountMinor, exit.refunded.currency) })}`}
       </div>
     </div>
   );

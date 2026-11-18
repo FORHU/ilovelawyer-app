@@ -9,6 +9,8 @@ import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
 import { useClientRequestInboxCountQuery } from "@/lib/client-requests/inbox";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { formatPrice } from "@/lib/money";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
 import { useFreeCredit } from "@/lib/free-credit";
@@ -79,7 +81,6 @@ function TabLinkContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
@@ -143,6 +144,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   // An account on its free AI credit is a trial account until subscription tiers exist: the header
   // says so and shows what is left of the credit.
   const freeCredit = useFreeCredit();
+  // The free credit is shown in the site's currency (won on KR), grouped the site's way.
+  const siteLocale = getTenantCodeConfig(tenantCode).locale;
   // Account-wide AI allowance (cases aren't billed individually) — shown so a lawyer can see a
   // top-up applied and isn't "being cheated"; { limited: false } for a non-LAWYER account.
   const { data: accountAllowance } = useAccountAiAllowanceQuery();
@@ -358,7 +361,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               <span className="rounded-full bg-brand-gold px-1.5 py-px text-[9px] uppercase tracking-[1px] text-brand-gold-foreground">
                 {t("userMenu.trialBadge")}
               </span>
-              {freeCredit.spent ? t("userMenu.creditSpent") : t("userMenu.creditLeft", { amount: usd.format(freeCredit.leftUsd) })}
+              {freeCredit.spent ? t("userMenu.creditSpent") : t("userMenu.creditLeft", { amount: formatPrice(freeCredit.display.left, { locale: siteLocale, cents: true }) })}
             </span>
           )}
 
@@ -400,7 +403,10 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     <p className={`mt-1.5 text-[11px] tabular-nums ${freeCredit.spent ? "text-destructive" : "text-foreground"}`}>
                       {freeCredit.spent
                         ? t("userMenu.creditSpent")
-                        : t("userMenu.creditLeftOf", { amount: usd.format(freeCredit.leftUsd), total: usd.format(freeCredit.creditUsd) })}
+                        : t("userMenu.creditLeftOf", {
+                            amount: formatPrice(freeCredit.display.left, { locale: siteLocale, cents: true }),
+                            total: formatPrice(freeCredit.display.credit, { locale: siteLocale, cents: true }),
+                          })}
                     </p>
                     {freeCredit.spent && <p className="mt-1 text-[10px] text-muted-foreground">{t("userMenu.creditSpentHint")}</p>}
                   </div>

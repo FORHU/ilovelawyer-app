@@ -310,7 +310,8 @@
       "setUp": "Set up payouts",
       "finish": "Finish setting up",
       "update": "Update bank details",
-      "ready": "Payouts are set up."
+      "ready": "Payouts are set up.",
+      "unavailable": "Payouts to Korean bank accounts aren't available yet. Your earnings stay safe in your wallet and can be withdrawn once they are."
     },
     "withdraw": {
       "label": "Withdraw to your bank",
@@ -329,7 +330,8 @@
       "confirmLeft": "Available afterwards",
       "confirmAll": "This withdraws your whole available balance.",
       "confirmCancel": "Cancel",
-      "confirmSubmit": "Withdraw {{amount}}"
+      "confirmSubmit": "Withdraw {{amount}}",
+      "unavailable": "Withdrawals open once payouts to Korea are available."
     },
     "earnings": {
       "heading": "Client payments",

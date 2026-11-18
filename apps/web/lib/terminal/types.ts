@@ -751,7 +751,8 @@ export interface DamageClaim {
 
 /** Computed server-side (API utils/damages-compute.ts) from the accepted entries. */
 export interface DamagesSummary {
-  currency: "PHP" | "GBP"
+  /** KRW once the API's damages-compute.ts maps the KR tenant (today it sends PHP for any non-UK). */
+  currency: "PHP" | "GBP" | "KRW"
   total: number
   /** The part of `total` already awarded or received. */
   awarded: number

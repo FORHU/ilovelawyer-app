@@ -33,8 +33,9 @@ export function useDateLocale(): string | undefined {
   return dateLocale()
 }
 
-/** date-fns `weekStartsOn`: Monday on the UK site (UK convention), Sunday on the PH site. */
+/** date-fns `weekStartsOn`, from the site's config: Monday on UK, Sunday on PH and KR. */
 export function useWeekStartsOn(): 0 | 1 {
   useAuthStore((s) => s.organization?.tenantCode)
-  return currentTenantCode() === "UK" ? 1 : 0
+  const tenantCode = currentTenantCode()
+  return tenantCode ? getTenantCodeConfig(tenantCode).weekStartsOn : 0
 }

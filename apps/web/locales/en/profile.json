@@ -184,7 +184,9 @@
       "jurisdictions": "Qualified in",
       "practiceAreas": "Practice areas",
       "rollNumber": "Roll number",
-      "ibpChapter": "IBP chapter"
+      "ibpChapter": "IBP chapter",
+      "krRegistrationNumber": "Registration number",
+      "localBar": "Local bar"
     },
     "missingFields": {
       "regulator": "your regulator",
@@ -192,7 +194,8 @@
       "qualifiedJurisdictions": "where you're qualified",
       "practiceAreas": "at least one practice area",
       "rollNumber": "your Roll of Attorneys number",
-      "ibpChapter": "your IBP chapter"
+      "ibpChapter": "your IBP chapter",
+      "localBar": "your local bar association"
     },
     "accepting": {
       "title": "Accept client requests",
@@ -263,7 +266,22 @@
       "ibpMembershipNumberHelp": "Lifetime number or annual dues receipt. Optional.",
       "mcleNumber": "MCLE compliance number",
       "mclePeriod": "MCLE compliance period",
-      "mclePeriodHelp": "As on your certificate, e.g. VII. Optional."
+      "mclePeriodHelp": "As on your certificate, e.g. VII. Optional.",
+      "krRegistrationNumber": "Korean Bar Association registration number",
+      "krRegistrationNumberHelp": "Your 대한변호사협회 등록번호, digits only.",
+      "localBar": "Local bar association",
+      "localBarPlaceholder": "Choose your local bar",
+      "qualificationRoute": "How you qualified (optional)",
+      "cohortBarExam": "Bar exam round (optional)",
+      "cohortJrti": "JRTI class (optional)",
+      "cohortHelp": "The number only, e.g. 9 for the 9th round.",
+      "registeredOn": "Date of registration (optional)",
+      "registeredOnHelp": "When you registered with the Korean Bar Association.",
+      "specialties": "Registered specialist areas (optional)",
+      "specialtiesHelp": "Areas registered with the Korean Bar Association (전문분야).",
+      "specialtiesPlaceholder": "Type an area, then press Enter",
+      "removeSpecialty": "Remove {{specialty}}",
+      "feeKR": "First consultation fee (₩)"
     },
     "copy": {
       "UK": {
@@ -287,7 +305,38 @@
         "pendingHelp": "We're checking your Roll of Attorneys and IBP details. This usually takes a working day, and we'll email you when it's done.",
         "rejectedHelp": "We couldn't verify your details. Correct them and resubmit to have them checked again.",
         "recheckWarning": "Changing your Roll number or IBP chapter sends your application back for review."
+      },
+      "KR": {
+        "heading": "Get verified as a lawyer",
+        "subheading": "We check your registration with the Korean Bar Association before you start. Once approved, your profile shows an Approved badge.",
+        "apply": "Apply to get verified",
+        "dialogTitle": "Apply to get verified",
+        "dialogDescription": "We check your registration number and local bar association against the Korean Bar Association's register, usually within a working day. You can start using ilovelawyer once it's approved.",
+        "unsubmittedHelp": "Apply once with your Korean Bar Association registration number and local bar association. We check them, usually within a working day.",
+        "pendingHelp": "We're checking your registration with the Korean Bar Association. This usually takes a working day, and we'll email you when it's done.",
+        "rejectedHelp": "We couldn't verify your registration. Correct your details and resubmit to have them checked again.",
+        "recheckWarning": "Changing your registration number or local bar association sends your application back for review."
       }
+    },
+    "krLocalBars": {
+      "SEOUL": "Seoul Bar Association (서울지방변호사회)",
+      "GYEONGGI_BUKBU": "Gyeonggi Bukbu Bar Association (경기북부지방변호사회)",
+      "INCHEON": "Incheon Bar Association (인천지방변호사회)",
+      "GYEONGGI_JUNGANG": "Gyeonggi Jungang Bar Association (경기중앙지방변호사회)",
+      "GANGWON": "Gangwon Bar Association (강원지방변호사회)",
+      "CHUNGBUK": "Chungbuk Bar Association (충북지방변호사회)",
+      "DAEJEON": "Daejeon Bar Association (대전지방변호사회)",
+      "DAEGU": "Daegu Bar Association (대구지방변호사회)",
+      "BUSAN": "Busan Bar Association (부산지방변호사회)",
+      "ULSAN": "Ulsan Bar Association (울산지방변호사회)",
+      "GYEONGNAM": "Gyeongnam Bar Association (경남지방변호사회)",
+      "GWANGJU": "Gwangju Bar Association (광주지방변호사회)",
+      "JEONBUK": "Jeonbuk Bar Association (전북지방변호사회)",
+      "JEJU": "Jeju Bar Association (제주지방변호사회)"
+    },
+    "krRoutes": {
+      "BAR_EXAM": "Bar exam (변호사시험)",
+      "JRTI": "JRTI (사법연수원)"
     }
   }
 }

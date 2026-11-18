@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 import { organizationKeys } from "@/lib/query-keys"
 import type { TenantCode } from "@/lib/tenant-code/resolve-host"
+import type { KrFirmType } from "@/lib/forms/field-rules"
 
 export type OrganizationRole = "OWNER" | "ADMIN" | "MANAGER" | "MEMBER"
 export type OrganizationMemberStatus = "PENDING" | "ACCEPTED"
@@ -28,6 +29,10 @@ export interface OrganizationRecord {
   postcode: string | null
   firmRegulator: "SRA" | "LSS" | "LSNI" | null
   firmRegistrationNumber: string | null
+  /** KR only: KR_FIRM_TYPES and the 10-digit business registration number (사업자등록번호). Absent
+   * from an API that predates them. */
+  firmType?: KrFirmType | null
+  businessRegistrationNumber?: string | null
   createdAt: string
   updatedAt: string
 }

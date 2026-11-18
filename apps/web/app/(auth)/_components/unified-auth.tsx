@@ -8,7 +8,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { ThemeToggle } from "@/components/theme-provider";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
-import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { getTenantCodeConfig, tenantI18nContext } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { PasswordRequirements } from "@/components/auth/password-requirements";
 import { isPasswordValid } from "@/lib/auth/password-policy";
@@ -56,8 +56,9 @@ function UnifiedAuthContent() {
   const [error, setError] = useState<string | null>(null);
   const tenantCodeHint = useTenantCodeHint();
   const tenantCodeConfig = getTenantCodeConfig(tenantCodeHint);
-  // UK hosts get `_UK` placeholder copy (UK names and .co.uk emails) instead of the PH examples.
-  const tCtx = tenantCodeHint === "UK" ? { context: "UK" as const } : undefined;
+  // UK and KR hosts get their own placeholder copy (`_UK` / `_KR`: local names and emails) instead
+  // of the PH examples.
+  const tCtx = tenantI18nContext(tenantCodeHint);
 
   // Sign in fields
   const [signinEmail, setSigninEmail] = useState("");

@@ -4,18 +4,12 @@ import { LandingNavbar } from "@/components/landing/navbar";
 import { ScrollSmootherProvider } from "@/components/landing/scroll-smoother-provider";
 import { NeutralLandingSplash } from "@/components/landing/neutral-splash";
 import { CapabilitiesSection } from "@/components/landing/capabilities-section";
-import { HeroSection } from "@/components/landing/ph/hero-section";
-import { FirmQuoteSection } from "@/components/landing/ph/firm-quote-section";
-import { TerminalShowcaseSection } from "@/components/landing/ph/terminal-showcase-section";
-import { ConsultationSection } from "@/components/landing/ph/consultation-section";
-import { FirmsSection } from "@/components/landing/ph/firms-section";
-import { LandingFooter } from "@/components/landing/ph/footer";
-import { UkHeroSection } from "@/components/landing/uk/hero-section";
-import { UkFirmQuoteSection } from "@/components/landing/uk/firm-quote-section";
-import { UkTerminalShowcaseSection } from "@/components/landing/uk/terminal-showcase-section";
-import { UkConsultationSection } from "@/components/landing/uk/consultation-section";
-import { UkFirmsSection } from "@/components/landing/uk/firms-section";
-import { UkLandingFooter } from "@/components/landing/uk/footer";
+import { HeroSectionBase } from "@/components/landing/hero-section-base";
+import { FirmQuoteSectionBase } from "@/components/landing/firm-quote-section-base";
+import { TerminalShowcaseSectionBase } from "@/components/landing/terminal-showcase-section-base";
+import { ConsultationSectionBase } from "@/components/landing/consultation-section-base";
+import { FirmsSectionBase } from "@/components/landing/firms-section-base";
+import { FooterSectionBase } from "@/components/landing/footer-section-base";
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint";
 import { getRequestOrigin } from "@/lib/tenant-code/get-request-origin";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -24,7 +18,7 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { FaqSection } from "@/components/landing/faq-section";
 import { DeveloperCredit } from "@/components/landing/developer-credit";
 import { BRAND_ORIGIN, brandJsonLd } from "@/lib/seo/brand";
-import { getFaqItems, getFaqLede } from "@/lib/seo/faq";
+import { getFaqHeading, getFaqItems, getFaqLede } from "@/lib/seo/faq";
 
 // The testimonial section is switched off until there are real client quotes to show (the UK
 // one is still a placeholder). Flip to true to bring it back on both tenants.
@@ -45,11 +39,15 @@ const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
     description:
       "Case management, AI consultation with cited Philippine jurisprudence, and a Legal Terminal built for practicing lawyers.",
   },
+  KR: {
+    title: "ilovelawyer 코리아 — 변호사를 위한 AI 리걸 인텔리전스",
+    description: "사건 관리, 국내 판례·법령을 인용하는 AI 자문, 그리고 변호사를 위해 만든 리걸 터미널.",
+  },
 };
 
 // ISO 3166-1 alpha-2, per schema.org's `areaServed` convention — not the tenant code itself
-// ("UK" isn't the ISO country code; "GB" is).
-const AREA_SERVED: Record<TenantCode, string> = { UK: "GB", PH: "PH" };
+// ("UK" isn't the ISO country code; "GB" is). KR happens to match.
+const AREA_SERVED: Record<TenantCode, string> = { UK: "GB", PH: "PH", KR: "KR" };
 
 // This is a SaaS product used BY lawyers, not a provider of legal services to the public —
 // deliberately `SoftwareApplication`, not schema.org's `LegalService` type, so the structured
@@ -91,6 +89,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = headersList.get("host") ?? "";
   const protocol = protocolForHost(host);
   const ukUrl = `${protocol}://${hostForTenantCode("UK", host)}/`;
+  const krUrl = `${protocol}://${hostForTenantCode("KR", host)}/`;
   const phUrl = `${protocol}://${hostForTenantCode("PH", host)}/`;
 
   return {
@@ -105,6 +104,7 @@ export async function generateMetadata(): Promise<Metadata> {
       languages: {
         "en-GB": ukUrl,
         "en-PH": phUrl,
+        "ko-KR": krUrl,
         // Tells Google which version to fall back to for a searcher whose locale matches
         // neither annotated variant — points at PH since getTenantCodeConfig() already
         // treats PH as the display default when a tenant is unresolved.
@@ -163,57 +163,33 @@ export default async function LandingPage() {
       dangerouslySetInnerHTML={{ __html: JSON.stringify([structuredData, ...brandJsonLd(origin)]) }}
     />
   );
-  const faqSection = <FaqSection items={getFaqItems(tenantCode)} lede={getFaqLede(tenantCode)} />;
+  const faqSection = <FaqSection items={getFaqItems(tenantCode)} heading={getFaqHeading(tenantCode)} lede={getFaqLede(tenantCode)} />;
 
-  if (tenantCode === "UK") {
-    return (
-      <div className="flex flex-col min-h-screen w-full bg-background">
-        {jsonLdScript}
-        <LandingNavbar />
-        {/* Portal target for the fixed, ScrollSmoother-safe footer (footer-reveal-portal.tsx)
-            — a sibling of the navbar, outside ScrollSmootherProvider, same reason the navbar
-            itself has to be outside it. */}
-        <div id="footer-reveal-portal-target" />
-        <ScrollSmootherProvider>
-          {/* pointer-events-auto opts this real content back in — #smooth-content (its parent,
-              see scroll-smoother-provider.tsx) is pointer-events-none so the empty footer-reveal
-              gap below stays click-through to the portaled footer. */}
-          <main className="flex-1 pointer-events-auto">
-            <UkHeroSection />
-            <CapabilitiesSection />
-            {SHOW_TESTIMONIALS && <UkFirmQuoteSection />}
-            <UkTerminalShowcaseSection />
-            <UkConsultationSection />
-            <UkFirmsSection />
-            {faqSection}
-            <DeveloperCredit />
-          </main>
-          <UkLandingFooter />
-        </ScrollSmootherProvider>
-      </div>
-    );
-  }
-
+  // One layout for every tenant: each section takes the tenant code and reads its own copy
+  // (i18n `_UK` / `_KR` variants), assets and per-tenant data from it.
   return (
     <div className="flex flex-col min-h-screen w-full bg-background">
       {jsonLdScript}
       <LandingNavbar />
+      {/* Portal target for the fixed, ScrollSmoother-safe footer (footer-reveal-portal.tsx)
+          — a sibling of the navbar, outside ScrollSmootherProvider, same reason the navbar
+          itself has to be outside it. */}
       <div id="footer-reveal-portal-target" />
       <ScrollSmootherProvider>
         {/* pointer-events-auto opts this real content back in — #smooth-content (its parent,
             see scroll-smoother-provider.tsx) is pointer-events-none so the empty footer-reveal
             gap below stays click-through to the portaled footer. */}
         <main className="flex-1 pointer-events-auto">
-          <HeroSection />
+          <HeroSectionBase tenantCode={tenantCode} />
           <CapabilitiesSection />
-          {SHOW_TESTIMONIALS && <FirmQuoteSection />}
-          <TerminalShowcaseSection />
-          <ConsultationSection />
-          <FirmsSection />
+          {SHOW_TESTIMONIALS && <FirmQuoteSectionBase tenantCode={tenantCode} />}
+          <TerminalShowcaseSectionBase tenantCode={tenantCode} />
+          <ConsultationSectionBase tenantCode={tenantCode} />
+          <FirmsSectionBase tenantCode={tenantCode} />
           {faqSection}
           <DeveloperCredit />
         </main>
-        <LandingFooter />
+        <FooterSectionBase tenantCode={tenantCode} />
       </ScrollSmootherProvider>
     </div>
   );

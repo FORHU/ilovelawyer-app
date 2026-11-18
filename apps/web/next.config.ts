@@ -38,6 +38,12 @@ const nextConfig: NextConfig = {
     "uk-local.ilovelawyer.com",
     "ph.localhost",
     "uk.localhost",
+    "kr.ilovelawyer",
+    "kr-dev.ilovelawyer",
+    "kr.ilovelawyer.local",
+    "kr-dev.ilovelawyer.local",
+    "kr-local.ilovelawyer.com",
+    "kr.localhost",
   ],
   // Pin the workspace root to this pnpm workspace so Turbopack doesn't infer it
   // from the unrelated package-lock.json at the parent forhu-project/ directory.

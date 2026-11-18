@@ -7,6 +7,7 @@ import { Clock, Loader2, Lock, MessagesSquare, ShieldCheck } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { LandingNavbar } from "@/components/landing/navbar"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
+import { getTenantCodeConfig } from "@/config/tenant-codes"
 import { useStartTrialMutation } from "@/lib/auth/mutations"
 import { useTrialConfig } from "@/lib/trial"
 
@@ -16,20 +17,22 @@ const SECONDARY_BUTTON =
   "inline-flex h-12 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border border-border px-8 text-xs font-semibold uppercase tracking-[1.2px] text-foreground transition-[background-color,transform] duration-200 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
 
 // Where the landing page's "Start a consultation" goes for a visitor with no account: the notice
-// they accept, then a throwaway guest account and the real consultation page. UK only; any other
-// host carries on to the normal sign-in.
+// they accept, then a throwaway guest account and the real consultation page. Only on sites whose
+// tenant config has `trial` (UK; KR once its AI chat ships); any other host carries on to the
+// normal sign-in.
 export default function TrialPage() {
   const { t } = useTranslation("landing")
   const router = useRouter()
   const tenantCode = useTenantCodeHint()
+  const hasTrial = !!tenantCode && getTenantCodeConfig(tenantCode).trial
   const start = useStartTrialMutation()
   const config = useTrialConfig()
 
   useEffect(() => {
-    if (tenantCode !== "UK") router.replace("/login?next=%2Fhomepage")
-  }, [tenantCode, router])
+    if (!hasTrial) router.replace("/login?next=%2Fhomepage")
+  }, [hasTrial, router])
 
-  if (tenantCode !== "UK") return null
+  if (!hasTrial) return null
 
   const included = [
     { icon: MessagesSquare, title: config ? t("trial.answersTitle", { count: config.messageLimit }) : t("trial.answersTitleLoading"), body: t("trial.answersBody") },

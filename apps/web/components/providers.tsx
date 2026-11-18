@@ -56,7 +56,7 @@ export function Providers({
     <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <I18nProvider>
+          <I18nProvider tenantCodeHint={tenantCodeHint}>
             <TenantCodeProvider tenantCode={tenantCodeHint}>
               <TooltipProvider>{children}</TooltipProvider>
             </TenantCodeProvider>

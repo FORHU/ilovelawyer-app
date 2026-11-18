@@ -7,11 +7,13 @@ import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { FOOTER_HASH, smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 import { hasSessionHint } from "@/lib/fetch";
+import { LandingLanguageToggle } from "@/components/landing/language-toggle";
 
 const NAV_LINKS = [
   { key: "capabilities", href: "#capabilities", tooltip: "See every feature the platform ships" },
@@ -37,10 +39,14 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 // splash) — every NAV_LINKS entry scrolls to one of them, so there they'd silently do nothing.
 export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHero?: boolean; sectionLinks?: boolean }) {
   const { t } = useTranslation("landing");
-  // UK visitors try the product first (see app/trial); other tenants have no trial, so they sign up.
-  const isUk = useTenantCodeHint() === "UK";
-  const ctaHref = isUk ? "/trial" : "/signup";
-  const ctaLabel = isUk ? t("navbar.startTrial") : t("navbar.getStarted");
+  // Sites with a trial (tenant config `trial`) let visitors try the product first (see app/trial);
+  // the rest go straight to sign-up.
+  const tenantHint = useTenantCodeHint();
+  const hasTrial = getTenantCodeConfig(tenantHint).trial;
+  // The KR site is bilingual (Korean and English) and says so up front; the other tenants only offer the footer switch.
+  const showLanguageToggle = tenantHint === "KR" && sectionLinks;
+  const ctaHref = hasTrial ? "/trial" : "/signup";
+  const ctaLabel = hasTrial ? t("navbar.startTrial") : t("navbar.getStarted");
   const [mobileOpen, setMobileOpen] = useState(false);
   const hasAccessToken = useAuthStore((s) => !!s.accessToken);
   // The public page never runs a silent refresh, so a signed-in visitor arriving fresh has no
@@ -131,6 +137,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
           gone — it balances against the left nav's own flex-1 so the logo in between stays
           centered rather than drifting toward whichever side is narrower. */}
       <div className={`hidden lg:flex flex-1 items-center justify-end gap-4 shrink-0 ${LINK_INK}`}>
+        {showLanguageToggle && <LandingLanguageToggle />}
         <ThemeToggle />
         {isAuthenticated ? (
           <Tooltip>
@@ -167,7 +174,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
                     {ctaLabel}
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent>{isUk ? "Try a consultation without an account" : "Create your free ilovelawyer account"}</TooltipContent>
+                <TooltipContent>{hasTrial ? "Try a consultation without an account" : "Create your free ilovelawyer account"}</TooltipContent>
               </Tooltip>
             )}
           </>
@@ -210,6 +217,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
             </nav>
           )}
           <div className="flex items-center gap-4 text-white">
+            {showLanguageToggle && <LandingLanguageToggle />}
             <ThemeToggle />
           </div>
           <div className="flex gap-3">

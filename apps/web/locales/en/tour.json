@@ -91,6 +91,7 @@
     "theme": "The **sun / moon** button in the header switches between light and dark.",
     "library": "Codals, jurisprudence and Republic Acts are in the **Library**.",
     "library_UK": "UK case law and legislation are in the **Library**.",
+    "library_KR": "Korean statutes and court decisions are in the **Library**.",
     "voice": "Tap the **microphone** in the composer to dictate. Your words appear in the box so you can edit them before sending.",
     "newConsultation": "Use the **+** button at the top of the consultation sidebar to start a new consultation. Earlier ones stay in the history.",
     "history": "Your past consultations are in the **history** sidebar on the left of Consultation.",
@@ -118,6 +119,7 @@
     "tour": "You can replay the tour from **Ask the guide**: open it and choose Replay the tour.",
     "librarySearch": "Type a topic, a code or a G.R. number into the **Library search** to find matching authorities.",
     "librarySearch_UK": "Type a case name, a neutral citation or an Act title into the **Library search** to find matching authorities.",
+    "librarySearch_KR": "Type a topic, a statute name or a case number into the **Library search** to find matching authorities.",
     "libraryCategories": "Use the **category tabs** beside the search box to switch between decisions and statutes.",
     "libraryCategories_UK": "Use the **category tabs** beside the search box to switch between case law and legislation.",
     "libraryFilters": "The **filters** under the search box narrow results by case type, topic or court.",
@@ -172,6 +174,7 @@
     "filterLibrary_UK": "How do I filter judgments by court?",
     "switchCategory": "How do I switch to Republic Acts?",
     "switchCategory_UK": "How do I switch to legislation?",
+    "switchCategory_KR": "How do I switch to statutes?",
     "reminder": "Can I set a reminder?",
     "editEvent": "How do I reschedule or delete an event?",
     "archived": "Where are my archived cases?",
@@ -363,6 +366,7 @@
     "steps": {
       "composer-input": "Type a legal question in plain language. Answers cite the codals and decisions they rely on.",
       "composer-input_UK": "Type a legal question in plain language. Answers cite the legislation and judgments they rely on.",
+      "composer-input_KR": "Type a legal question in plain language. Answers cite the statutes and court decisions they rely on.",
       "composer-attach": "Attach a contract or filing. You can send right away, and answers cite it once it's indexed.",
       "composer-mic": "Dictate instead of typing. Your words appear in the box so you can edit them before sending.",
       "consult-new": "Start a fresh consultation. Earlier ones stay in your history.",
@@ -379,6 +383,7 @@
       "case-row-terminal": "Open a case in the Legal Terminal: the full grid of analysis panes.",
       "library-search": "Search codals, jurisprudence and Republic Acts by topic, title or G.R. number.",
       "library-search_UK": "Search UK case law and legislation by case name, neutral citation or Act title.",
+      "library-search_KR": "Search Korean statutes and court decisions by topic, statute name or case number.",
       "library-cats": "Switch between decisions and statutes.",
       "library-cats_UK": "Switch between case law and legislation.",
       "library-filters": "Narrow the results by case type, topic or court.",
@@ -403,7 +408,8 @@
       "consultation": {
         "title": "Consultation",
         "body": "Ask in plain language. Answers cite the codals and decisions they rely on.",
-        "body_UK": "Ask in plain language. Answers cite the legislation and judgments they rely on."
+        "body_UK": "Ask in plain language. Answers cite the legislation and judgments they rely on.",
+        "body_KR": "Ask in plain language. Answers cite the statutes and court decisions they rely on."
       }
     },
     "sample": {
@@ -438,10 +444,26 @@
           "meta": "Employment · Unfair dismissal · ET"
         }
       ],
+      "cases_KR": [
+        {
+          "name": "Park Jun-ho (fraud)",
+          "meta": "Criminal · Fraud · Seoul Central District Court"
+        },
+        {
+          "name": "Kim Seo-yeon v. Hanbit Development",
+          "meta": "Civil · Rescission for fraud · Seoul Central District Court"
+        },
+        {
+          "name": "Lee Min-jun v. Saebom Foods",
+          "meta": "Employment · Unfair dismissal · Labor Relations Commission"
+        }
+      ],
       "question": "Is this estafa or an unpaid debt?",
       "question_UK": "Is this fraud or an unpaid debt?",
+      "question_KR": "Is this fraud or an unpaid debt?",
       "answer": "Estafa needs deceit before or at the time the money was handed over. A promise broken later is a civil debt.",
       "answer_UK": "Fraud by false representation needs a dishonest statement made to gain. A promise broken later is usually a civil debt.",
+      "answer_KR": "Fraud under Criminal Act art. 347 needs deceit that leads the victim to hand over money. A promise broken later, with no deceit at the time, is usually a civil debt.",
       "citations": [
         "RPC Art. 315(2)(a)",
         "RA 10951 §85",
@@ -451,6 +473,11 @@
         "Fraud Act 2006, s.2",
         "Ivey v Genting [2017] UKSC 67",
         "Defence p.4"
+      ],
+      "citations_KR": [
+        "Criminal Act art. 347",
+        "Civil Act art. 110",
+        "Answer p.4"
       ]
     }
   }
