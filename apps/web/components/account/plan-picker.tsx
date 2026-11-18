@@ -13,7 +13,7 @@ import { setupHeadingClass, setupPrimaryButtonClass, setupSecondaryButtonClass, 
 import { PlanChangeDialog } from "@/components/account/plan-change-dialog";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
-import { formatAmount, formatPrice } from "@/lib/money";
+import { formatPrice } from "@/lib/money";
 import { useAuthStore } from "@/lib/store/auth.store";
 import {
   usePaymentPlanCheckoutStatusQuery,
@@ -63,11 +63,11 @@ function PlanCard({
   // Client requests come from the client app on the UK site only.
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
   const clientRequests = isFeatureEnabled(tenantCode, "clientRequests");
-  // The plan's own currency (won on KR), grouped the site's way. The AI usage is in dollars everywhere.
+  // The plan's own currency (won on KR), grouped the site's way; the AI usage is shown in it too.
   const fee = formatPrice(plan.price, { locale: getTenantCodeConfig(tenantCode).locale });
   const features = [
     plan.caseLimit > 0 ? t("plan.cases", { count: plan.caseLimit }) : t("plan.casesUnlimited"),
-    t("plan.aiUsage", { amount: formatAmount(plan.includedAllowanceUsd, "USD") }),
+    t("plan.aiUsage", { amount: formatPrice(plan.aiUsage, { locale: getTenantCodeConfig(tenantCode).locale }) }),
     ...(clientRequests
       ? [plan.clientRequestLimit > 0 ? t("plan.clientRequests", { count: plan.clientRequestLimit }) : t("plan.clientRequestsUnlimited")]
       : []),

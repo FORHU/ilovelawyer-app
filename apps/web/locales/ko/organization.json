@@ -310,7 +310,8 @@
       "setUp": "정산 계좌 설정",
       "finish": "설정 마치기",
       "update": "은행 정보 수정",
-      "ready": "정산이 설정되었습니다."
+      "ready": "정산이 설정되었습니다.",
+      "unavailable": "한국 은행 계좌로의 정산은 아직 지원되지 않습니다. 수익은 지갑에 안전하게 보관되며, 지원이 시작되면 출금할 수 있습니다."
     },
     "withdraw": {
       "label": "은행 계좌로 출금",
@@ -329,7 +330,8 @@
       "confirmLeft": "출금 후 잔액",
       "confirmAll": "출금 가능 잔액 전체를 출금합니다.",
       "confirmCancel": "취소",
-      "confirmSubmit": "{{amount}} 출금"
+      "confirmSubmit": "{{amount}} 출금",
+      "unavailable": "한국 정산이 지원되면 출금할 수 있습니다."
     },
     "earnings": {
       "heading": "의뢰인 결제",

@@ -37,7 +37,7 @@ export function EngagementAiTopUpModal({ requestId, open, onClose }: { requestId
     if (!packId) return
     buy.mutate(packId, {
       onSuccess: (charge) => {
-        toast.success(charge.status === "PENDING" ? t("aiBudget.topUpPending") : t("aiBudget.topUpDone", { credit: formatMoney(pack?.credit.amountMinor ?? 0) }))
+        toast.success(charge.status === "PENDING" ? t("aiBudget.topUpPending") : t("aiBudget.topUpDone", { credit: formatMoney(pack?.credit.amountMinor ?? 0, pack?.credit.currency) }))
         onClose()
       },
       onError: (err) => {
@@ -75,20 +75,20 @@ export function EngagementAiTopUpModal({ requestId, open, onClose }: { requestId
                 >
                   <span>
                     <span className="block text-[14px] font-semibold text-foreground">{p.name}</span>
-                    <span className="block text-[12px] text-muted-foreground">{t("aiBudget.packCredit", { credit: formatMoney(p.credit.amountMinor) })}</span>
+                    <span className="block text-[12px] text-muted-foreground">{t("aiBudget.packCredit", { credit: formatMoney(p.credit.amountMinor, p.credit.currency) })}</span>
                   </span>
-                  <span className="text-[15px] font-semibold tabular-nums text-foreground">{formatMoney(p.price.amountMinor)}</span>
+                  <span className="text-[15px] font-semibold tabular-nums text-foreground">{formatMoney(p.price.amountMinor, p.price.currency)}</span>
                 </button>
               ))}
             </div>
           )}
-          {pack && <p className="text-[12px] text-muted-foreground">{t("aiBudget.chargeNote", { price: formatMoney(pack.price.amountMinor) })}</p>}
+          {pack && <p className="text-[12px] text-muted-foreground">{t("aiBudget.chargeNote", { price: formatMoney(pack.price.amountMinor, pack.price.currency) })}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={buy.isPending}>
               {t("aiBudget.notNow")}
             </Button>
             <Button type="button" variant="accent" onClick={confirm} isPending={buy.isPending} disabled={!pack}>
-              {pack ? t("aiBudget.confirm", { price: formatMoney(pack.price.amountMinor) }) : t("aiBudget.topUp")}
+              {pack ? t("aiBudget.confirm", { price: formatMoney(pack.price.amountMinor, pack.price.currency) }) : t("aiBudget.topUp")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -114,7 +114,7 @@ export function EngagementAiMeter({ requestId, variant = "card" }: { requestId: 
   const total = included.amountMinor + toppedUp.amountMinor
 
   const message =
-    state === "EXHAUSTED" ? t("aiBudget.exhausted") : state === "WARNING" ? t("aiBudget.warning", { remaining: formatMoney(remaining.amountMinor) }) : t("aiBudget.ok", { remaining: formatMoney(remaining.amountMinor) })
+    state === "EXHAUSTED" ? t("aiBudget.exhausted") : state === "WARNING" ? t("aiBudget.warning", { remaining: formatMoney(remaining.amountMinor, remaining.currency) }) : t("aiBudget.ok", { remaining: formatMoney(remaining.amountMinor, remaining.currency) })
 
   return (
     <div
@@ -140,11 +140,11 @@ export function EngagementAiMeter({ requestId, variant = "card" }: { requestId: 
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percentUsed}
-        aria-valuetext={t("aiBudget.used", { used: formatMoney(used.amountMinor), total: formatMoney(total) })}
+        aria-valuetext={t("aiBudget.used", { used: formatMoney(used.amountMinor, used.currency), total: formatMoney(total, included.currency) })}
       >
         <div className={cn("h-full rounded-full transition-all", tone.bar)} style={{ width: `${Math.min(100, percentUsed)}%` }} />
       </div>
-      <span className="text-[11px] text-muted-foreground tabular-nums">{t("aiBudget.used", { used: formatMoney(used.amountMinor), total: formatMoney(total) })}</span>
+      <span className="text-[11px] text-muted-foreground tabular-nums">{t("aiBudget.used", { used: formatMoney(used.amountMinor, used.currency), total: formatMoney(total, included.currency) })}</span>
       <EngagementAiTopUpModal requestId={requestId} open={topUpOpen} onClose={() => setTopUpOpen(false)} />
     </div>
   )

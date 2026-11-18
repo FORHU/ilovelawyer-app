@@ -37,14 +37,17 @@ const STATUS_TONE: Record<Exclude<VerificationStatus, "UNSUBMITTED">, "warning" 
   REJECTED: "danger",
 };
 
+/** The sites whose approved lawyers get client requests (the API's CLIENT_REQUESTS_OPEN_TENANTS). */
+const RECEIVES_REQUESTS = new Set<ClientRequestProfile["country"]>(["UK", "KR"]);
+
 /** The Profile page's id for this section, so the reminder banner can link straight to it. */
 export const LAWYER_APPLICATION_SECTION_ID = "lawyer-application";
 
 /**
- * Profile page section for the Lawyer Application (UK and PH). A lawyer applies once through a
+ * Profile page section for the Lawyer Application (UK, PH and KR). A lawyer applies once through a
  * dialog (their registration, what they take on, what clients see) and an admin approves it. On
- * UK that unlocks the Accept client requests switch and the availability settings (app#865); on
- * PH approval only shows a badge for now.
+ * UK and KR that unlocks the Accept client requests switch and the availability settings (app#865);
+ * on PH approval only shows a badge for now.
  */
 export function ClientRequestsSettings() {
   const { t } = useTranslation("profile");
@@ -84,8 +87,8 @@ export function ClientRequestsSettings() {
 function SettingsBody({ profile }: { profile: ClientRequestProfile }) {
   const [applying, setApplying] = useState(false);
   const status = profile.verification.status;
-  // Client requests are UK only: PH approval has no switch or availability to show.
-  const receivesRequests = status === "VERIFIED" && profile.country === "UK";
+  // Client requests are open on UK and KR: PH approval has no switch or availability to show yet.
+  const receivesRequests = status === "VERIFIED" && RECEIVES_REQUESTS.has(profile.country);
 
   return (
     <div className="flex flex-col divide-y divide-border">
@@ -175,7 +178,7 @@ function ApplicationSummary({ profile, onEdit }: { profile: ClientRequestProfile
   );
 }
 
-/** The lawyer's own on/off switch. Only shown once a UK application is approved. */
+/** The lawyer's own on/off switch. Only shown once a UK or KR application is approved. */
 function AcceptingRow({ profile }: { profile: ClientRequestProfile }) {
   const { t } = useTranslation("profile");
   const toggleAccepting = useUpdateClientRequestProfileMutation();
@@ -220,7 +223,7 @@ function AcceptingRow({ profile }: { profile: ClientRequestProfile }) {
   );
 }
 
-/** Pause and capacity: how many clients an approved UK lawyer takes, and when. */
+/** Pause and capacity: how many clients an approved UK or KR lawyer takes, and when. */
 function AvailabilityRow({ profile }: { profile: ClientRequestProfile }) {
   const { t } = useTranslation("profile");
   const update = useUpdateClientRequestProfileMutation();

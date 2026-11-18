@@ -1,8 +1,23 @@
-const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" })
+/** Formats a Money (its amountMinor in its currency's smallest unit) for the client-request screens:
+ * "£80.00" for pence, "₩150,000" for won (no minor unit). GBP when no currency is given, as every
+ * request was before KR had them. */
+export function formatMoney(amountMinor: number, currency: string = "GBP"): string {
+  return formatAmount(toMajor({ amountMinor, currency }), currency, { locale: currency === "KRW" ? "ko-KR" : "en-GB", cents: true })
+}
 
-/** Formats a Money.amountMinor (pence) as a GBP string, e.g. "£80.00". */
-export function formatMoney(amountMinor: number): string {
-  return gbp.format(amountMinor / 100)
+/** A typed major-unit amount ("80.50", "150000") in minor units of `currency`, or NaN. */
+export function toMinor(major: number, currency: string): number {
+  return Math.round(major * 10 ** currencyDecimals(currency))
+}
+
+/** "£", "₩": the symbol an amount field shows before what's typed. */
+export function currencySymbol(currency: string): string {
+  return new Intl.NumberFormat(currency === "KRW" ? "ko-KR" : "en-GB", { style: "currency", currency }).formatToParts(0).find((p) => p.type === "currency")?.value ?? currency
+}
+
+/** "0.00" for pence, "0" for won: what an empty amount field suggests. */
+export function amountPlaceholder(currency: string): string {
+  return currencyDecimals(currency) === 0 ? "0" : "0.00"
 }
 
 /** An amount in a currency's smallest unit: cents for USD, whole won for KRW (which has no smaller

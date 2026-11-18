@@ -42,13 +42,15 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     expect(getStatus("UK", "aiChat")).toBe("available")
   })
 
-  it("KR opens what has Korean support: chat on the legal_kr persona, cases, documents, the application", () => {
+  it("KR opens what has Korean support: chat on the legal_kr persona, cases, documents, the application, client requests", () => {
     expect(isFeatureEnabled("KR", "aiChat")).toBe(true)
     expect(isFeatureEnabled("KR", "cases")).toBe(true)
     expect(isFeatureEnabled("KR", "documents")).toBe(true)
     expect(isFeatureEnabled("KR", "citations")).toBe(true)
     expect(isFeatureEnabled("KR", "lawyerApplication")).toBe(true)
-    for (const feature of ["legalSearch", "deadlines", "clientRequests"] as const) {
+    // KR clients ask KR lawyers, quoted and paid in won.
+    expect(isFeatureEnabled("KR", "clientRequests")).toBe(true)
+    for (const feature of ["legalSearch", "deadlines"] as const) {
       expect(isFeatureEnabled("KR", feature)).toBe(false)
     }
   })

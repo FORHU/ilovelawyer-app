@@ -48,8 +48,9 @@ export const krTenantCodeConfig: TenantCodeConfig = {
       citations: "available",
       // Needs a KR deadline engine in the API.
       deadlines: "coming-soon",
-      // Waits on Korean legal review of the referral model (Attorney-at-Law Act Art. 34).
-      clientRequests: "coming-soon",
+      // KR clients ask KR lawyers (verified KR registration), quoted and paid in won. The referral
+      // model still needs Korean legal review (Attorney-at-Law Act Art. 34).
+      clientRequests: "available",
       // The KR registration: Korean Bar Association number and local bar, plus the optional
       // qualification route, specialties and registration date. Approval lets a new KR lawyer in
       // (verify before plan, as on UK).

@@ -68,13 +68,13 @@ function InvoiceDocument({ invoice }: { invoice: QuotationInvoice }) {
         <Line
           label={invoice.quoteType === "FIRST_CONSULTATION" ? t("detail.quote.consultation") : t("detail.quote.fixed")}
           note={invoice.description || undefined}
-          amount={formatMoney(invoice.total.amountMinor)}
+          amount={formatMoney(invoice.total.amountMinor, invoice.total.currency)}
         />
-        <Line label={t("invoice.total")} amount={formatMoney(invoice.total.amountMinor)} strong />
+        <Line label={t("invoice.total")} amount={formatMoney(invoice.total.amountMinor, invoice.total.currency)} strong />
         {invoice.refunded.amountMinor > 0 && (
           <>
-            <Line label={t("invoice.refunded")} amount={`−${formatMoney(invoice.refunded.amountMinor)}`} />
-            <Line label={t("invoice.netPaid")} amount={formatMoney(netPaid)} strong />
+            <Line label={t("invoice.refunded")} amount={`−${formatMoney(invoice.refunded.amountMinor, invoice.refunded.currency)}`} />
+            <Line label={t("invoice.netPaid")} amount={formatMoney(netPaid, invoice.total.currency)} strong />
           </>
         )}
       </div>
@@ -82,9 +82,9 @@ function InvoiceDocument({ invoice }: { invoice: QuotationInvoice }) {
       <div className="flex items-center justify-between gap-4 rounded-2xl bg-muted/50 px-4 py-3 print:border print:border-border">
         <div>
           <div className="font-semibold text-foreground">{t("invoice.yourFee")}</div>
-          <div className="text-[12px] text-muted-foreground">{t("invoice.yourFeeNote", { fee: formatMoney(invoice.platformFee.amountMinor) })}</div>
+          <div className="text-[12px] text-muted-foreground">{t("invoice.yourFeeNote", { fee: formatMoney(invoice.platformFee.amountMinor, invoice.platformFee.currency) })}</div>
         </div>
-        <div className="text-[15px] font-semibold text-foreground tabular-nums">{formatMoney(yourFee)}</div>
+        <div className="text-[15px] font-semibold text-foreground tabular-nums">{formatMoney(yourFee, invoice.total.currency)}</div>
       </div>
 
       <div className="flex flex-col gap-0.5 text-[12px] text-muted-foreground">
@@ -116,7 +116,7 @@ export function EngagementInvoice({ requestId, className }: { requestId: string;
       <div className="min-w-0 flex-1">
         <div className="text-[13px] font-semibold text-foreground">{t("invoice.title")}</div>
         <div className="text-[12px] text-muted-foreground tabular-nums">
-          {invoice.number} · {t("invoice.clientPaid", { amount: formatMoney(invoice.total.amountMinor) })}
+          {invoice.number} · {t("invoice.clientPaid", { amount: formatMoney(invoice.total.amountMinor, invoice.total.currency) })}
         </div>
       </div>
       <Badge tone={STATUS_TONE[invoice.status]} shape="pill">

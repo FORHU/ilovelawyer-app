@@ -14,7 +14,7 @@ import { ErrorState } from "@/components/error-state"
 import { Pagination } from "@/components/ui/pagination"
 import { useDateLocale } from "@/lib/i18n/date-locale"
 import { generateId } from "@/lib/id"
-import { formatMoney } from "@/lib/money"
+import { amountPlaceholder, currencyDecimals, currencySymbol, formatMoney, toMinor } from "@/lib/money"
 import type { EarningStatus, WithdrawalStatus } from "@/lib/client-handoff"
 import { OWN_WORKSPACE_ID } from "@/lib/store/auth.store"
 import {
@@ -114,10 +114,11 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
     const data = wallet.data
     if (!data) return
     const value = Number(amount)
-    const amountMinor = Math.round(value * 100)
-    if (!Number.isFinite(value) || amountMinor <= 0) return setAmountError(t("wallet.withdraw.invalid"))
-    if (amountMinor < data.minWithdrawal.amountMinor) return setAmountError(t("wallet.withdraw.belowMinimum", { min: formatMoney(data.minWithdrawal.amountMinor) }))
-    if (amountMinor > data.balances.available.amountMinor) return setAmountError(t("wallet.withdraw.tooMuch", { available: formatMoney(data.balances.available.amountMinor) }))
+    // In the wallet's currency: pence on UK, whole won on KR.
+    const amountMinor = toMinor(value, data.currency)
+    if (!Number.isFinite(value) || amountMinor <= 0 || (currencyDecimals(data.currency) === 0 && !Number.isInteger(value))) return setAmountError(t("wallet.withdraw.invalid"))
+    if (amountMinor < data.minWithdrawal.amountMinor) return setAmountError(t("wallet.withdraw.belowMinimum", { min: formatMoney(data.minWithdrawal.amountMinor, data.minWithdrawal.currency) }))
+    if (amountMinor > data.balances.available.amountMinor) return setAmountError(t("wallet.withdraw.tooMuch", { available: formatMoney(data.balances.available.amountMinor, data.balances.available.currency) }))
     setConfirming(amountMinor)
   }
 
@@ -126,14 +127,14 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
     const key = idempotency.amountMinor === confirming ? idempotency.key : generateId()
     setIdempotency({ key, amountMinor: confirming })
     withdraw.mutate(
-      { amountMinor: confirming, idempotencyKey: key },
+      { amountMinor: confirming, currency: wallet.data?.currency ?? "GBP", idempotencyKey: key },
       {
         onSuccess: (result) => {
           setConfirming(null)
           setAmount("")
           setIdempotency({ key: generateId(), amountMinor: null })
           // The amount the API says it withdrew, which is what happened even if it isn't what was typed.
-          const amount = formatMoney(result.amount.amountMinor)
+          const amount = formatMoney(result.amount.amountMinor, result.amount.currency)
           if (result.status === "FAILED") toast.error(result.failureReason ?? t("wallet.withdraw.failed"))
           else toast.success(result.status === "PAID" ? t("wallet.withdraw.paid", { amount }) : t("wallet.withdraw.processing", { amount }))
         },
@@ -147,6 +148,9 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
 
   const data = wallet.data
   const account = data?.payoutAccount
+  // Won wallets can't be paid out yet: earnings still build up, but there's nothing to set up or withdraw.
+  const payoutsOff = account?.available === false
+  const canWithdraw = !payoutsOff && !!account?.payoutsEnabled
   const earningRows = earnings.data?.data ?? []
   const withdrawalRows = withdrawals.data?.data ?? []
   const pageLabels = { previous: t("auditLog.previous"), next: t("auditLog.next") }
@@ -170,29 +174,29 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
       ) : (
         <div className="flex flex-col gap-5 px-6 py-5 md:px-8">
           <div className="flex flex-wrap gap-3">
-            <Tile label={t("wallet.balances.available")} value={formatMoney(data.balances.available.amountMinor)} />
+            <Tile label={t("wallet.balances.available")} value={formatMoney(data.balances.available.amountMinor, data.balances.available.currency)} />
             <Tile
               label={t("wallet.balances.pending")}
-              value={formatMoney(data.balances.pending.amountMinor)}
+              value={formatMoney(data.balances.pending.amountMinor, data.balances.pending.currency)}
               note={data.earningsHoldDays !== null ? t("wallet.balances.pendingNote", { days: data.earningsHoldDays }) : undefined}
             />
-            <Tile label={t("wallet.balances.reserved")} value={formatMoney(data.balances.reserved.amountMinor)} />
-            <Tile label={t("wallet.balances.withdrawn")} value={formatMoney(data.balances.withdrawn.amountMinor)} />
+            <Tile label={t("wallet.balances.reserved")} value={formatMoney(data.balances.reserved.amountMinor, data.balances.reserved.currency)} />
+            <Tile label={t("wallet.balances.withdrawn")} value={formatMoney(data.balances.withdrawn.amountMinor, data.balances.withdrawn.currency)} />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
             <div className="flex items-center gap-3">
               <Landmark className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               <p className="text-[13px] text-foreground">
-                {account?.payoutsEnabled ? t("wallet.payouts.enabled") : account?.connected ? t("wallet.payouts.unfinished") : t("wallet.payouts.none")}
+                {payoutsOff ? t("wallet.payouts.unavailable") : account?.payoutsEnabled ? t("wallet.payouts.enabled") : account?.connected ? t("wallet.payouts.unfinished") : t("wallet.payouts.none")}
               </p>
             </div>
-            {!account?.payoutsEnabled && (
+            {!payoutsOff && !account?.payoutsEnabled && (
               <Button type="button" variant="accent" isPending={onboarding.isPending} onClick={setUpPayouts}>
                 {account?.connected ? t("wallet.payouts.finish") : t("wallet.payouts.setUp")}
               </Button>
             )}
-            {account?.payoutsEnabled && account.provider === "STRIPE" && (
+            {!payoutsOff && account?.payoutsEnabled && account.provider === "STRIPE" && (
               <Button type="button" variant="outline" isPending={onboarding.isPending} onClick={setUpPayouts}>
                 {t("wallet.payouts.update")}
               </Button>
@@ -206,16 +210,16 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
             <div className="flex flex-wrap gap-2">
               <div className={`flex min-w-[200px] flex-1 items-center gap-2 rounded-full border bg-background px-4 focus-within:border-foreground ${amountError ? "border-red-500" : "border-border"}`}>
                 <span className="text-sm text-muted-foreground" aria-hidden="true">
-                  £
+                  {currencySymbol(data.currency)}
                 </span>
                 <input
                   id="wallet-withdraw-amount"
                   inputMode="decimal"
                   value={amount}
-                  placeholder="0.00"
+                  placeholder={amountPlaceholder(data.currency)}
                   aria-invalid={!!amountError}
                   aria-describedby="wallet-withdraw-hint"
-                  disabled={!account?.payoutsEnabled}
+                  disabled={!canWithdraw}
                   onChange={(e) => {
                     setAmount(e.target.value.replace(/[^\d.]/g, ""))
                     setAmountError("")
@@ -223,29 +227,34 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
                   className="h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none tabular-nums"
                 />
               </div>
-              <Button type="submit" variant="accent" isPending={withdraw.isPending} disabled={!account?.payoutsEnabled || data.balances.available.amountMinor <= 0}>
+              <Button type="submit" variant="accent" isPending={withdraw.isPending} disabled={!canWithdraw || data.balances.available.amountMinor <= 0}>
                 {t("wallet.withdraw.submit")}
               </Button>
             </div>
             <p id="wallet-withdraw-hint" className={`text-xs ${amountError ? "text-red-600" : "text-muted-foreground"}`}>
-              {amountError || (account?.payoutsEnabled ? t("wallet.withdraw.hint", { min: formatMoney(data.minWithdrawal.amountMinor) }) : t("wallet.withdraw.needsPayouts"))}
+              {amountError ||
+                (payoutsOff
+                  ? t("wallet.withdraw.unavailable")
+                  : account?.payoutsEnabled
+                    ? t("wallet.withdraw.hint", { min: formatMoney(data.minWithdrawal.amountMinor, data.minWithdrawal.currency) })
+                    : t("wallet.withdraw.needsPayouts"))}
             </p>
           </form>
 
           <Dialog open={confirming !== null} onOpenChange={(open) => !open && !withdraw.isPending && setConfirming(null)}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{t("wallet.withdraw.confirmTitle", { amount: formatMoney(confirming ?? 0) })}</DialogTitle>
+                <DialogTitle>{t("wallet.withdraw.confirmTitle", { amount: formatMoney(confirming ?? 0, data.currency) })}</DialogTitle>
                 <DialogDescription>{t("wallet.withdraw.confirmDescription")}</DialogDescription>
               </DialogHeader>
               <dl className="flex flex-col divide-y divide-border rounded-2xl border border-border text-[13px]">
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                   <dt className="text-muted-foreground">{t("wallet.withdraw.confirmAmount")}</dt>
-                  <dd className="font-semibold text-foreground tabular-nums">{formatMoney(confirming ?? 0)}</dd>
+                  <dd className="font-semibold text-foreground tabular-nums">{formatMoney(confirming ?? 0, data.currency)}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5">
                   <dt className="text-muted-foreground">{t("wallet.withdraw.confirmLeft")}</dt>
-                  <dd className="text-foreground tabular-nums">{formatMoney(data.balances.available.amountMinor - (confirming ?? 0))}</dd>
+                  <dd className="text-foreground tabular-nums">{formatMoney(data.balances.available.amountMinor - (confirming ?? 0), data.currency)}</dd>
                 </div>
               </dl>
               {confirming === data.balances.available.amountMinor && <p className="text-[13px] text-muted-foreground">{t("wallet.withdraw.confirmAll")}</p>}
@@ -254,7 +263,7 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
                   {t("wallet.withdraw.confirmCancel")}
                 </Button>
                 <Button type="button" variant="accent" isPending={withdraw.isPending} onClick={confirmWithdrawal}>
-                  {t("wallet.withdraw.confirmSubmit", { amount: formatMoney(confirming ?? 0) })}
+                  {t("wallet.withdraw.confirmSubmit", { amount: formatMoney(confirming ?? 0, data.currency) })}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -279,10 +288,10 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
                     {earningRows.map((e) => (
                       <tr key={e.id} className="border-t border-border">
                         <td className="py-2 pr-3 text-muted-foreground">{date(e.createdAt)}</td>
-                        <td className="py-2 pr-3 tabular-nums">{formatMoney(e.gross.amountMinor)}</td>
+                        <td className="py-2 pr-3 tabular-nums">{formatMoney(e.gross.amountMinor, e.gross.currency)}</td>
                         <td className="py-2 pr-3 tabular-nums font-semibold">
-                          {formatMoney(e.net.amountMinor - e.reversed.amountMinor)}
-                          {e.reversed.amountMinor > 0 && <span className="ml-1 font-normal text-muted-foreground">{t("wallet.earnings.refunded", { amount: formatMoney(e.reversed.amountMinor) })}</span>}
+                          {formatMoney(e.net.amountMinor - e.reversed.amountMinor, e.net.currency)}
+                          {e.reversed.amountMinor > 0 && <span className="ml-1 font-normal text-muted-foreground">{t("wallet.earnings.refunded", { amount: formatMoney(e.reversed.amountMinor, e.reversed.currency) })}</span>}
                         </td>
                         <td className="py-2 pr-3">
                           <Badge tone={EARNING_TONE[e.status]} shape="pill">
@@ -312,7 +321,7 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
                 {withdrawalRows.map((w) => (
                   <li key={w.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border py-2 text-[13px]">
                     <span className="text-muted-foreground">{date(w.createdAt)}</span>
-                    <span className="tabular-nums font-semibold">{formatMoney(w.amount.amountMinor)}</span>
+                    <span className="tabular-nums font-semibold">{formatMoney(w.amount.amountMinor, w.amount.currency)}</span>
                     <span className="flex items-center gap-2">
                       <Badge tone={WITHDRAWAL_TONE[w.status]} shape="pill">
                         {t(`wallet.withdrawals.statuses.${w.status}`)}

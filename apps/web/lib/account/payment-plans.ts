@@ -16,6 +16,8 @@ export interface PaymentPlan {
   price: Price
   /** The AI usage included each month, in dollars of token consumption (on every site). */
   includedAllowanceUsd: number
+  /** The same AI usage in the site's currency, for display (₩14,000 on KR, $10 elsewhere). */
+  aiUsage: Price
   /** How many cases the account can own. 0 = no limit. */
   caseLimit: number
   /** Client requests (the UK client hand-off) the lawyer can take on per calendar month. 0 = no limit. */

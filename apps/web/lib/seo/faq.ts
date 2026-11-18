@@ -22,7 +22,7 @@ const SHARED: FaqItem[] = [
     answer:
       "ilovelawyer (also written “I Love Lawyer”) is an AI legal intelligence platform for lawyers, developed by Forhu AI. It combines case management, an AI assistant that answers with cited case law, a research library and a configurable Legal Terminal in one workspace.",
     detail:
-      "It is available as separate jurisdiction-specific sites for the Philippines and the United Kingdom.",
+      "It is available as separate jurisdiction-specific sites for the Philippines, the United Kingdom and South Korea.",
   },
   {
     question: "Is ilovelawyer a law firm, and does it give legal advice?",
@@ -64,7 +64,7 @@ const SHARED: FaqItem[] = [
   {
     question: "Which countries and jurisdictions does ilovelawyer cover?",
     answer:
-      "ilovelawyer currently serves the Philippines and the United Kingdom, as separate jurisdiction-specific sites: ph.ilovelawyer.com and uk.ilovelawyer.com.",
+      "ilovelawyer currently serves the Philippines, the United Kingdom and South Korea, as separate jurisdiction-specific sites: ph.ilovelawyer.com, uk.ilovelawyer.com and kr.ilovelawyer.com.",
     detail: "The UK site covers England and Wales, Scotland and Northern Ireland.",
   },
   {

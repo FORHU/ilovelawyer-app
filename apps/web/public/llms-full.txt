@@ -4,14 +4,15 @@
 
 ilovelawyer (also written "I Love Lawyer") is a software application — not a law firm or legal service provider. It does not give legal advice or provide legal services to the public. Its output is a research and drafting aid and should be reviewed by a qualified lawyer before it is relied on. It is used by legal professionals to manage cases, research case law, and consult an AI assistant grounded in verified, citation-checked sources.
 
-This is the long form of https://ph.ilovelawyer.com/llms.txt and https://uk.ilovelawyer.com/llms.txt.
+This is the long form of https://ph.ilovelawyer.com/llms.txt, https://uk.ilovelawyer.com/llms.txt and https://kr.ilovelawyer.com/llms.txt.
 
 ## Sites
 
 - ilovelawyer Philippines — https://ph.ilovelawyer.com/ — cited Philippine jurisprudence, a Philippine statutory code library, and full deadline tracking.
 - ilovelawyer UK — https://uk.ilovelawyer.com/ — cited UK precedent (England and Wales, Scotland, Northern Ireland), live case law and legislation search (TNA Find Case Law, legislation.gov.uk), and provisional CPR deadline tracking that is not treated as final until two attorneys have confirmed it.
+- ilovelawyer Korea — https://kr.ilovelawyer.com/ — in Korean and English, with AI consultation grounded in Korean statutes, local ordinances and court decisions. Deadline tracking and the research library are not available on the Korean site yet.
 
-The two sites are separate and jurisdiction-specific.
+The three sites are separate and jurisdiction-specific.
 
 ## AI legal consultation
 

@@ -135,12 +135,12 @@ export function FeeHistorySection({ organizationId }: { organizationId: string }
                         )}
                         {charge.refunded.amountMinor > 0 && (
                           <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {t("billing.refunded", { amount: formatMoney(charge.refunded.amountMinor) })}
+                            {t("billing.refunded", { amount: formatMoney(charge.refunded.amountMinor, charge.refunded.currency) })}
                           </span>
                         )}
                       </td>
                       <td className="px-3 py-3 align-top text-[12px] font-semibold tabular-nums text-foreground">
-                        {formatMoney(charge.amount.amountMinor)}
+                        {formatMoney(charge.amount.amountMinor, charge.amount.currency)}
                       </td>
                       <td className="px-3 py-3 align-top text-[12px]">
                         <Badge shape="pill" tone={chargeStatusTone(charge.status)}>
