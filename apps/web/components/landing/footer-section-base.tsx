@@ -9,7 +9,7 @@ import { useTenantLanguages } from "@/lib/i18n/use-tenant-languages";
 import { useLanguageStore } from "@/lib/store/language.store";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render the same footer shell (see hero-section-base.tsx for why this is one
+// PH, UK and KR render the same footer shell (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files), but their column links genuinely differ
 // (different jurisdiction, different support email) —
 // so, unlike the other merged sections, this one branches on real per-tenant data rather

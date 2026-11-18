@@ -65,8 +65,16 @@ describe("getTenantCodeConfig", () => {
   it("PH and UK landing assets resolve to valid /landing paths", () => {
     const ph = getTenantCodeConfig("PH")
     const uk = getTenantCodeConfig("UK")
-    expect(uk.landingAssets.heroVideos.every((p) => p.startsWith("/landing/videos/"))).toBe(true)
+    expect((uk.landingAssets.heroVideos ?? []).every((p) => p.startsWith("/landing/videos/"))).toBe(true)
     // PH temporarily reuses UK's photography until real PH photos are sourced (see ph.ts TODO).
     expect(ph.landingAssets.firmWorkspace).toBe(uk.landingAssets.firmWorkspace)
+  })
+
+  it("KR is Korean by default and its hero is still images, not videos", () => {
+    const kr = getTenantCodeConfig("KR")
+    expect(kr.defaultLanguage).toBe("ko")
+    expect(kr.languages).toEqual(["ko", "en"])
+    expect(kr.landingAssets.heroVideos).toBeUndefined()
+    expect(kr.landingAssets.heroPosters.every((p) => p.startsWith("/landing/kr/"))).toBe(true)
   })
 })

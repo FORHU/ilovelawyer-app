@@ -19,16 +19,25 @@
     "slideOne": {
       "line1": "Where",
       "line2": "cases get clarity",
+      "line1_KR": "Where",
+      "line2_KR": "cases get clarity",
+      "subtext_KR": "AI consultation streams in as it's written, with cited Korean precedent and statute alongside.",
       "subtext": "AI consultation streams in as it's written, with cited precedent alongside."
     },
     "slideTwo": {
       "line1": "Your caseload,",
       "line2": "under control",
+      "line1_KR": "Your caseload,",
+      "line2_KR": "under control",
+      "subtext_KR": "Legal Terminal arranges nineteen panes of case intelligence your way.",
       "subtext": "Legal Terminal arranges nineteen panes of case intelligence your way."
     },
     "slideThree": {
       "line1": "Where",
       "line2": "counsel meets AI",
+      "line1_KR": "Where",
+      "line2_KR": "counsel meets AI",
+      "subtext_KR": "Case Workspace keeps sources, chat, and work product on one screen.",
       "subtext": "Case Workspace keeps sources, chat, and work product on one screen."
     },
     "slideLabel": "Slide {{number}}",
@@ -95,6 +104,187 @@
     "heading": "One workspace, arranged your way",
     "body": "The Legal Terminal is a litigation cockpit you arrange yourself. {{count}} pane types, dragged and resized freely, not locked to a grid. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
     "cta": "Open the terminal",
+    "mocks_KR": {
+      "caseSummary": {
+        "partyOne": "Applicant",
+        "partyOneName": "Kim Min-ji",
+        "partyTwo": "Respondent",
+        "partyTwoName": "Hanbit Logistics",
+        "claims": "Claims",
+        "claimsValue": "Unfair dismissal remedy · retaliatory termination",
+        "riskRegister": "Risk Register · 3",
+        "add": "+ Add",
+        "risks": [
+          {"level": "HIGH", "percent": 78, "text": "Reasons brief deadline is computed, not confirmed with the Commission"},
+          {"level": "MEDIUM", "percent": 54, "text": "No written objection, 4–11 Aug"},
+          {"level": "LOW", "percent": 22, "text": "Team lead Park statement outstanding"}
+        ]
+      },
+      "evidenceTimeline": {
+        "documents": "Documents · 6",
+        "hint": "Click a row",
+        "docs": [
+          {"name": "termination-notice.pdf", "status": "READY"},
+          {"name": "remedy-application-0412.pdf", "status": "PENDING"},
+          {"name": "attendance-2018-2026.xlsx", "status": "READY"}
+        ],
+        "timeline": "Timeline",
+        "events": [
+          {"date": "28 JUL", "tone": "gold", "text": "Workplace bullying report filed."},
+          {"date": "04 AUG", "tone": "red", "text": "Employer dates the absence from this day."},
+          {"date": "11 AUG", "tone": "red", "text": "Termination notice issued citing absence."}
+        ]
+      },
+      "redTeam": {
+        "intro": "Best arguments available to Hanbit Logistics, ranked by expected impact.",
+        "arguments": [
+          {"title": "Absent from 4 August", "strength": "STRONG", "note": "Facially valid ground"},
+          {"title": "No written objection", "strength": "STRONG", "note": "Read as acquiescence"},
+          {"title": "The 6 Aug email is ambiguous", "strength": "MODERATE", "note": "Double-edged for both sides"}
+        ]
+      },
+      "chat": {
+        "anchored": "Anchored",
+        "thread": "Retaliatory dismissal ▾",
+        "scope": "● Case + 5 panels",
+        "question": "Which contradictions undercut the absence claim?",
+        "source": "ilovelawyer · from evidence & timeline, contradictions",
+        "answer": "Two. The termination notice dates the absence from 4 August, but the attendance log shows her at work through 8 August. HR’s 6 August email also asks her to attend a meeting.",
+        "chips": ["EVIDENCE ↗"],
+        "placeholder": "Ask about this case…",
+        "send": "Send ↗"
+      },
+      "chatResponse": {
+        "status": "Grounded · 3 sources",
+        "question": "Can the employer still rely on absence as a ground for dismissal?",
+        "source": "ilovelawyer · from evidence & timeline, law & precedent",
+        "answer": "Unlikely. Absence without good reason must be proven, yet the attendance log shows her at work through 8 August and the dismissal came 14 days after her report.",
+        "citationsLabel": "Sources",
+        "citations": [
+          {"title": "attendance-2018-2026.xlsx", "note": "Evidence · HB-PR-000015", "status": "SUPPORTS"},
+          {"title": "Labor Standards Act, Art. 27", "note": "Statute · written notice of grounds", "status": "STATUTE"},
+          {"title": "Labor Standards Act, Art. 76-3", "note": "Statute · no adverse treatment of reporters", "status": "STATUTE"}
+        ]
+      }
+    },
+    "samples_KR": {
+      "witnesses": {
+        "intro": "Witnesses named in the application.",
+        "rows": [
+          {"title": "Kim Min-ji", "note": "Applicant · 6 Aug meeting", "status": "READY"},
+          {"title": "HR Manager Jung", "note": "Respondent side · sent the email", "status": "ADVERSE"},
+          {"title": "Team lead Park", "note": "Floor supervisor · 4–8 Aug", "status": "OUTSTANDING"}
+        ]
+      },
+      "caseReconstruction": {
+        "intro": "Assembled from produced documents and metadata.",
+        "rows": [
+          {"title": "28 Jul · workplace bullying report", "note": "HB-HR-000870", "status": "VERIFIED"},
+          {"title": "04 Aug · absence alleged", "note": "Termination notice only", "status": "DISPUTED"},
+          {"title": "06 Aug · HR requests meeting", "note": "HB-EM-004417", "status": "VERIFIED"},
+          {"title": "11 Aug · dismissal effective", "note": "Cites unauthorised absence", "status": "VERIFIED"}
+        ]
+      },
+      "law": {
+        "intro": "Unfair dismissal and procedure grounds.",
+        "rows": [
+          {"title": "Labor Standards Act, Art. 23", "note": "Limits on dismissal", "status": "STATUTE"},
+          {"title": "Labor Standards Act, Art. 27", "note": "Written notice of grounds", "status": "ON POINT"},
+          {"title": "Labor Standards Act, Art. 76-3", "note": "No adverse treatment of reporters", "status": "ON POINT"},
+          {"title": "Employment rules, Art. 41", "note": "3+ days absence is a disciplinary ground", "status": "ADVERSE"}
+        ]
+      },
+      "legalIssues": {
+        "intro": "Open questions for the Commission.",
+        "rows": [
+          {"title": "Was the absence proven?", "note": "Employer bears the burden", "status": "CONTESTED"},
+          {"title": "Was written notice proper?", "note": "No disciplinary hearing on record", "status": "BRIEFING"},
+          {"title": "Is dismissal 14 days after the report retaliation?", "note": "28 Jul → 11 Aug", "status": "OPEN"}
+        ]
+      },
+      "decisions": {
+        "intro": "From the latest answer · rule, evidence and the alternative rejected.",
+        "rows": [
+          {"title": "Absence is not established", "note": "For: attendance logged to 8 Aug", "status": "FAVOURS"},
+          {"title": "Written notice was not properly given", "note": "No disciplinary hearing on record", "status": "FAVOURS"},
+          {"title": "Alternative: dismissal for just cause", "note": "Rejected · no proof of absence", "status": "REJECTED"}
+        ]
+      },
+      "procedure": {
+        "intro": "Plead the timeline as the factual core.",
+        "rows": [
+          {"title": "File the remedy application", "note": "Filed 20 August", "status": "DONE"},
+          {"title": "Confirm brief deadline", "note": "With the Commission", "status": "OPEN"},
+          {"title": "Obtain attendance certification", "note": "From HR", "status": "OPEN"},
+          {"title": "Request full HR email thread", "note": "HB-EM series", "status": "OPEN"}
+        ]
+      },
+      "mindMap": {
+        "intro": "Kim v. Hanbit Logistics · structure view",
+        "rows": [
+          {"title": "Legal basis", "note": "Dismissal · notice · retaliation", "status": "NODE"},
+          {"title": "Key facts", "note": "Report · HR email · attendance", "status": "NODE"},
+          {"title": "Remedies", "note": "Reinstatement · back pay · compensation", "status": "NODE"},
+          {"title": "Risks", "note": "No objection · Park statement", "status": "NODE"}
+        ]
+      },
+      "attackStrategy": {
+        "intro": "Sequenced against the 24 September hearing.",
+        "rows": [
+          {"title": "Rebut absence with attendance log", "note": "Certification not obtained", "status": "BLOCKED"},
+          {"title": "Press the notice defect", "note": "Ready for the brief", "status": "READY"},
+          {"title": "Frame the 14 days as retaliation", "note": "Needs the report receipt", "status": "DRAFTING"}
+        ]
+      },
+      "defenseStrategy": {
+        "intro": "Anticipated employer defenses.",
+        "rows": [
+          {"title": "Absent from 4 August", "note": "Attendance logged to 8 Aug", "status": "ANSWERED"},
+          {"title": "The 6 Aug email was routine", "note": "It presumes ongoing employment", "status": "ANSWERED"},
+          {"title": "No written objection", "note": "Report predates dismissal", "status": "PARTIAL"}
+        ]
+      },
+      "theories": {
+        "intro": "2 theories side by side · never merged",
+        "rows": [
+          {"title": "S. Kim · retaliatory dismissal", "note": "Rests on the 14-day gap", "status": "THEORY"},
+          {"title": "J. Lee · no just cause", "note": "Rests on attendance to 8 Aug", "status": "THEORY"},
+          {"title": "Where they differ", "note": "Whether retaliatory intent must be proven", "status": "OPEN"}
+        ]
+      },
+      "audioOverview": {
+        "intro": "Generated briefing · 3 min 41 sec",
+        "rows": [
+          {"title": "rec-01-posture-and-claims.mp3", "note": "00:00 – 01:02", "status": "READY"},
+          {"title": "rec-02-absence.mp3", "note": "01:02 – 02:30", "status": "READY"},
+          {"title": "rec-03-remedies.mp3", "note": "02:30 – 03:41", "status": "STALE"}
+        ]
+      },
+      "weaknesses": {
+        "intro": "Ordered by how early it will surface.",
+        "rows": [
+          {"title": "No written objection, 4–11 Aug", "note": "Rests on the report", "status": "MATERIAL"},
+          {"title": "Park statement outstanding", "note": "Attendance log stands alone", "status": "MATERIAL"},
+          {"title": "Attendance certification missing", "note": "Needed before the brief", "status": "OPEN"},
+          {"title": "No adverse-citation check", "note": "Citation Map incomplete", "status": "OPEN"}
+        ]
+      },
+      "strengths": {
+        "intro": "Findings that carry the unfair-dismissal theory.",
+        "rows": [
+          {"title": "Attendance logged through 8 Aug", "note": "HB-PR-000015", "status": "KEY"},
+          {"title": "HR’s own 6 August email", "note": "HB-EM-004417", "status": "KEY"}
+        ]
+      },
+      "damages": {
+        "intro": "Provisional until attendance certification lands.",
+        "rows": [
+          {"title": "Back pay", "note": "₩14,400,000", "status": "MODELED"},
+          {"title": "Compensation in lieu of reinstatement", "note": "₩8,000,000", "status": "PROVISIONAL"},
+          {"title": "Consolation money (separate civil claim)", "note": "₩5,000,000", "status": "CONTESTED"}
+        ]
+      }
+    },
     "categories": {
       "all": "All",
       "facts": "Facts",
@@ -245,132 +435,6 @@
           { "title": "bank-statements-2019-2023.pdf", "note": "Evidence · pp.14–37", "status": "SUPPORTS" },
           { "title": "Inheritance Act 1975, s.1(1)(e)", "note": "Statute · eligible applicants", "status": "STATUTE" },
           { "title": "letter-of-wishes-2021.pdf", "note": "Evidence · executors' position", "status": "UNVERIFIED" }
-        ]
-      }
-    },
-    "mocks_KR": {
-      "caseSummary": {
-        "partyOne": "Plaintiff",
-        "partyOneName": "Kim Seo-yeon",
-        "partyTwo": "Defendant",
-        "partyTwoName": "Hanbit Development Co., Ltd.",
-        "claims": "Claims",
-        "claimsValue": "Civil Act arts. 110 and 750 · rescission for fraud and damages",
-        "riskRegister": "Risk Register · 3",
-        "add": "+ Add",
-        "risks": [
-          {
-            "level": "HIGH",
-            "percent": 78,
-            "text": "Permit evidence is a screenshot; no official certificate from the district office yet"
-          },
-          {
-            "level": "MEDIUM",
-            "percent": 54,
-            "text": "Defence frames the payment as a joint investment that failed, not fraud"
-          }
-        ]
-      },
-      "evidenceTimeline": {
-        "documents": "Documents · 6",
-        "hint": "Click a row",
-        "docs": [
-          {
-            "name": "bank-transfer-records.xlsx",
-            "status": "READY"
-          },
-          {
-            "name": "kakaotalk-screenshots.png",
-            "status": "READY"
-          },
-          {
-            "name": "building-permit-search.jpg",
-            "status": "PENDING"
-          }
-        ],
-        "timeline": "Timeline",
-        "events": [
-          {
-            "date": "11월 2일",
-            "tone": "gold",
-            "text": "Park says on KakaoTalk the building permit was “already issued”.",
-            "source": "kakaotalk-screenshots.png · p.3",
-            "status": "VERIFIED"
-          },
-          {
-            "date": "11월 4일",
-            "tone": "gold",
-            "text": "₩240,000,000 paid to Hanbit Development.",
-            "source": "bank-transfer-records.xlsx · row 14",
-            "status": "VERIFIED"
-          },
-          {
-            "date": "1월 20일",
-            "tone": "red",
-            "text": "Construction fails to start; no permit on file.",
-            "source": "statement-kim.pdf · para 18",
-            "status": "VERIFIED"
-          }
-        ]
-      },
-      "redTeam": {
-        "intro": "Strongest case for Hanbit Development, ranked by threat level.",
-        "arguments": [
-          {
-            "title": "It was a joint investment that failed",
-            "strength": "HIGH",
-            "note": "Evidence: draft investment memo in the defendant's answer",
-            "response": "Response: the payment was induced by a false statement of fact"
-          },
-          {
-            "title": "The permit statement was a forecast, not a fact",
-            "strength": "MEDIUM",
-            "note": "Evidence: the KakaoTalk thread read as a whole",
-            "response": "Response: “already issued” states a present fact"
-          },
-          {
-            "title": "No proof the permit was never applied for",
-            "strength": "MEDIUM",
-            "note": "Evidence gap: screenshot only",
-            "response": "Response: ask the district office for an official certificate"
-          }
-        ]
-      },
-      "chat": {
-        "anchored": "Anchored",
-        "thread": "Permit fraud claim ▾",
-        "scope": "● Case + 5 panels",
-        "question": "Which documents show the permit statement came before the payment?",
-        "source": "ilovelawyer · AI assessment · from evidence & timeline",
-        "answer": "The KakaoTalk screenshots (p.3) show the “already issued” message on 11월 2일, and the bank records (row 14) show the payment on 11월 4일. That supports a statement made to induce the payment, subject to proving the permit was never issued.",
-        "chips": [
-          "EVIDENCE ↗"
-        ],
-        "placeholder": "Ask about this case…",
-        "send": "Send ↗"
-      },
-      "chatResponse": {
-        "status": "Grounded · 3 sources",
-        "question": "Can Ms Kim rescind the payment for fraud?",
-        "source": "ilovelawyer · from evidence & timeline, law & precedent",
-        "answer": "Likely yes, under Civil Act art. 110(1): an intention induced by fraud can be rescinded. The KakaoTalk message came two days before the payment. She still has to prove the statement was false, which needs the district office's record.",
-        "citationsLabel": "Sources",
-        "citations": [
-          {
-            "title": "kakaotalk-screenshots.png",
-            "note": "Evidence · p.3",
-            "status": "SUPPORTS"
-          },
-          {
-            "title": "Civil Act, art. 110",
-            "note": "Statute · rescission for fraud",
-            "status": "STATUTE"
-          },
-          {
-            "title": "building-permit-search.jpg",
-            "note": "Evidence · screenshot only",
-            "status": "UNVERIFIED"
-          }
         ]
       }
     },
@@ -611,328 +675,6 @@
           { "title": "Transfer of property", "note": "s 2(1)(c) · not sought at present", "status": "OPEN" }
         ]
       }
-    },
-    "samples_KR": {
-      "witnesses": {
-        "intro": "Witness roster · 3",
-        "rows": [
-          {
-            "title": "Kim Seo-yeon",
-            "note": "Plaintiff · made the payment",
-            "status": "KEY"
-          },
-          {
-            "title": "Park Jun-ho",
-            "note": "Hanbit director · sent the KakaoTalk messages",
-            "status": "ADVERSE"
-          },
-          {
-            "title": "District office officer",
-            "note": "Building permits · record of applications",
-            "status": "OUTSTANDING"
-          }
-        ]
-      },
-      "caseReconstruction": {
-        "intro": "Drafted from the case documents · editable",
-        "rows": [
-          {
-            "title": "10월 28일 · first meeting",
-            "note": "Statement of Kim para 4",
-            "status": "FACT"
-          },
-          {
-            "title": "11월 2일 · “permit already issued”",
-            "note": "KakaoTalk screenshots p.3",
-            "status": "FACT"
-          },
-          {
-            "title": "The statement was meant to secure the payment",
-            "note": "Drawn from its timing · intent unproven",
-            "status": "INFERENCE"
-          },
-          {
-            "title": "It was a joint investment",
-            "note": "Defendant's answer",
-            "status": "ALLEGATION"
-          },
-          {
-            "title": "11월 4일 · ₩240,000,000 paid",
-            "note": "Bank records row 14",
-            "status": "FACT"
-          }
-        ]
-      },
-      "law": {
-        "intro": "Authorities for rescission and damages.",
-        "rows": [
-          {
-            "title": "Civil Act, art. 110(1)",
-            "note": "Rescission of an intention induced by fraud",
-            "status": "STATUTE"
-          },
-          {
-            "title": "Civil Act, art. 750",
-            "note": "Damages for a tort",
-            "status": "STATUTE"
-          },
-          {
-            "title": "Civil Act, art. 741",
-            "note": "Return of the payment as unjust enrichment",
-            "status": "ON POINT"
-          }
-        ]
-      },
-      "legalIssues": {
-        "intro": "Questions the court will have to decide · issue, authority, evidence.",
-        "rows": [
-          {
-            "title": "Was the permit statement false?",
-            "note": "art. 110 · district office record · screenshot only",
-            "status": "OPEN"
-          },
-          {
-            "title": "Did it induce the payment?",
-            "note": "art. 110 · timing · KakaoTalk p.3",
-            "status": "UNVERIFIED"
-          },
-          {
-            "title": "Fraud, or a failed joint investment?",
-            "note": "Defendant's answer · investment memo",
-            "status": "CONTESTED"
-          },
-          {
-            "title": "What can she recover?",
-            "note": "arts. 741, 750 · ₩240,000,000 plus delay damages",
-            "status": "OPEN"
-          }
-        ]
-      },
-      "decisions": {
-        "intro": "Reasoning behind the latest answer · provisional AI assessment.",
-        "rows": [
-          {
-            "title": "Was the payment induced by fraud?",
-            "note": "Question",
-            "status": "OPEN"
-          },
-          {
-            "title": "“Already issued” sent two days before the payment",
-            "note": "Evidence supporting · KakaoTalk p.3",
-            "status": "SUPPORTS"
-          },
-          {
-            "title": "Investment memo in the answer",
-            "note": "Evidence against",
-            "status": "ADVERSE"
-          },
-          {
-            "title": "A forecast, not a statement of fact",
-            "note": "Competing interpretation",
-            "status": "OPEN"
-          },
-          {
-            "title": "Rescission for fraud supported",
-            "note": "AI assessment · permit record to verify",
-            "status": "PROVISIONAL"
-          }
-        ]
-      },
-      "procedure": {
-        "intro": "Litigation approach, with the procedural steps that support it.",
-        "rows": [
-          {
-            "title": "Rescind for fraud and claim back the ₩240,000,000",
-            "note": "Primary strategy · damages in tort as an alternative",
-            "status": "KEY"
-          },
-          {
-            "title": "Prove no permit was ever applied for",
-            "note": "Evidential objective · fact inquiry to the district office",
-            "status": "OPEN"
-          },
-          {
-            "title": "A joint investment that failed",
-            "note": "Opponent's likely position",
-            "status": "ANTICIPATED"
-          },
-          {
-            "title": "Provisional attachment of Hanbit's assets",
-            "note": "Immediate action · Civil Execution Act art. 276",
-            "status": "OPEN"
-          },
-          {
-            "title": "Preparatory brief before the 10월 28일 hearing",
-            "note": "Procedural priority · then a document submission order",
-            "status": "OPEN"
-          }
-        ]
-      },
-      "mindMap": {
-        "intro": "Generated from the consultation · 17 nodes",
-        "rows": [
-          {
-            "title": "Legal basis",
-            "note": "Civil Act arts. 110 · 741 · 750",
-            "status": "NODE"
-          },
-          {
-            "title": "Key facts",
-            "note": "KakaoTalk · payment · no permit",
-            "status": "NODE"
-          },
-          {
-            "title": "Remedies",
-            "note": "Return of payment · damages · delay damages",
-            "status": "NODE"
-          },
-          {
-            "title": "Risks",
-            "note": "Investment defence · screenshot evidence",
-            "status": "NODE"
-          }
-        ]
-      },
-      "attackStrategy": {
-        "intro": "Moves to advance the case.",
-        "rows": [
-          {
-            "title": "Tie the statement to the payment date",
-            "note": "KakaoTalk p.3 · bank records row 14",
-            "status": "READY"
-          },
-          {
-            "title": "Show no permit application exists",
-            "note": "Fact inquiry to the district office",
-            "status": "DRAFTING"
-          },
-          {
-            "title": "Obtain Hanbit's internal records",
-            "note": "Document submission order outstanding",
-            "status": "BLOCKED"
-          }
-        ]
-      },
-      "defenseStrategy": {
-        "intro": "Answers to Hanbit's likely defences.",
-        "rows": [
-          {
-            "title": "It was a joint investment",
-            "note": "No shares, profit terms or investment agreement",
-            "status": "ANSWERED"
-          },
-          {
-            "title": "The permit was expected soon",
-            "note": "“Already issued” states a present fact",
-            "status": "ANSWERED"
-          },
-          {
-            "title": "The screenshot proves nothing",
-            "note": "Strong once the district office confirms",
-            "status": "PARTIAL"
-          }
-        ]
-      },
-      "theories": {
-        "intro": "2 theories side by side · never merged",
-        "rows": [
-          {
-            "title": "J. Lee · rescission for fraud",
-            "note": "Rests on the KakaoTalk message",
-            "status": "THEORY"
-          },
-          {
-            "title": "S. Choi · damages in tort",
-            "note": "Rests on the permit record",
-            "status": "THEORY"
-          },
-          {
-            "title": "Where they differ",
-            "note": "Weight of the investment memo",
-            "status": "OPEN"
-          }
-        ]
-      },
-      "audioOverview": {
-        "intro": "Two-host discussion · 3 min 55 s",
-        "rows": [
-          {
-            "title": "The claim and the parties",
-            "note": "00:00 – 01:05",
-            "status": "READY"
-          },
-          {
-            "title": "Was it fraud?",
-            "note": "01:05 – 02:40",
-            "status": "READY"
-          },
-          {
-            "title": "What she can recover",
-            "note": "02:40 – 03:55",
-            "status": "READY"
-          }
-        ]
-      },
-      "weaknesses": {
-        "intro": "Points that hurt the case.",
-        "rows": [
-          {
-            "title": "Permit evidence is a screenshot",
-            "note": "No official certificate yet",
-            "status": "MATERIAL"
-          },
-          {
-            "title": "Investment memo in the answer",
-            "note": "Supports the joint-investment defence",
-            "status": "MATERIAL"
-          },
-          {
-            "title": "Mr Park's intent unproven",
-            "note": "Only the messages so far",
-            "status": "OPEN"
-          }
-        ]
-      },
-      "strengths": {
-        "intro": "Points that help the case.",
-        "rows": [
-          {
-            "title": "Statement two days before the payment",
-            "note": "KakaoTalk p.3 · verified",
-            "status": "KEY"
-          },
-          {
-            "title": "Payment traced to Hanbit",
-            "note": "Bank records row 14 · verified",
-            "status": "SUPPORTS"
-          },
-          {
-            "title": "Certified demand left unanswered",
-            "note": "Sent 2026년 2월 3일",
-            "status": "SUPPORTS"
-          }
-        ]
-      },
-      "damages": {
-        "intro": "Amounts sought · provisional",
-        "rows": [
-          {
-            "title": "Return of the payment",
-            "note": "art. 741 · ₩240,000,000",
-            "status": "PROVISIONAL"
-          },
-          {
-            "title": "Delay damages",
-            "note": "Statutory rate, then 12% a year from the day after the complaint is served",
-            "status": "CONTESTED"
-          },
-          {
-            "title": "Consolation money",
-            "note": "art. 751 · not sought at present",
-            "status": "OPEN"
-          }
-        ]
-      }
     }
   },
   "trial": {
@@ -967,11 +709,17 @@
     "heading": "Ask once. Get the law behind it.",
     "body": "Every consultation streams in as it's written, with related case law listed beside it — title, case or R.A. number, source link, and an excerpt, with vetted citations marked. Attach a document and the assistant searches inside it once indexing finishes.",
     "body_UK":"Every consultation streams in as it's written, with related case law listed beside it — title, neutral citation or law report reference, source link, and an excerpt, with vetted citations marked. Attach a document and the assistant searches inside it once indexing finishes.",
-    "body_KR": "Every consultation streams in as it's written, with related Korean law listed beside it — title, article or case number, source link, and an excerpt, with vetted citations marked. Attach a document and the assistant searches inside it once indexing finishes.",
     "cta": "Start a consultation",
+    "body_KR": "Every consultation streams in as it's written, with related statutes and precedent listed beside it — case number, article link, and a key excerpt, with source-checked citations marked. Attach a filing and the assistant searches inside it once indexing finishes.",
+    "caseName_KR": "Kim v. Hanbit Logistics",
+    "relatedCases_KR": "Related Law",
+    "relatedCasesItems_KR": [
+      {"title": "Labor Standards Act, Art. 27", "citation": "Written notice of dismissal grounds", "snippet": "A dismissal takes effect only if its grounds and date are notified in writing.", "vetted": true},
+      {"title": "Labor Standards Act, Art. 23", "citation": "Limits on dismissal", "snippet": "An employer may not dismiss a worker without just cause.", "vetted": false}
+    ],
+    "attachment_KR": "termination-notice.pdf",
     "caseName": "Reyes v. Northbridge Logistics",
     "caseName_UK": "Hughes v Northbridge Logistics Ltd",
-    "caseName_KR": "Kim Seo-yeon v. Hanbit Development Co., Ltd.",
     "relatedCases": "Related Cases",
     "relatedCasesItems": [
       { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "snippet": "Procedural due process in termination requires two written notices and a real opportunity to be heard.", "vetted": true },
@@ -981,24 +729,9 @@
       { "title": "Polkey v A E Dayton Services Ltd", "citation": "[1987] UKHL 8", "snippet": "A dismissal can be unfair if the employer skipped a fair procedure, even with a good reason to dismiss.", "vetted": true },
       { "title": "British Home Stores Ltd v Burchell", "citation": "[1980] ICR 303", "snippet": "In a misconduct dismissal: genuine belief, reasonable grounds, and a reasonable investigation.", "vetted": false }
     ],
-    "relatedCasesItems_KR": [
-      {
-        "title": "Civil Act, Article 110",
-        "citation": "Art. 110(1)",
-        "snippet": "An intention induced by fraud or duress may be rescinded.",
-        "vetted": true
-      },
-      {
-        "title": "Civil Act, Article 750",
-        "citation": "Art. 750",
-        "snippet": "A person who causes damage to another by an unlawful act, intentionally or negligently, is liable to compensate for it.",
-        "vetted": false
-      }
-    ],
     "vetted": "Vetted",
     "attachment": "termination-letter.pdf",
     "attachment_UK": "dismissal-letter.pdf",
-    "attachment_KR": "certified-demand-letter.pdf",
     "indexing": "Indexing for chat…"
   },
   "firms": {
@@ -1006,6 +739,12 @@
     "teamsHeading": "Firms and teams",
     "teamsBody": "Practise solo, or create a firm on one of three plans — Solo, Professional, Enterprise — and invite colleagues by email with a role: Owner, Admin, or Member. Every destructive step asks for confirmation first, and an owner names a successor before they can leave.",
     "teamsCta": "Invite your team",
+    "roster_KR": [
+      {"initials": "KS", "name": "Atty. Kim Seoyeon", "email": "seoyeon@hangyeol.kr", "role": "owner", "you": true},
+      {"initials": "PJ", "name": "Park Junho", "email": "junho@hangyeol.kr", "role": "admin", "you": false},
+      {"initials": "LJ", "name": "Lee Jieun", "email": "jieun@hangyeol.kr", "role": "member", "you": false},
+      {"initials": "CM", "name": "Choi Minsu", "email": "minsu@hangyeol.kr", "role": "member", "you": false, "pending": true}
+    ],
     "jurisdictionsHeading": "Built for Philippine practice",
     "jurisdictionsBody": "Your organization gets its own address, its own vocabulary, and only the tools that genuinely apply to Philippine practice — cases, documents, AI consultation and citation checking, all tailored to Philippine law.",
     "jurisdictionsHeading_UK": "Built for UK practice",
@@ -1024,54 +763,23 @@
       { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false },
       { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@sinclairwycombe.co.uk", "role": "member", "you": false, "pending": true }
     ],
-    "roster_KR": [
-      {
-        "initials": "JK",
-        "name": "Kim Ji-woo",
-        "email": "jiwoo@daonsol-law.co.kr",
-        "role": "owner",
-        "you": true
-      },
-      {
-        "initials": "DP",
-        "name": "Park Do-yun",
-        "email": "doyun@daonsol-law.co.kr",
-        "role": "admin",
-        "you": false
-      },
-      {
-        "initials": "SL",
-        "name": "Lee Seo-hyun",
-        "email": "seohyun@daonsol-law.co.kr",
-        "role": "member",
-        "you": false
-      },
-      {
-        "initials": "MC",
-        "name": "Choi Min-jae",
-        "email": "minjae@daonsol-law.co.kr",
-        "role": "member",
-        "you": false,
-        "pending": true
-      }
-    ],
     "membersCard": {
       "title": "Members",
       "subtitle": "People with access to this organization.",
       "organization": "Organization",
       "orgName": "Cruz & Partners",
+      "orgName_KR": "Hangyeol Law Group",
       "orgName_UK": "Sinclair & Wycombe LLP",
-      "orgName_KR": "Daonsol Law Firm",
       "plan": "Plan",
       "planName": "Professional",
+      "planName_KR": "Professional",
       "planName_UK": "Enterprise",
-      "planName_KR": "Enterprise",
       "you": "YOU",
       "pending": "PENDING",
       "invite": "Invite a member",
       "invitePlaceholder": "colleague@lawfirm.ph",
+      "invitePlaceholder_KR": "colleague@lawfirm.kr",
       "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
-      "invitePlaceholder_KR": "colleague@lawfirm.co.kr",
       "sendInvite": "Send Invite",
       "roles": {
         "owner": "OWNER",

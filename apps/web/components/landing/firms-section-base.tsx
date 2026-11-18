@@ -10,7 +10,7 @@ import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { tenantI18nContext } from "@/config/tenant-codes";
 
-// PH and UK render identical markup (see hero-section-base.tsx for why this is one
+// PH, UK and KR render identical markup (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files) — differing only in i18next context.
 
 const ORGANIZATION_ROUTE = "/homepage/organization";

@@ -36,6 +36,14 @@ describe("resolveTenantCodeFromHost", () => {
     expect(resolveTenantCodeFromHost("uk-dev.ilovelawyer.local:3002")).toBe("UK")
   })
 
+  it("resolves the KR lawyer-app hosts", () => {
+    expect(resolveTenantCodeFromHost("kr-dev.ilovelawyer.com")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr-dev.ilovelawyer.local:3002")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr-local.ilovelawyer.com:3002")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr.ilovelawyer")).toBe("KR")
+    expect(resolveTenantCodeFromHost("kr.localhost:3002")).toBe("KR")
+  })
+
   it("returns null for an unrecognized host, never guessing", () => {
     expect(resolveTenantCodeFromHost("ilovelawyer.com")).toBeNull()
     expect(resolveTenantCodeFromHost("localhost:3002")).toBeNull()
@@ -102,6 +110,8 @@ describe("hostForTenantCode", () => {
   it("preserves the -dev suffix on the .local counterpart (with port)", () => {
     expect(hostForTenantCode("UK", "ph-dev.ilovelawyer.local:3002")).toBe("uk-dev.ilovelawyer.local:3002")
     expect(hostForTenantCode("PH", "uk-dev.ilovelawyer.local:3002")).toBe("ph-dev.ilovelawyer.local:3002")
+    expect(hostForTenantCode("KR", "uk-dev.ilovelawyer.local:3002")).toBe("kr-dev.ilovelawyer.local:3002")
+    expect(hostForTenantCode("UK", "kr-dev.ilovelawyer.local:3002")).toBe("uk-dev.ilovelawyer.local:3002")
   })
 
   it("moves to and from the KR hosts in every convention", () => {

@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { FOOTER_HASH, smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 import { hasSessionHint } from "@/lib/fetch";
+import { LandingLanguageToggle } from "@/components/landing/language-toggle";
 
 const NAV_LINKS = [
   { key: "capabilities", href: "#capabilities", tooltip: "See every feature the platform ships" },
@@ -40,7 +41,10 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
   const { t } = useTranslation("landing");
   // Sites with a trial (tenant config `trial`) let visitors try the product first (see app/trial);
   // the rest go straight to sign-up.
-  const hasTrial = getTenantCodeConfig(useTenantCodeHint()).trial;
+  const tenantHint = useTenantCodeHint();
+  const hasTrial = getTenantCodeConfig(tenantHint).trial;
+  // The KR site is bilingual (Korean and English) and says so up front; the other tenants only offer the footer switch.
+  const showLanguageToggle = tenantHint === "KR" && sectionLinks;
   const ctaHref = hasTrial ? "/trial" : "/signup";
   const ctaLabel = hasTrial ? t("navbar.startTrial") : t("navbar.getStarted");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -133,6 +137,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
           gone — it balances against the left nav's own flex-1 so the logo in between stays
           centered rather than drifting toward whichever side is narrower. */}
       <div className={`hidden lg:flex flex-1 items-center justify-end gap-4 shrink-0 ${LINK_INK}`}>
+        {showLanguageToggle && <LandingLanguageToggle />}
         <ThemeToggle />
         {isAuthenticated ? (
           <Tooltip>
@@ -212,6 +217,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
             </nav>
           )}
           <div className="flex items-center gap-4 text-white">
+            {showLanguageToggle && <LandingLanguageToggle />}
             <ThemeToggle />
           </div>
           <div className="flex gap-3">

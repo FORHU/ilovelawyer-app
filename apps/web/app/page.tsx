@@ -39,11 +39,9 @@ const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
     description:
       "Case management, AI consultation with cited Philippine jurisprudence, and a Legal Terminal built for practicing lawyers.",
   },
-  // Only what the KR site offers today: chat runs on Chat Wonder's legal_kr persona (Korean Law MCP).
   KR: {
-    title: "ilovelawyer Korea — AI Legal Intelligence for Korean Lawyers",
-    description:
-      "Case files, documents and AI consultation grounded in Korean statutes and court decisions, in one workspace for Korean lawyers.",
+    title: "ilovelawyer 코리아 — 변호사를 위한 AI 리걸 인텔리전스",
+    description: "사건 관리, 국내 판례·법령을 인용하는 AI 자문, 그리고 변호사를 위해 만든 리걸 터미널.",
   },
 };
 
@@ -91,6 +89,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = headersList.get("host") ?? "";
   const protocol = protocolForHost(host);
   const ukUrl = `${protocol}://${hostForTenantCode("UK", host)}/`;
+  const krUrl = `${protocol}://${hostForTenantCode("KR", host)}/`;
   const phUrl = `${protocol}://${hostForTenantCode("PH", host)}/`;
 
   return {
@@ -105,6 +104,7 @@ export async function generateMetadata(): Promise<Metadata> {
       languages: {
         "en-GB": ukUrl,
         "en-PH": phUrl,
+        "ko-KR": krUrl,
         // Tells Google which version to fall back to for a searcher whose locale matches
         // neither annotated variant — points at PH since getTenantCodeConfig() already
         // treats PH as the display default when a tenant is unresolved.

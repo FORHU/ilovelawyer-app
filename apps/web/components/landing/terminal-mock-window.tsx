@@ -5,7 +5,7 @@ import { Maximize2, Pin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { siteVariantKey } from "@/lib/i18n/site-variant-key";
-import { cardTitleOf, type DetailedMockKey, type LandingPanel } from "@/components/landing/terminal-panel-cards";
+import { cardKeyOf, cardTitleOf, type DetailedMockKey, type LandingPanel } from "@/components/landing/terminal-panel-cards";
 
 // Static miniature "screenshots" of Legal Terminal panes for the landing page's panel carousel.
 // Purely presentational. Five cards have a hand-built layout (`terminal.mocks`); every other pane
@@ -91,7 +91,15 @@ const TEXT_TONE: Record<string, string> = {
   MODELED: GREEN, FACT: GREEN, APPROVED: GREEN, FAVOURS: GREEN, FAVORS: GREEN, WEAK: GREEN, SUPPORTS: GREEN,
   STATUTE: GOLD, ASSIGNED: GOLD, CITED: GOLD, NODE: GOLD, INFERENCE: GOLD, SHARED: GOLD, BRANCH: GOLD,
 };
-const BAR_TONE: Record<string, string> = { HIGH: "bg-red-400", MEDIUM: "bg-orange-400" };
+// The Korean sample case's status words, toned the same way as their English counterparts above.
+Object.assign(TEXT_TONE, {
+  높음: RED, 강함: RED, 직접: RED, 적대적: RED, 보류: RED, 중대: RED, 실패: RED, 불리: RED,
+  중간: ORANGE, 보통: ORANGE, 대기: ORANGE, 미정: ORANGE, 미해결: ORANGE, 다툼: ORANGE, 작성중: ORANGE, "작성 중": ORANGE,
+  "서면 준비": ORANGE, 진행: ORANGE, 일부: ORANGE, 미확보: ORANGE, 잠정: ORANGE, 갱신: ORANGE, "갱신 필요": ORANGE, 배제: ORANGE,
+  완료: GREEN, 확인: GREEN, 부합: GREEN, 대응: GREEN, 핵심: GREEN, 준비: GREEN, 산정: GREEN, 유리: GREEN, 약함: GREEN, 뒷받침: GREEN, 낮음: GREEN,
+  법령: GOLD, 노드: GOLD, 이론: GOLD,
+});
+const BAR_TONE: Record<string, string> = { HIGH: "bg-red-400", MEDIUM: "bg-orange-400", 높음: "bg-red-400", 중간: "bg-orange-400" };
 
 function Badge({ value }: { value: string }) {
   return (
@@ -125,7 +133,8 @@ export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel;
   // Explicit `_UK` / `_KR` key rather than i18next's `context` option: context is not applied when
   // the value is a nested object, so it would silently keep returning the Philippine sample data.
   const mocks = t(siteVariantKey("landing", "terminal.mocks", tenantCode), { returnObjects: true }) as unknown as Mocks;
-  const title = cardTitleOf(panel);
+  // The Terminal's own pane names are English; the Korean site shows Korean ones where it has them.
+  const title = tenantCode === "KR" ? t(`terminal.titles_KR.${cardKeyOf(panel)}`, { defaultValue: cardTitleOf(panel) }) : cardTitleOf(panel);
   const mock = panel.detailedMock;
 
   let body: ReactNode;

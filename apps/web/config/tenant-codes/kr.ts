@@ -19,10 +19,10 @@ export const krTenantCodeConfig: TenantCodeConfig = {
   branding: {
     flag: "🇰🇷",
   },
-  // TODO: temporary — swap for KR photography once sourced (same stopgap PH uses).
+  // The KR hero is three still images (no videos). firmWorkspace still borrows UK's photo; it
+  // only shows in the testimonial section, which is switched off.
   landingAssets: {
-    heroVideos: ["/landing/videos/hero-1.mp4", "/landing/videos/hero-2.mp4", "/landing/videos/hero-3.mp4"],
-    heroPosters: ["/landing/uk/hero-1.jpg", "/landing/uk/hero-2.jpg", "/landing/uk/hero-3.jpg"],
+    heroPosters: ["/landing/kr/hero-1.jpg", "/landing/kr/hero-2.jpg", "/landing/kr/hero-3.jpg"],
     firmWorkspace: "/landing/uk/firm-workspace.jpg",
   },
   ui: {

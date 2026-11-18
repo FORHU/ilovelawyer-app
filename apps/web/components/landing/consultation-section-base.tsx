@@ -14,9 +14,9 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { tenantI18nContext } from "@/config/tenant-codes";
 import { siteVariantKey } from "@/lib/i18n/site-variant-key";
 
-// PH and UK render identical markup (see hero-section-base.tsx for why this is one component
+// PH, UK and KR render identical markup (see hero-section-base.tsx for why this is one component
 // instead of two hand-copied files), but each tenant gets its own sample case and citations via
-// the `_UK` locale keys.
+// the `_UK` / `_KR` locale keys.
 //
 // The citation card carries the `dark` class so it always uses the dark theme tokens, matching the
 // handoff (a permanently dark card, like the rest of the page's chrome) in both light and dark mode.

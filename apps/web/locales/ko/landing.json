@@ -19,16 +19,25 @@
     "slideOne": {
       "line1": "사건이",
       "line2": "명확해지는 곳",
+      "line1_KR": "사건에,",
+      "line2_KR": "명확함을",
+      "subtext_KR": "AI 자문은 작성되는 즉시 스트리밍되며, 인용된 국내 판례와 법령이 함께 제시됩니다.",
       "subtext": "AI 상담은 작성되는 즉시 스트리밍되며, 인용된 판례가 함께 제시됩니다."
     },
     "slideTwo": {
       "line1": "당신의 사건들을,",
       "line2": "한눈에 관리하세요",
+      "line1_KR": "모든 사건을,",
+      "line2_KR": "한눈에",
+      "subtext_KR": "리걸 터미널은 최대 열아홉 가지 사건 정보 패널을 원하는 대로 배치합니다.",
       "subtext": "리걸 터미널은 열아홉 가지 사건 정보 패널을 원하는 대로 배치합니다."
     },
     "slideThree": {
       "line1": "변호사와 AI가",
       "line2": "만나는 곳",
+      "line1_KR": "변호사와",
+      "line2_KR": "AI가 만나는 곳",
+      "subtext_KR": "사건 워크스페이스는 자료, 대화, 작업물을 한 화면에 모아둡니다.",
       "subtext": "Case Workspace는 자료, 채팅, 결과물을 하나의 화면에 모아둡니다."
     },
     "slideLabel": "슬라이드 {{number}}",
@@ -100,29 +109,50 @@
       "facts": "사실관계",
       "law": "법리",
       "strategy": "전략",
-      "risk": "위험",
+      "risk": "리스크",
       "team": "팀"
     },
     "cards": {
-      "command": "사건 개요, 다음 기일, 위험 체크리스트, 다음 할 일.",
-      "evidence": "출처가 연결된 문서와 이를 뒷받침하는 사건 타임라인.",
-      "witnesses": "증인 명단과 역할, 연락처, 메모.",
-      "caseReconstruction": "AI가 작성하고 수정할 수 있는 사건의 시간순 경위.",
+      "command": "사건 헤더, 다음 기일, 리스크 체크리스트와 다음 할 일.",
+      "evidence": "출처 링크가 있는 서면과 이를 뒷받침하는 사건 타임라인.",
+      "witnesses": "역할, 연락처, 메모가 있는 증인 명단.",
+      "caseReconstruction": "AI가 작성하고 직접 수정할 수 있는 시간순 사건 서사.",
       "law": "사건의 근거가 되는 법령, 판례, 인용.",
-      "legalIssues": "사건에서 제기되는 법적 쟁점과 청구원인.",
-      "decisions": "각 답변의 근거: 적용 규칙, 유리한 증거와 불리한 증거, 결론을 바꿀 수 있는 요소.",
-      "procedure": "사건 진행을 관리하는 기한과 제출 서류 체크리스트.",
-      "mindMap": "상담 내용으로 만든 사건 전략 마인드맵.",
-      "attackStrategy": "사건을 유리하게 이끌기 위한 공격 전략.",
-      "defenseStrategy": "사건의 입장을 지키기 위한 방어 전략.",
-      "theories": "변호사별 사건 이론을 합치지 않고 나란히 비교.",
-      "audioOverview": "필요할 때 생성하는 두 진행자의 사건 대담.",
-      "redTeam": "필요할 때 생성하는 상대방 대리인의 예상 공격.",
-      "weaknesses": "사건의 설득력을 약하게 만드는 요소.",
+      "legalIssues": "사건이 제기하는 법적 쟁점과 청구원인.",
+      "decisions": "각 답변의 이유: 규칙, 찬반 증거, 결론을 바꿀 요인.",
+      "procedure": "사건을 궤도에 올려 두는 기한과 제출 체크리스트.",
+      "mindMap": "상담에서 생성된 마인드맵 형태의 사건 전략.",
+      "attackStrategy": "사건을 앞으로 이끄는 적극적 수단.",
+      "defenseStrategy": "사건의 입장을 지키기 위한 수단.",
+      "theories": "각 변호사의 사건 이론을 합치지 않고 나란히 비교.",
+      "audioOverview": "요청 시 생성되는 두 진행자의 음성 사건 토론.",
+      "redTeam": "요청 시 생성되는 상대방 대리인의 예상 공격.",
+      "weaknesses": "사건의 설득력을 해치는 요소.",
       "strengths": "사건의 설득력을 높이는 요소.",
-      "damages": "항목별 청구 손해액과 구제 수단, 누계 합계.",
-      "chat": "질문하면 사건 자료에 근거해 답합니다.",
+      "damages": "항목별 청구 손해와 구제, 누적 합계.",
+      "chat": "질문하면 사건에 근거한 답변을 받습니다.",
       "chatResponse": "사건 질문에 대한 전체 답변과 근거 출처."
+    },
+    "titles_KR": {
+      "command": "사건 요약",
+      "evidence": "증거·타임라인",
+      "witnesses": "증인",
+      "caseReconstruction": "사건 재구성",
+      "law": "법령·판례",
+      "legalIssues": "쟁점",
+      "decisions": "판단 근거",
+      "procedure": "소송 전략",
+      "mindMap": "전략 맵",
+      "attackStrategy": "공격 전략",
+      "defenseStrategy": "방어 전략",
+      "theories": "이론",
+      "audioOverview": "오디오 브리핑",
+      "redTeam": "레드팀 분석",
+      "weaknesses": "취약점",
+      "strengths": "강점",
+      "damages": "손해·구제",
+      "chat": "AI 법률 자문",
+      "chatResponse": "AI 법률 응답"
     },
     "mocks": {
       "caseSummary": {
@@ -243,99 +273,95 @@
     },
     "mocks_KR": {
       "caseSummary": {
-        "partyOne": "원고",
-        "partyOneName": "김서연",
-        "partyTwo": "피고",
-        "partyTwoName": "(주)한빛개발",
+        "partyOne": "신청인",
+        "partyOneName": "김민지",
+        "partyTwo": "피신청인",
+        "partyTwoName": "㈜한빛물류",
         "claims": "청구",
-        "claimsValue": "민법 제110조·제750조 · 사기 취소 및 손해배상",
-        "riskRegister": "위험 목록 · 3",
+        "claimsValue": "부당해고 구제신청 · 보복성 해고",
+        "riskRegister": "리스크 등록부 · 3",
         "add": "+ 추가",
         "risks": [
           {
-            "level": "HIGH",
+            "level": "높음",
             "percent": 78,
-            "text": "허가 관련 증거가 화면 캡처뿐이며 구청의 공식 확인서는 아직 없음"
+            "text": "이유서 제출 기한이 계산만 되었을 뿐 노동위원회 확인 전"
           },
           {
-            "level": "MEDIUM",
+            "level": "중간",
             "percent": 54,
-            "text": "피고는 송금을 사기가 아닌 실패한 공동투자로 주장"
+            "text": "8/4~8/11 이의 서면 없음"
+          },
+          {
+            "level": "낮음",
+            "percent": 22,
+            "text": "박 팀장 진술서 미확보"
           }
         ]
       },
       "evidenceTimeline": {
-        "documents": "문서 · 6",
+        "documents": "서면 · 6",
         "hint": "행을 클릭하세요",
         "docs": [
           {
-            "name": "계좌이체내역.xlsx",
-            "status": "READY"
+            "name": "해고통지서.pdf",
+            "status": "완료"
           },
           {
-            "name": "카카오톡-캡처.png",
-            "status": "READY"
+            "name": "구제신청서-0412.pdf",
+            "status": "대기"
           },
           {
-            "name": "건축허가-조회.jpg",
-            "status": "PENDING"
+            "name": "출퇴근기록-2018-2026.xlsx",
+            "status": "완료"
           }
         ],
         "timeline": "타임라인",
         "events": [
           {
-            "date": "11월 2일",
+            "date": "7/28",
             "tone": "gold",
-            "text": "박준호가 카카오톡으로 건축허가가 “이미 났다”고 말함.",
-            "source": "카카오톡-캡처.png · 3면",
-            "status": "VERIFIED"
+            "text": "직장 내 괴롭힘 신고 접수."
           },
           {
-            "date": "11월 4일",
-            "tone": "gold",
-            "text": "(주)한빛개발에 2억 4,000만 원 송금.",
-            "source": "계좌이체내역.xlsx · 14행",
-            "status": "VERIFIED"
-          },
-          {
-            "date": "1월 20일",
+            "date": "8/4",
             "tone": "red",
-            "text": "착공되지 않음. 허가 기록 없음.",
-            "source": "김서연-진술서.pdf · 18항",
-            "status": "VERIFIED"
+            "text": "사용자가 이 날부터 무단결근을 주장."
+          },
+          {
+            "date": "8/11",
+            "tone": "red",
+            "text": "무단결근을 이유로 한 해고통지서 발송."
           }
         ]
       },
       "redTeam": {
-        "intro": "(주)한빛개발에 가장 유리한 주장, 위협도 순.",
+        "intro": "㈜한빛물류 측 최선의 논리, 영향도 순.",
         "arguments": [
           {
-            "title": "실패한 공동투자일 뿐이다",
-            "strength": "HIGH",
-            "note": "증거: 피고 답변서의 투자 메모 초안",
-            "response": "대응: 송금은 허위 사실의 고지로 유도되었음"
+            "title": "8/4부터 무단결근",
+            "strength": "강함",
+            "note": "외형상 정당한 해고 사유"
           },
           {
-            "title": "허가 발언은 사실이 아닌 전망이었다",
-            "strength": "MEDIUM",
-            "note": "증거: 카카오톡 대화의 전체 맥락",
-            "response": "대응: “이미 났다”는 현재의 사실을 말한 것임"
+            "title": "8/4~8/11 이의 서면 없음",
+            "strength": "강함",
+            "note": "묵시적 수용으로 해석"
           },
           {
-            "title": "허가 신청이 없었다는 증거가 없다",
-            "strength": "MEDIUM",
-            "note": "증거 공백: 화면 캡처뿐",
-            "response": "대응: 구청에 공식 확인서 요청"
+            "title": "8/6 이메일은 해석이 엇갈림",
+            "strength": "보통",
+            "note": "양측 모두에 양날의 검"
           }
         ]
       },
       "chat": {
         "anchored": "고정됨",
-        "thread": "허가 사기 청구 ▾",
+        "thread": "보복성 해고 ▾",
         "scope": "● 사건 + 패널 5개",
-        "question": "허가 발언이 송금보다 먼저였음을 보여주는 문서는 무엇인가요?",
-        "source": "ilovelawyer · AI 평가 · 증거 및 타임라인 기준",
-        "answer": "카카오톡 캡처(3면)에는 11월 2일의 “이미 났다” 메시지가, 계좌이체내역(14행)에는 11월 4일의 송금이 있습니다. 허가가 실제로 나지 않았다는 점이 입증되면, 송금을 유도하려는 발언이었다는 주장이 뒷받침됩니다.",
+        "question": "무단결근 주장을 약화시키는 모순점은?",
+        "source": "ilovelawyer · 증거·타임라인, 모순점에서",
+        "answer": "두 가지입니다. 해고통지서는 8월 4일부터 무단결근이라고 하지만, 출퇴근기록에는 8월 8일까지 출근이 남아 있습니다. 또 인사팀은 8월 6일 이메일로 면담 참석을 요청했습니다.",
         "chips": [
           "증거 ↗"
         ],
@@ -343,26 +369,26 @@
         "send": "보내기 ↗"
       },
       "chatResponse": {
-        "status": "근거 확인 · 출처 3개",
-        "question": "김서연 씨는 사기를 이유로 송금을 취소할 수 있나요?",
-        "source": "ilovelawyer · 증거 및 타임라인, 법령 및 판례 기준",
-        "answer": "가능성이 높습니다. 민법 제110조 제1항에 따라 사기에 의한 의사표시는 취소할 수 있습니다. 카카오톡 메시지는 송금 이틀 전에 보내졌습니다. 다만 그 발언이 허위였음을 입증해야 하며, 이를 위해 구청 기록이 필요합니다.",
-        "citationsLabel": "출처",
+        "status": "근거 3건 기반",
+        "question": "사용자가 무단결근을 해고 사유로 계속 주장할 수 있나요?",
+        "source": "ilovelawyer · 증거·타임라인, 법령·판례에서",
+        "answer": "어렵습니다. 무단결근이 인정되려면 정당한 사유 없는 결근이 입증되어야 하는데, 출퇴근기록에는 8월 8일까지 출근 사실이 남아 있고 해고는 신고 후 14일 만에 이루어졌습니다.",
+        "citationsLabel": "근거",
         "citations": [
           {
-            "title": "카카오톡-캡처.png",
-            "note": "증거 · 3면",
-            "status": "SUPPORTS"
+            "title": "출퇴근기록-2018-2026.xlsx",
+            "note": "증거 · HB-PR-000015",
+            "status": "뒷받침"
           },
           {
-            "title": "민법 제110조",
-            "note": "법령 · 사기에 의한 의사표시의 취소",
-            "status": "STATUTE"
+            "title": "근로기준법 제27조",
+            "note": "법령 · 해고사유 서면통지",
+            "status": "법령"
           },
           {
-            "title": "건축허가-조회.jpg",
-            "note": "증거 · 화면 캡처뿐",
-            "status": "UNVERIFIED"
+            "title": "근로기준법 제76조의3",
+            "note": "법령 · 신고자 불리한 처우 금지",
+            "status": "법령"
           }
         ]
       }
@@ -661,322 +687,302 @@
     },
     "samples_KR": {
       "witnesses": {
-        "intro": "증인 명단 · 3",
+        "intro": "구제신청서에 기재된 증인.",
         "rows": [
           {
-            "title": "김서연",
-            "note": "원고 · 송금 당사자",
-            "status": "KEY"
+            "title": "김민지",
+            "note": "신청인 · 8/6 면담",
+            "status": "준비"
           },
           {
-            "title": "박준호",
-            "note": "(주)한빛개발 이사 · 카카오톡 메시지 발신",
-            "status": "ADVERSE"
+            "title": "정 인사팀장",
+            "note": "피신청인 측 · 이메일 발신",
+            "status": "적대적"
           },
           {
-            "title": "구청 건축과 담당자",
-            "note": "건축허가 · 신청 기록",
-            "status": "OUTSTANDING"
+            "title": "박 팀장",
+            "note": "현장 관리자 · 8/4~8/8",
+            "status": "미확보"
           }
         ]
       },
       "caseReconstruction": {
-        "intro": "사건 문서를 바탕으로 작성 · 수정 가능",
+        "intro": "제출 서면과 메타데이터로 재구성.",
         "rows": [
           {
-            "title": "10월 28일 · 첫 만남",
-            "note": "김서연 진술서 4항",
-            "status": "FACT"
+            "title": "7/28 · 직장 내 괴롭힘 신고",
+            "note": "HB-HR-000870",
+            "status": "확인"
           },
           {
-            "title": "11월 2일 · “허가 이미 났다”",
-            "note": "카카오톡 캡처 3면",
-            "status": "FACT"
+            "title": "8/4 · 무단결근 주장",
+            "note": "해고통지서에만 기재",
+            "status": "다툼"
           },
           {
-            "title": "송금을 받으려는 발언이었다",
-            "note": "시점에서 추론 · 고의 미입증",
-            "status": "INFERENCE"
+            "title": "8/6 · 인사팀 면담 요청",
+            "note": "HB-EM-004417",
+            "status": "확인"
           },
           {
-            "title": "공동투자였다",
-            "note": "피고 답변서",
-            "status": "ALLEGATION"
-          },
-          {
-            "title": "11월 4일 · 2억 4,000만 원 송금",
-            "note": "계좌이체내역 14행",
-            "status": "FACT"
+            "title": "8/11 · 해고 효력 발생",
+            "note": "무단결근 사유",
+            "status": "확인"
           }
         ]
       },
       "law": {
-        "intro": "취소와 손해배상의 근거 법령.",
+        "intro": "부당해고 및 절차 위반 쟁점.",
         "rows": [
           {
-            "title": "민법 제110조 제1항",
-            "note": "사기에 의한 의사표시의 취소",
-            "status": "STATUTE"
+            "title": "근로기준법 제23조",
+            "note": "해고 등의 제한",
+            "status": "법령"
           },
           {
-            "title": "민법 제750조",
-            "note": "불법행위로 인한 손해배상",
-            "status": "STATUTE"
+            "title": "근로기준법 제27조",
+            "note": "해고사유 서면통지",
+            "status": "부합"
           },
           {
-            "title": "민법 제741조",
-            "note": "부당이득으로서 송금액 반환",
-            "status": "ON POINT"
+            "title": "근로기준법 제76조의3",
+            "note": "괴롭힘 신고자 불리한 처우 금지",
+            "status": "부합"
+          },
+          {
+            "title": "취업규칙 제41조",
+            "note": "무단결근 3일 이상 징계",
+            "status": "불리"
           }
         ]
       },
       "legalIssues": {
-        "intro": "법원이 판단해야 할 쟁점 · 쟁점, 근거, 증거.",
+        "intro": "노동위원회 판단 쟁점.",
         "rows": [
           {
-            "title": "허가 발언은 허위였는가?",
-            "note": "제110조 · 구청 기록 · 화면 캡처뿐",
-            "status": "OPEN"
+            "title": "무단결근이 입증되었는가?",
+            "note": "사용자에게 입증책임",
+            "status": "다툼"
           },
           {
-            "title": "그 발언이 송금을 유도했는가?",
-            "note": "제110조 · 시점 · 카카오톡 3면",
-            "status": "UNVERIFIED"
+            "title": "서면통지 요건을 충족했는가?",
+            "note": "징계 절차 기록 없음",
+            "status": "서면 준비"
           },
           {
-            "title": "사기인가, 실패한 공동투자인가?",
-            "note": "피고 답변서 · 투자 메모",
-            "status": "CONTESTED"
-          },
-          {
-            "title": "무엇을 돌려받을 수 있는가?",
-            "note": "제741조, 제750조 · 2억 4,000만 원과 지연손해금",
-            "status": "OPEN"
+            "title": "신고 14일 후 해고는 보복인가?",
+            "note": "7/28 → 8/11",
+            "status": "미정"
           }
         ]
       },
       "decisions": {
-        "intro": "최근 답변의 추론 과정 · 잠정적 AI 평가.",
+        "intro": "최근 답변의 근거 · 규칙, 증거, 배제된 대안",
         "rows": [
           {
-            "title": "송금은 사기로 유도되었는가?",
-            "note": "질문",
-            "status": "OPEN"
+            "title": "무단결근은 입증되지 않았다",
+            "note": "근거: 8/8까지 출근 기록",
+            "status": "유리"
           },
           {
-            "title": "송금 이틀 전 “이미 났다” 메시지",
-            "note": "뒷받침하는 증거 · 카카오톡 3면",
-            "status": "SUPPORTS"
+            "title": "서면통지 요건을 충족하지 못했다",
+            "note": "징계 절차 기록 없음",
+            "status": "유리"
           },
           {
-            "title": "답변서의 투자 메모",
-            "note": "불리한 증거",
-            "status": "ADVERSE"
-          },
-          {
-            "title": "사실 진술이 아닌 전망이었다",
-            "note": "대립하는 해석",
-            "status": "OPEN"
-          },
-          {
-            "title": "사기에 의한 취소 주장이 뒷받침됨",
-            "note": "AI 평가 · 허가 기록 확인 필요",
-            "status": "PROVISIONAL"
+            "title": "대안: 정당한 징계해고",
+            "note": "배제 · 무단결근 입증 없음",
+            "status": "배제"
           }
         ]
       },
       "procedure": {
-        "intro": "소송 전략과 이를 뒷받침하는 절차.",
+        "intro": "타임라인을 사실관계의 중심으로.",
         "rows": [
           {
-            "title": "사기를 이유로 취소하고 2억 4,000만 원 반환 청구",
-            "note": "주된 전략 · 예비적으로 불법행위 손해배상",
-            "status": "KEY"
+            "title": "구제신청서 접수",
+            "note": "8/20 접수 완료",
+            "status": "완료"
           },
           {
-            "title": "허가 신청 자체가 없었음을 입증",
-            "note": "증명 목표 · 구청에 사실조회",
-            "status": "OPEN"
+            "title": "이유서 제출 기한 확인",
+            "note": "노동위원회 확인",
+            "status": "진행"
           },
           {
-            "title": "실패한 공동투자",
-            "note": "상대방의 예상 주장",
-            "status": "ANTICIPATED"
+            "title": "출퇴근기록 사실확인서 확보",
+            "note": "인사팀",
+            "status": "진행"
           },
           {
-            "title": "(주)한빛개발 재산 가압류",
-            "note": "즉시 조치 · 민사집행법 제276조",
-            "status": "OPEN"
-          },
-          {
-            "title": "10월 28일 기일 전 준비서면 제출",
-            "note": "절차상 우선순위 · 이어서 문서제출명령 신청",
-            "status": "OPEN"
+            "title": "인사팀 이메일 전체 제출 요구",
+            "note": "HB-EM 시리즈",
+            "status": "진행"
           }
         ]
       },
       "mindMap": {
-        "intro": "상담 내용에서 생성 · 노드 17개",
+        "intro": "김민지 v. ㈜한빛물류 · 구조 보기",
         "rows": [
           {
             "title": "법적 근거",
-            "note": "민법 제110조 · 제741조 · 제750조",
-            "status": "NODE"
+            "note": "해고 제한 · 서면통지 · 보복",
+            "status": "노드"
           },
           {
             "title": "핵심 사실",
-            "note": "카카오톡 · 송금 · 허가 없음",
-            "status": "NODE"
+            "note": "신고 · 인사팀 이메일 · 출퇴근기록",
+            "status": "노드"
           },
           {
-            "title": "구제 수단",
-            "note": "송금액 반환 · 손해배상 · 지연손해금",
-            "status": "NODE"
+            "title": "구제",
+            "note": "원직복직 · 임금상당액 · 금전보상",
+            "status": "노드"
           },
           {
-            "title": "위험",
-            "note": "투자 항변 · 캡처 증거",
-            "status": "NODE"
+            "title": "리스크",
+            "note": "이의 서면 없음 · 박 팀장 진술",
+            "status": "노드"
           }
         ]
       },
       "attackStrategy": {
-        "intro": "사건을 진전시킬 공격 방안.",
+        "intro": "9/24 심문기일 기준 순서.",
         "rows": [
           {
-            "title": "발언 시점과 송금일 연결",
-            "note": "카카오톡 3면 · 계좌이체내역 14행",
-            "status": "READY"
+            "title": "출퇴근기록으로 무단결근 반박",
+            "note": "사실확인서 미확보",
+            "status": "보류"
           },
           {
-            "title": "허가 신청이 없었음을 입증",
-            "note": "구청 사실조회",
-            "status": "DRAFTING"
+            "title": "서면통지 하자 주장",
+            "note": "이유서 반영 준비 완료",
+            "status": "준비"
           },
           {
-            "title": "(주)한빛개발 내부 자료 확보",
-            "note": "문서제출명령 미결",
-            "status": "BLOCKED"
+            "title": "신고 후 14일 해고를 보복으로",
+            "note": "신고 접수 증빙 필요",
+            "status": "작성 중"
           }
         ]
       },
       "defenseStrategy": {
-        "intro": "(주)한빛개발의 예상 항변에 대한 답변.",
+        "intro": "사용자 측 예상 항변.",
         "rows": [
           {
-            "title": "공동투자였다",
-            "note": "지분, 수익 배분, 투자계약서 모두 없음",
-            "status": "ANSWERED"
+            "title": "8/4부터 무단결근",
+            "note": "8/8까지 출근 기록",
+            "status": "대응"
           },
           {
-            "title": "허가가 곧 날 예정이었다",
-            "note": "“이미 났다”는 현재 사실의 진술",
-            "status": "ANSWERED"
+            "title": "8/6 이메일은 통상 업무",
+            "note": "근로관계 존속을 전제",
+            "status": "대응"
           },
           {
-            "title": "캡처로는 증명이 안 된다",
-            "note": "구청이 확인하면 증명력이 강해짐",
-            "status": "PARTIAL"
+            "title": "이의 서면 없음",
+            "note": "신고가 해고보다 먼저",
+            "status": "일부"
           }
         ]
       },
       "theories": {
-        "intro": "이론 2개 나란히 비교 · 병합하지 않음",
+        "intro": "2개의 이론을 나란히 · 합치지 않음",
         "rows": [
           {
-            "title": "이지훈 · 사기 취소",
-            "note": "카카오톡 메시지에 근거",
-            "status": "THEORY"
+            "title": "김서연 · 보복성 해고",
+            "note": "신고 후 14일이라는 시점에 근거",
+            "status": "이론"
           },
           {
-            "title": "최수아 · 불법행위 손해배상",
-            "note": "허가 기록에 근거",
-            "status": "THEORY"
+            "title": "이지은 · 정당한 이유 없음",
+            "note": "8/8까지의 출퇴근기록에 근거",
+            "status": "이론"
           },
           {
-            "title": "차이점",
-            "note": "투자 메모의 비중",
-            "status": "OPEN"
+            "title": "의견이 갈리는 지점",
+            "note": "보복 의도를 입증해야 하는지",
+            "status": "미정"
           }
         ]
       },
       "audioOverview": {
-        "intro": "두 진행자의 대담 · 3분 55초",
+        "intro": "생성된 브리핑 · 3분 41초",
         "rows": [
           {
-            "title": "청구와 당사자",
-            "note": "00:00 – 01:05",
-            "status": "READY"
+            "title": "rec-01-쟁점과-청구.mp3",
+            "note": "00:00 – 01:02",
+            "status": "완료"
           },
           {
-            "title": "사기였는가?",
-            "note": "01:05 – 02:40",
-            "status": "READY"
+            "title": "rec-02-무단결근.mp3",
+            "note": "01:02 – 02:30",
+            "status": "완료"
           },
           {
-            "title": "돌려받을 수 있는 금액",
-            "note": "02:40 – 03:55",
-            "status": "READY"
+            "title": "rec-03-구제.mp3",
+            "note": "02:30 – 03:41",
+            "status": "갱신 필요"
           }
         ]
       },
       "weaknesses": {
-        "intro": "사건에 불리한 점.",
+        "intro": "드러날 시점 순.",
         "rows": [
           {
-            "title": "허가 증거가 화면 캡처뿐",
-            "note": "공식 확인서 아직 없음",
-            "status": "MATERIAL"
+            "title": "8/4~8/11 이의 서면 없음",
+            "note": "신고서에만 의존",
+            "status": "중대"
           },
           {
-            "title": "답변서의 투자 메모",
-            "note": "공동투자 항변을 뒷받침",
-            "status": "MATERIAL"
+            "title": "박 팀장 진술서 미확보",
+            "note": "출퇴근기록만 존재",
+            "status": "중대"
           },
           {
-            "title": "박준호의 고의 미입증",
-            "note": "현재는 메시지뿐",
-            "status": "OPEN"
+            "title": "출퇴근기록 사실확인서 없음",
+            "note": "이유서 제출 전 필요",
+            "status": "미해결"
+          },
+          {
+            "title": "불리한 판례 검색 미실행",
+            "note": "인용 맵 미완성",
+            "status": "미해결"
           }
         ]
       },
       "strengths": {
-        "intro": "사건에 유리한 점.",
+        "intro": "부당해고 주장을 뒷받침하는 사실.",
         "rows": [
           {
-            "title": "송금 이틀 전의 발언",
-            "note": "카카오톡 3면 · 확인됨",
-            "status": "KEY"
+            "title": "8/8까지 출근 기록",
+            "note": "HB-PR-000015",
+            "status": "핵심"
           },
           {
-            "title": "송금이 (주)한빛개발로 추적됨",
-            "note": "계좌이체내역 14행 · 확인됨",
-            "status": "SUPPORTS"
-          },
-          {
-            "title": "내용증명에 무응답",
-            "note": "2026년 2월 3일 발송",
-            "status": "SUPPORTS"
+            "title": "인사팀의 8/6 이메일",
+            "note": "HB-EM-004417",
+            "status": "핵심"
           }
         ]
       },
       "damages": {
-        "intro": "청구 금액 · 잠정",
+        "intro": "사실확인서 확보 전까지 잠정.",
         "rows": [
           {
-            "title": "송금액 반환",
-            "note": "제741조 · 2억 4,000만 원",
-            "status": "PROVISIONAL"
+            "title": "임금상당액",
+            "note": "₩14,400,000",
+            "status": "산정"
           },
           {
-            "title": "지연손해금",
-            "note": "법정이율, 소장 송달 다음 날부터 연 12%",
-            "status": "CONTESTED"
+            "title": "금전보상(원직복직 대신)",
+            "note": "₩8,000,000",
+            "status": "잠정"
           },
           {
-            "title": "위자료",
-            "note": "제751조 · 현재 청구하지 않음",
-            "status": "OPEN"
+            "title": "위자료(민사 별소)",
+            "note": "₩5,000,000",
+            "status": "다툼"
           }
         ]
       }
@@ -1029,11 +1035,12 @@
     "heading": "한 번만 물어보세요. 그 근거가 되는 법률까지 함께.",
     "body": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 사건 번호 또는 R.A. 번호, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
     "body_UK": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 중립 인용 또는 판례집 인용, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
-    "body_KR": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 한국 법령과 판례가 제목, 조문 또는 사건번호, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
+    "body_KR": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 법령과 판례가 사건번호, 조문 링크, 핵심 발췌문과 함께 옆에 표시되고 원문 대조가 끝난 인용은 별도로 표시됩니다. 서면을 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
     "cta": "상담 시작하기",
     "caseName": "Reyes v. Northbridge Logistics",
     "caseName_UK": "Hughes v Northbridge Logistics Ltd",
-    "caseName_KR": "김서연 v. (주)한빛개발",
+    "caseName_KR": "김민지 v. ㈜한빛물류",
+    "relatedCases_KR": "관련 법령·판례",
     "relatedCases": "관련 사건",
     "relatedCasesItems": [
       {
@@ -1065,21 +1072,21 @@
     ],
     "relatedCasesItems_KR": [
       {
-        "title": "민법 제110조",
-        "citation": "제110조 제1항",
-        "snippet": "사기나 강박에 의한 의사표시는 취소할 수 있다.",
+        "title": "근로기준법 제27조",
+        "citation": "해고사유 등의 서면통지",
+        "snippet": "해고는 사유와 시기를 서면으로 통지해야 효력이 있습니다.",
         "vetted": true
       },
       {
-        "title": "민법 제750조",
-        "citation": "제750조",
-        "snippet": "고의 또는 과실로 인한 위법행위로 타인에게 손해를 가한 자는 그 손해를 배상할 책임이 있다.",
+        "title": "근로기준법 제23조",
+        "citation": "해고 등의 제한",
+        "snippet": "사용자는 정당한 이유 없이 근로자를 해고하지 못합니다.",
         "vetted": false
       }
     ],
     "vetted": "검증됨",
     "attachment": "termination-letter.pdf",
-    "attachment_KR": "내용증명.pdf",
+    "attachment_KR": "해고통지서.pdf",
     "indexing": "채팅용 색인 중…"
   },
   "firms": {
@@ -1092,7 +1099,7 @@
     "jurisdictionsHeading_UK": "영국 실무에 맞춘 제품",
     "jurisdictionsHeading_KR": "한국 실무에 맞춘 제품",
     "jurisdictionsBody_UK": "조직마다 고유한 주소와 용어 체계를 가지며, 영국 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 영국 법에 맞게 구성되어 있습니다.",
-    "jurisdictionsBody_KR": "조직마다 고유한 주소와 용어 체계를 가지며, 한국 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 한국 법에 맞게 구성되어 있습니다.",
+    "jurisdictionsBody_KR": "조직마다 고유한 주소와 용어 체계를 가지며, 한국 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 대한민국 법에 맞게 구성되어 있습니다.",
     "roster": [
       {
         "initials": "AC",
@@ -1158,29 +1165,29 @@
     "roster_KR": [
       {
         "initials": "김",
-        "name": "김지우",
-        "email": "jiwoo@daonsol-law.co.kr",
+        "name": "김서연 변호사",
+        "email": "seoyeon@hangyeol.kr",
         "role": "owner",
         "you": true
       },
       {
         "initials": "박",
-        "name": "박도윤",
-        "email": "doyun@daonsol-law.co.kr",
+        "name": "박준호",
+        "email": "junho@hangyeol.kr",
         "role": "admin",
         "you": false
       },
       {
         "initials": "이",
-        "name": "이서현",
-        "email": "seohyun@daonsol-law.co.kr",
+        "name": "이지은",
+        "email": "jieun@hangyeol.kr",
         "role": "member",
         "you": false
       },
       {
         "initials": "최",
-        "name": "최민재",
-        "email": "minjae@daonsol-law.co.kr",
+        "name": "최민수",
+        "email": "minsu@hangyeol.kr",
         "role": "member",
         "you": false,
         "pending": true
@@ -1192,17 +1199,17 @@
       "organization": "조직",
       "orgName": "Cruz & Partners",
       "orgName_UK": "Sinclair & Wycombe LLP",
-      "orgName_KR": "법무법인 다온솔",
+      "orgName_KR": "법무법인 한결",
       "plan": "플랜",
       "planName": "Professional",
       "planName_UK": "Enterprise",
-      "planName_KR": "Enterprise",
+      "planName_KR": "Professional",
       "you": "나",
       "pending": "대기 중",
       "invite": "구성원 초대",
       "invitePlaceholder": "colleague@lawfirm.ph",
       "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
-      "invitePlaceholder_KR": "colleague@lawfirm.co.kr",
+      "invitePlaceholder_KR": "colleague@lawfirm.kr",
       "sendInvite": "초대 보내기",
       "roles": {
         "owner": "소유자",
