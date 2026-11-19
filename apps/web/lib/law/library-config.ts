@@ -1,15 +1,16 @@
-import { LAW_CASE_TYPES, LAW_TOPICS, UK_COURTS, type LawCategoryParam } from "@/lib/law/queries"
+import { KR_COURTS, LAW_CASE_TYPES, LAW_TOPICS, UK_COURTS, type LawCategoryParam } from "@/lib/law/queries"
 import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 
 /**
  * Per-tenant configuration for the Library's `<LawSearchPanel/>` and the law-document detail
- * page — the parts that differ between PH (juris.ph) and UK (UK Legal MCP): which categories
+ * page — the parts that differ between PH (juris.ph), UK (UK Legal MCP) and KR (Korean Law MCP): which categories
  * exist, which support faceted browse, the facet vocab, and how a result renders. Everything
  * translatable stays in the `library` i18n namespace (lawSearch / lawDoc keys); this file only
  * holds structure + i18n key names.
  */
 
-export type LibraryFacetKind = "ph-jurisprudence" | "ph-topics" | "uk-court" | "none"
+/** `court`: a court filter (UK and KR case law), kept on screen while searching too. */
+export type LibraryFacetKind = "ph-jurisprudence" | "ph-topics" | "court" | "none"
 
 export interface LibraryCategory {
   value: LawCategoryParam
@@ -36,8 +37,13 @@ export interface LibraryTenantConfig {
   leadActorLabelKey: string
   /** i18n key for a result card's open-CTA, by category. */
   openLabelKey: (category: LawCategoryParam) => string
-  /** Court facet options (UK case law only). */
+  /** Court facet options (UK and KR case law). */
   courts: readonly string[]
+  /** A court filter chip's label, in the page's language (`language` is i18next's). */
+  courtLabel: (court: string, language: string) => string
+  /** `lawDoc.*` keys that replace the case-law detail headings, for a site whose decisions have
+   * named sections of their own (KR: 판시사항, 판결요지 …). */
+  docLabelKeys?: Partial<Record<"legalIssues" | "courtReasoning" | "disposition" | "legalRulesCited" | "relatedCases", string>>
   caseTypes: readonly string[]
   topics: readonly string[]
 }
@@ -58,6 +64,7 @@ const PH_CONFIG: LibraryTenantConfig = {
   leadActorLabelKey: "lawSearch.ponenteLabel",
   openLabelKey: (c) => (c === "republic-acts" ? "lawSearch.openAct" : "lawSearch.openRecord"),
   courts: [],
+  courtLabel: (c) => c,
   caseTypes: LAW_CASE_TYPES,
   topics: LAW_TOPICS,
 }
@@ -71,23 +78,81 @@ const UK_CONFIG: LibraryTenantConfig = {
     { value: "uk-case-law", labelKey: "lawSearch.categories.ukCaseLaw" },
     { value: "uk-legislation", labelKey: "lawSearch.categories.ukLegislation" },
   ],
-  facetKind: (c) => (c === "uk-case-law" ? "uk-court" : "none"),
+  facetKind: (c) => (c === "uk-case-law" ? "court" : "none"),
   browsable: (c) => c === "uk-case-law",
   searchOnlyHintKey: "lawSearch.ukLegislationSearchHint",
   isLegislation: (c) => c === "uk-legislation",
   leadActorLabelKey: "lawSearch.judgeLabel",
   openLabelKey: (c) => (c === "uk-legislation" ? "lawSearch.openLegislation" : "lawSearch.openJudgment"),
   courts: UK_COURTS,
+  courtLabel: (c) => ukCourtLabel(c),
   caseTypes: [],
   topics: [],
 }
 
-/** KR has no Library yet: its `legalSearch` capability is "coming-soon", so the Library pages are
- * guarded off and never ask for a KR config. Add `KR: KR_CONFIG` here when its law source ships. */
-const LIBRARY_CONFIGS: Partial<Record<TenantCode, LibraryTenantConfig>> = { PH: PH_CONFIG, UK: UK_CONFIG }
+/** English names for KR_COURTS, shown when the page is in English; Korean shows the name itself. */
+const KR_COURT_NAMES_EN: Record<string, string> = {
+  대법원: "Supreme Court",
+  서울고등법원: "Seoul High Court",
+  부산고등법원: "Busan High Court",
+  대구고등법원: "Daegu High Court",
+  광주고등법원: "Gwangju High Court",
+  대전고등법원: "Daejeon High Court",
+  수원고등법원: "Suwon High Court",
+  특허법원: "Patent Court",
+  서울행정법원: "Seoul Administrative Court",
+  서울가정법원: "Seoul Family Court",
+  서울중앙지방법원: "Seoul Central District Court",
+  서울동부지방법원: "Seoul Eastern District Court",
+  수원지방법원: "Suwon District Court",
+  인천지방법원: "Incheon District Court",
+  부산지방법원: "Busan District Court",
+}
+
+/** A KR court's name in the page's language: English names in English, the Korean name otherwise. */
+export function krCourtLabel(court: string, language: string): string {
+  return language.startsWith("en") ? (KR_COURT_NAMES_EN[court] ?? court) : court
+}
+
+/** Korea: law.go.kr through the Korean Law MCP. 판례 browses newest first by court; 법령 is searched
+ * by name (law.go.kr has no list of statutes to browse). */
+const KR_CONFIG: LibraryTenantConfig = {
+  titleKey: "lawSearch.krTitle",
+  subtitleKey: "lawSearch.krSubtitle",
+  searchAriaKey: "lawSearch.krSearchAriaLabel",
+  searchPlaceholderKey: "lawSearch.krSearchPlaceholder",
+  categories: [
+    { value: "kr-case-law", labelKey: "lawSearch.categories.krCaseLaw" },
+    { value: "kr-legislation", labelKey: "lawSearch.categories.krLegislation" },
+  ],
+  facetKind: (c) => (c === "kr-case-law" ? "court" : "none"),
+  browsable: (c) => c === "kr-case-law",
+  searchOnlyHintKey: "lawSearch.krLegislationSearchHint",
+  isLegislation: (c) => c === "kr-legislation",
+  leadActorLabelKey: "lawSearch.judgeLabel",
+  openLabelKey: (c) => (c === "kr-legislation" ? "lawSearch.openLegislation" : "lawSearch.openJudgment"),
+  courts: KR_COURTS,
+  courtLabel: krCourtLabel,
+  docLabelKeys: {
+    legalIssues: "lawDoc.kr.issues",
+    courtReasoning: "lawDoc.kr.holdings",
+    disposition: "lawDoc.kr.order",
+    legalRulesCited: "lawDoc.kr.referencedProvisions",
+    relatedCases: "lawDoc.kr.referencedCases",
+  },
+  caseTypes: [],
+  topics: [],
+}
+
+const LIBRARY_CONFIGS: Partial<Record<TenantCode, LibraryTenantConfig>> = { PH: PH_CONFIG, UK: UK_CONFIG, KR: KR_CONFIG }
 
 export function getLibraryConfig(tenantCode: TenantCode | null | undefined): LibraryTenantConfig {
   return (tenantCode && LIBRARY_CONFIGS[tenantCode]) || PH_CONFIG
+}
+
+/** Whether the site has a Library source at all (the API answers 501 for one without). */
+export function hasLibrary(tenantCode: TenantCode | null | undefined): boolean {
+  return !!tenantCode && !!LIBRARY_CONFIGS[tenantCode]
 }
 
 /** Division segments that are initialisms, written in capitals in neutral citations

@@ -13,11 +13,10 @@ import {
   type LawCaseType,
   type LawSearchItem,
   type LawTopic,
-  type UkCourt,
   useLawBrowseInfiniteQuery,
   useLawSearchInfiniteQuery,
 } from "@/lib/law/queries"
-import { getLibraryConfig, ukCourtFromCode, ukCourtLabel } from "@/lib/law/library-config"
+import { getLibraryConfig, hasLibrary, ukCourtFromCode } from "@/lib/law/library-config"
 import { useDateLocale } from "@/lib/i18n/date-locale"
 import { FilterChipGroup } from "@/components/library/filter-chip-group"
 import { CursorPagination, PAGINATION_WINDOW_HALF, PAGINATION_WINDOW_SIZE } from "@/components/ui/pagination"
@@ -73,7 +72,7 @@ function ResultCardGridSkeleton({ className }: { className: string }) {
  * upstream — see ilovelawyer-api docs/adr/0005).
  */
 export function LawSearchPanel() {
-  const { t } = useTranslation("library")
+  const { t, i18n } = useTranslation("library")
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const cfg = getLibraryConfig(tenantCode)
   const locale = useDateLocale()
@@ -110,10 +109,10 @@ export function LawSearchPanel() {
   const [query, setQuery] = useState(submittedQuery)
   const caseType = (cfg.caseTypes.find((c) => c === searchParams.get("type")) ?? null) as LawCaseType | null
   const topics = listParam("topics").filter((x) => cfg.topics.includes(x)) as LawTopic[]
-  const courts = listParam("courts").filter((x) => cfg.courts.includes(x)) as UkCourt[]
+  const courts = listParam("courts").filter((x) => cfg.courts.includes(x))
   const setCaseType = (next: LawCaseType | null) => updateParams({ type: next, page: null })
   const setTopics = (next: LawTopic[]) => updateParams({ topics: next, page: null })
-  const setCourts = (next: UkCourt[]) => updateParams({ courts: next, page: null, spage: null })
+  const setCourts = (next: string[]) => updateParams({ courts: next, page: null, spage: null })
   // Tracks only a fetch the user is actually waiting on (clicked Next past the fetched
   // pages) — kept separate from react-query's own `isFetchingNextPage`, which also flips
   // on/off for the silent background prefetch below. Wiring the Next button's spinner to
@@ -121,7 +120,7 @@ export function LawSearchPanel() {
   // after almost every navigation.
   const [isNavigatingNext, setIsNavigatingNext] = useState(false)
 
-  const supported = tenantCode === "PH" || tenantCode === "UK"
+  const supported = hasLibrary(tenantCode)
   const facetKind = cfg.facetKind(category)
   const canBrowse = cfg.browsable(category)
   // Only the court facet narrows a search (the API has no PH caseType/topic search filter), so
@@ -132,7 +131,7 @@ export function LawSearchPanel() {
   const search = useLawSearchInfiniteQuery({
     category,
     q: submittedQuery,
-    courts: facetKind === "uk-court" ? courts : [],
+    courts: facetKind === "court" ? courts : [],
     enabled: supported && !submittedTooLong,
   })
   // A 400 is the API refusing the search as typed: trying again can't fix it, so it gets its own
@@ -148,7 +147,7 @@ export function LawSearchPanel() {
     category,
     caseType: facetKind === "ph-jurisprudence" && caseType ? caseType : undefined,
     topics,
-    courts: facetKind === "uk-court" ? courts : [],
+    courts: facetKind === "court" ? courts : [],
     enabled: supported && !showingSearch && canBrowse,
   })
   const showBrowseSkeleton = useDelayedLoading(browse.isPending)
@@ -213,7 +212,7 @@ export function LawSearchPanel() {
   const toggleTopic = (topic: LawTopic) =>
     setTopics(topics.includes(topic) ? topics.filter((x) => x !== topic) : [...topics, topic])
 
-  const toggleCourt = (c: UkCourt) =>
+  const toggleCourt = (c: string) =>
     setCourts(courts.includes(c) ? courts.filter((x) => x !== c) : [...courts, c])
 
   const runSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -442,7 +441,7 @@ export function LawSearchPanel() {
 
         {/* ── Filters (PH facets in browse mode only; UK court in both) ─── */}
         {canBrowse &&
-          (facetKind === "uk-court" ||
+          (facetKind === "court" ||
             (!showingSearch && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics"))) && (
           <div data-tour-id="library-filters" className="flex flex-col gap-3 border-y border-border py-3">
             {facetKind === "ph-jurisprudence" && (
@@ -468,14 +467,14 @@ export function LawSearchPanel() {
               />
             )}
 
-            {facetKind === "uk-court" && (
+            {facetKind === "court" && (
               <FilterChipGroup
                 label={t("lawSearch.filterCourt")}
                 mode="multi"
                 allLabel={t("lawSearch.filterAll")}
-                options={cfg.courts.map((c) => ({ value: c, label: ukCourtLabel(c) }))}
+                options={cfg.courts.map((c) => ({ value: c, label: cfg.courtLabel(c, i18n.language) }))}
                 selected={courts}
-                onToggle={(v) => toggleCourt(v as UkCourt)}
+                onToggle={(v) => toggleCourt(v)}
                 onClear={() => setCourts([])}
               />
             )}

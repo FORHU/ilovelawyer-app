@@ -1,13 +1,15 @@
 import { queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 
-// Wire values the API accepts for `category`. PH = juris.ph dataset names; UK = the
-// LawSourceProvider wire categories (ilovelawyer-api's legal/law-source/uk).
+// Wire values the API accepts for `category`. PH = juris.ph dataset names; UK and KR = the
+// LawSourceProvider wire categories (ilovelawyer-api's legal/law-source/uk and /kr).
 export type LawCategoryParam =
   | "jurisprudence"
   | "republic-acts"
   | "uk-case-law"
   | "uk-legislation"
+  | "kr-case-law"
+  | "kr-legislation"
 
 // Facet vocabularies the API accepts for /api/law/browse — mirror the juris.ph browse pages.
 // `caseType` is jurisprudence-only.
@@ -63,6 +65,27 @@ export const UK_COURTS = [
   "ukist",
 ] as const
 export type UkCourt = (typeof UK_COURTS)[number]
+
+// KR case-law facet — the court names the API's KrLawSourceProvider accepts on `?court=` (law.go.kr
+// filters on the exact name). Keep in sync with ilovelawyer-api's legal/law-source/kr/kr-law-vocab.ts.
+export const KR_COURTS = [
+  "대법원",
+  "서울고등법원",
+  "부산고등법원",
+  "대구고등법원",
+  "광주고등법원",
+  "대전고등법원",
+  "수원고등법원",
+  "특허법원",
+  "서울행정법원",
+  "서울가정법원",
+  "서울중앙지방법원",
+  "서울동부지방법원",
+  "수원지방법원",
+  "인천지방법원",
+  "부산지방법원",
+] as const
+export type KrCourt = (typeof KR_COURTS)[number]
 
 /** The longest search the API takes (LAW_QUERY_MAX_LENGTH in ilovelawyer-api's
  * validation/law.validation.ts): keep them the same. The search box stops here, so a longer
@@ -136,7 +159,8 @@ export function useLawBrowseInfiniteQuery(params: {
   category: LawCategoryParam
   caseType?: LawCaseType
   topics: LawTopic[]
-  courts: UkCourt[]
+  /** A court filter (UK slugs or KR court names); empty means all courts. */
+  courts: string[]
   year?: number
   enabled: boolean
 }) {
@@ -282,8 +306,8 @@ export function useLawDocumentQuery(params: {
 export function useLawSearchInfiniteQuery(params: {
   category: LawCategoryParam
   q: string
-  /** UK case law only — narrows the search to these courts; empty means all courts. */
-  courts?: UkCourt[]
+  /** UK and KR case law — narrows the search to these courts; empty means all courts. */
+  courts?: string[]
   limit?: number
   enabled: boolean
 }) {

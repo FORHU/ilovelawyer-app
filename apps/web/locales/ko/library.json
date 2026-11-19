@@ -28,7 +28,9 @@
       "jurisprudence": "판례",
       "republicActs": "공화국법",
       "ukCaseLaw": "판례",
-      "ukLegislation": "법령"
+      "ukLegislation": "법령",
+      "krCaseLaw": "판례",
+      "krLegislation": "법령"
     },
     "resultCount": "결과: {{count}}",
     "resultRange": "{{from}}–{{to}}번째 결과",
@@ -66,7 +68,12 @@
     "ukSubtitle": "영국 법원과 심판소의 판결을 찾아보거나, 제목이나 인용으로 영국 법률과 위임입법을 검색하세요.",
     "ukSearchAriaLabel": "영국 판례 및 법령 검색",
     "ukSearchPlaceholder": "Case name, neutral citation, or Act title…",
-    "filterSelectedCount": "{{count}}개 선택됨"
+    "filterSelectedCount": "{{count}}개 선택됨",
+    "krTitle": "한국 판례 및 법령 검색",
+    "krSubtitle": "한국 법원의 최신 판례를 찾아보거나, 법령명으로 법률·시행령·시행규칙을 검색하세요. 국가법령정보센터(law.go.kr) 자료입니다.",
+    "krSearchAriaLabel": "한국 판례 및 법령 검색",
+    "krSearchPlaceholder": "사건명, 사건번호 또는 법령명…",
+    "krLegislationSearchHint": "법령명으로 법률, 시행령, 시행규칙을 검색하세요. 예: \"근로기준법\" 또는 \"민법\"."
   },
   "documents": {
     "pageTitle": "판례 문서",
@@ -187,7 +194,14 @@
     "legalRulesCited": "인용된 법리",
     "relatedCases": "인용된 관련 판례",
     "citedNumbers": "인용된 G.R. / R.A. 번호",
-    "keywords": "키워드"
+    "keywords": "키워드",
+    "kr": {
+      "issues": "판시사항",
+      "holdings": "판결요지",
+      "order": "주문",
+      "referencedProvisions": "참조조문",
+      "referencedCases": "참조판례"
+    }
   },
   "citationConfidence": {
     "quoted": "AI가 조회한 출처에서 인용됨"

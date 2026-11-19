@@ -42,8 +42,9 @@ export const krTenantCodeConfig: TenantCodeConfig = {
       aiChat: "available",
       cases: "available",
       documents: "available",
-      // Needs a KR law source in the API (law.go.kr) and a KR library config here.
-      legalSearch: "coming-soon",
+      // The KR Library: law.go.kr statutes (법령) and court decisions (판례) through the Korean Law
+      // MCP — ilovelawyer-api's legal/law-source/kr and lib/law/library-config.ts here.
+      legalSearch: "available",
       // Free-text check only, so it's tenant-neutral (same reasoning as UK).
       citations: "available",
       // Needs a KR deadline engine in the API.

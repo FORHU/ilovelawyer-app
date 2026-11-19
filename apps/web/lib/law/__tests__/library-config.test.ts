@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { getLibraryConfig, ukCourtFromCode, ukCourtLabel } from "../library-config"
+import { getLibraryConfig, hasLibrary, krCourtLabel, ukCourtFromCode, ukCourtLabel } from "../library-config"
 
 describe("getLibraryConfig", () => {
   it("PH: both categories browse, jurisprudence gets caseType+topics, republic-acts topics only", () => {
@@ -19,11 +19,36 @@ describe("getLibraryConfig", () => {
     expect(cfg.categories.map((c) => c.value)).to.deep.equal(["uk-case-law", "uk-legislation"])
     expect(cfg.browsable("uk-case-law")).to.equal(true)
     expect(cfg.browsable("uk-legislation")).to.equal(false)
-    expect(cfg.facetKind("uk-case-law")).to.equal("uk-court")
+    expect(cfg.facetKind("uk-case-law")).to.equal("court")
     expect(cfg.facetKind("uk-legislation")).to.equal("none")
     expect(cfg.isLegislation("uk-legislation")).to.equal(true)
     expect(cfg.leadActorLabelKey).to.equal("lawSearch.judgeLabel")
     expect(cfg.courts).to.include("uksc")
+  })
+
+  it("KR: 판례 browses by court, 법령 is search-only, with Korean section headings", () => {
+    const cfg = getLibraryConfig("KR")
+    expect(cfg.categories.map((c) => c.value)).to.deep.equal(["kr-case-law", "kr-legislation"])
+    expect(cfg.browsable("kr-case-law")).to.equal(true)
+    expect(cfg.browsable("kr-legislation")).to.equal(false)
+    expect(cfg.facetKind("kr-case-law")).to.equal("court")
+    expect(cfg.facetKind("kr-legislation")).to.equal("none")
+    expect(cfg.isLegislation("kr-legislation")).to.equal(true)
+    expect(cfg.courts[0]).to.equal("대법원")
+    expect(cfg.docLabelKeys?.courtReasoning).to.equal("lawDoc.kr.holdings")
+  })
+
+  it("names a KR court in the page's language", () => {
+    expect(krCourtLabel("대법원", "ko")).to.equal("대법원")
+    expect(krCourtLabel("대법원", "en")).to.equal("Supreme Court")
+    expect(krCourtLabel("서울중앙지방법원", "en-GB")).to.equal("Seoul Central District Court")
+    expect(getLibraryConfig("UK").courtLabel("ewca/civ", "ko")).to.equal("EWCA (Civ)")
+  })
+
+  it("has a library on PH, UK and KR only", () => {
+    expect(["PH", "UK", "KR"].every((code) => hasLibrary(code as never))).to.equal(true)
+    expect(hasLibrary(null)).to.equal(false)
+    expect(hasLibrary("XX" as never)).to.equal(false)
   })
 
   it("falls back to the PH config for an unknown / missing tenant", () => {
