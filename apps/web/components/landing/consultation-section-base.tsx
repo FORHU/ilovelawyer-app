@@ -103,6 +103,10 @@ export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode
               {t("consultation.caseName", tCtx)}
             </span>
           </div>
+          {/* KR only: realistic Korean names could read as a leaked client file. PH and UK have no key. */}
+          {tenantCode === "KR" && (
+            <p className="px-4 pt-2 text-[10.5px] text-muted-foreground">{t("consultation.sampleNotice", tCtx)}</p>
+          )}
 
           <div className="p-4 flex flex-col gap-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">

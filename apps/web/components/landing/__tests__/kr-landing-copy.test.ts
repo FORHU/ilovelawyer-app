@@ -45,6 +45,7 @@ describe.each(LOCALES)("KR landing copy (%s)", (_lang, landing) => {
   it("shows the KR consultation, firm and footer copy", () => {
     expect(landing.consultation.relatedCasesItems_KR.length).toBeGreaterThan(0);
     expect(landing.consultation.caseName_KR).toBeTruthy();
+    expect(landing.consultation.sampleNotice_KR).toBeTruthy();
     expect(landing.firms.roster_KR).toHaveLength(4);
     expect(landing.firms.jurisdictionsHeading_KR).toBeTruthy();
     expect(landing.footer.columns.jurisdictions.links.southKorea).toBeTruthy();

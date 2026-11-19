@@ -21,7 +21,7 @@
       "line2": "cases get clarity",
       "line1_KR": "Where",
       "line2_KR": "cases get clarity",
-      "subtext_KR": "AI consultation streams in as it's written, with cited Korean precedent and statute alongside.",
+      "subtext_KR": "AI research answers stream in as they're written, with cited Korean precedent and statute alongside.",
       "subtext": "AI consultation streams in as it's written, with cited precedent alongside."
     },
     "slideTwo": {
@@ -712,6 +712,7 @@
     "cta": "Start a consultation",
     "body_KR": "Every consultation streams in as it's written, with related statutes and precedent listed beside it — case number, article link, and a key excerpt, with source-checked citations marked. Attach a filing and the assistant searches inside it once indexing finishes.",
     "caseName_KR": "Kim v. Hanbit Logistics",
+    "sampleNotice_KR": "This is a fictional sample case. It is not related to any real person or company.",
     "relatedCases_KR": "Related Law",
     "relatedCasesItems_KR": [
       {"title": "Labor Standards Act, Art. 27", "citation": "Written notice of dismissal grounds", "snippet": "A dismissal takes effect only if its grounds and date are notified in writing.", "vetted": true},
