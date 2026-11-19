@@ -21,7 +21,7 @@
       "line2": "명확해지는 곳",
       "line1_KR": "사건에,",
       "line2_KR": "명확함을",
-      "subtext_KR": "AI 자문은 작성되는 즉시 스트리밍되며, 인용된 국내 판례와 법령이 함께 제시됩니다.",
+      "subtext_KR": "AI 리서치 답변은 작성되는 즉시 스트리밍되며, 인용된 국내 판례와 법령이 함께 제시됩니다.",
       "subtext": "AI 상담은 작성되는 즉시 스트리밍되며, 인용된 판례가 함께 제시됩니다."
     },
     "slideTwo": {
@@ -51,7 +51,7 @@
     "items": [
       "계정 및 로그인",
       "로펌 및 팀",
-      "AI 법률 상담",
+      "AI 법률 리서치",
       "사건 파일",
       "Case Workspace",
       "리걸 터미널",
@@ -151,7 +151,7 @@
       "weaknesses": "취약점",
       "strengths": "강점",
       "damages": "손해·구제",
-      "chat": "AI 법률 자문",
+      "chat": "AI 법률 리서치",
       "chatResponse": "AI 법률 응답"
     },
     "mocks": {
@@ -1040,6 +1040,7 @@
     "caseName": "Reyes v. Northbridge Logistics",
     "caseName_UK": "Hughes v Northbridge Logistics Ltd",
     "caseName_KR": "김민지 v. ㈜한빛물류",
+    "sampleNotice_KR": "가상의 예시 사건입니다. 실제 인물·회사와 관련이 없습니다.",
     "relatedCases_KR": "관련 법령·판례",
     "relatedCases": "관련 사건",
     "relatedCasesItems": [
@@ -1223,7 +1224,7 @@
       "product": {
         "heading": "제품",
         "links": {
-          "aiConsultation": "AI 법률 상담",
+          "aiConsultation": "AI 법률 리서치",
           "caseFiles": "사건 파일",
           "caseWorkspace": "사건 작업 공간",
           "legalTerminal": "리걸 터미널",
