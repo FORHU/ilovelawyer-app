@@ -42,7 +42,7 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     expect(getStatus("UK", "aiChat")).toBe("available")
   })
 
-  it("KR opens what has Korean support: chat on the legal_kr persona, cases, documents, the application, client requests", () => {
+  it("KR opens what has Korean support: chat on the legal_kr persona, cases, documents, the library, the application, client requests", () => {
     expect(isFeatureEnabled("KR", "aiChat")).toBe(true)
     expect(isFeatureEnabled("KR", "cases")).toBe(true)
     expect(isFeatureEnabled("KR", "documents")).toBe(true)
@@ -50,9 +50,9 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     expect(isFeatureEnabled("KR", "lawyerApplication")).toBe(true)
     // KR clients ask KR lawyers, quoted and paid in won.
     expect(isFeatureEnabled("KR", "clientRequests")).toBe(true)
-    for (const feature of ["legalSearch", "deadlines"] as const) {
-      expect(isFeatureEnabled("KR", feature)).toBe(false)
-    }
+    // The KR Library: law.go.kr statutes and decisions through the Korean Law MCP.
+    expect(isFeatureEnabled("KR", "legalSearch")).toBe(true)
+    expect(isFeatureEnabled("KR", "deadlines")).toBe(false)
   })
 
   it("defaults to PH capabilities when the tenant code is unresolved", () => {

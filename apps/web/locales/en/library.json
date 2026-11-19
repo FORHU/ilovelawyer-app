@@ -28,7 +28,9 @@
       "jurisprudence": "Jurisprudence",
       "republicActs": "Republic Acts",
       "ukCaseLaw": "Case law",
-      "ukLegislation": "Legislation"
+      "ukLegislation": "Legislation",
+      "krCaseLaw": "Case law (판례)",
+      "krLegislation": "Statutes (법령)"
     },
     "resultCount": "Results: {{count}}",
     "resultRange": "Showing {{from}}–{{to}}",
@@ -66,7 +68,12 @@
     "ukTitle": "Search UK case law & legislation",
     "ukSubtitle": "Browse judgments from the UK courts and tribunals, or search UK Acts and Statutory Instruments by title or citation.",
     "ukSearchAriaLabel": "Search UK case law and legislation",
-    "ukSearchPlaceholder": "Case name, neutral citation, or Act title…"
+    "ukSearchPlaceholder": "Case name, neutral citation, or Act title…",
+    "krTitle": "Search Korean case law & statutes",
+    "krSubtitle": "Browse the latest decisions from Korean courts, or search Korean statutes and decrees by name. From law.go.kr (국가법령정보센터).",
+    "krSearchAriaLabel": "Search Korean case law and statutes",
+    "krSearchPlaceholder": "사건명, 사건번호 또는 법령명…",
+    "krLegislationSearchHint": "Search by name to find a Korean statute, decree or rule, e.g. \"근로기준법\" or \"민법\"."
   },
   "documents": {
     "pageTitle": "Case Law Documents",
@@ -187,7 +194,14 @@
     "legalRulesCited": "Legal rules cited",
     "relatedCases": "Related cases cited",
     "citedNumbers": "Cited G.R. / R.A. numbers",
-    "keywords": "Keywords"
+    "keywords": "Keywords",
+    "kr": {
+      "issues": "Questions decided (판시사항)",
+      "holdings": "Holdings (판결요지)",
+      "order": "Order (주문)",
+      "referencedProvisions": "Provisions referred to (참조조문)",
+      "referencedCases": "Cases referred to (참조판례)"
+    }
   },
   "citationConfidence": {
     "quoted": "quoted from a source the AI retrieved"

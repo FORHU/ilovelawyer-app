@@ -109,6 +109,9 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
   const { item, detail } = doc
   const isRa = cfg.isLegislation(item.dataset)
   const isUk = tenantCode === "UK"
+  // A site's own names for a decision's sections (KR: 판시사항, 판결요지 …), else the generic ones.
+  const docLabel = (key: "legalIssues" | "courtReasoning" | "disposition" | "legalRulesCited" | "relatedCases") =>
+    t(cfg.docLabelKeys?.[key] ?? `lawDoc.${key}`)
   // A cited section of a UK Act opens on just that section (the proxy's `?section=`), with a
   // toggle out to the whole Act.
   const isUkLegislation = isUk && isRa
@@ -173,15 +176,15 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
         label={t("lawDoc.proceduralHistory")}
         text={detail.procedural_history}
       />
-      <ListBlock label={t("lawDoc.legalIssues")} items={detail.legal_issues} />
-      <Prose label={t("lawDoc.courtReasoning")} text={detail.court_reasoning} />
-      <Prose label={t("lawDoc.disposition")} text={item.disposition} />
+      <ListBlock label={docLabel("legalIssues")} items={detail.legal_issues} />
+      <Prose label={docLabel("courtReasoning")} text={detail.court_reasoning} />
+      <Prose label={docLabel("disposition")} text={item.disposition} />
       <ListBlock
-        label={t("lawDoc.legalRulesCited")}
+        label={docLabel("legalRulesCited")}
         items={item.legal_rules_cited}
       />
       <ListBlock
-        label={t("lawDoc.relatedCases")}
+        label={docLabel("relatedCases")}
         items={dedupeCitations(detail.related_cases_cited)}
       />
       {/* PH only — for UK these are the same citations as "Related cases cited" above. */}
@@ -220,8 +223,9 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
         <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           {showSection
             ? t("lawDoc.sectionHeading", { section })
-            : // UK legislation is legislation.gov.uk's HTML text, not a PDF — don't call it a document.
-              t(isUkLegislation ? "lawDoc.fullText" : "lawDoc.document")}
+            : // UK legislation is legislation.gov.uk's HTML text, and KR documents are law.go.kr's
+              // text, not a PDF — don't call either a document.
+              t(isUkLegislation || tenantCode === "KR" ? "lawDoc.fullText" : "lawDoc.document")}
         </h2>
         {isUkLegislation && section && (
           <button
