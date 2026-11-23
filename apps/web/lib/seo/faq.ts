@@ -20,7 +20,7 @@ const SHARED: FaqItem[] = [
   {
     question: "What is ilovelawyer?",
     answer:
-      "ilovelawyer (also written “I Love Lawyer”) is an AI legal intelligence platform for lawyers, developed by Forhu AI. It combines case management, an AI assistant that answers with cited case law, a research library and a configurable Legal Terminal in one workspace.",
+      "ilovelawyer (also written “I Love Lawyer”) is an AI legal intelligence platform for lawyers. It combines case management, an AI assistant that answers with cited case law, a research library and a configurable Legal Terminal in one workspace.",
     detail:
       "It is available as separate jurisdiction-specific sites for the Philippines, the United Kingdom and South Korea.",
   },

@@ -29,7 +29,6 @@ interface PanelSample {
 
 interface RiskMock {
   level: string;
-  percent: number;
   text: string;
 }
 
@@ -42,6 +41,8 @@ interface Mocks {
     claims: string;
     claimsValue: string;
     riskRegister: string;
+    /** Says the level is a draft AI call, so it can't be read as a measured probability. */
+    riskBasis: string;
     add: string;
     risks: RiskMock[];
   };
@@ -87,19 +88,21 @@ const TEXT_TONE: Record<string, string> = {
   HIGH: RED, STRONG: RED, DIRECT: RED, ADVERSE: RED, BLOCKED: RED, MATERIAL: RED, FAILED: RED, DISPUTED: RED,
   MEDIUM: ORANGE, MODERATE: ORANGE, PENDING: ORANGE, OPEN: ORANGE, CONTESTED: ORANGE, DRAFTING: ORANGE,
   PARTIAL: ORANGE, OUTSTANDING: ORANGE, ANTICIPATED: ORANGE, UNVERIFIED: ORANGE, ALLEGATION: ORANGE, PROVISIONAL: ORANGE, INDIRECT: ORANGE, STALE: ORANGE, REJECTED: ORANGE,
-  READY: GREEN, DONE: GREEN, VERIFIED: GREEN, "ON POINT": GREEN, ANSWERED: GREEN, KEY: GREEN, CONFIRMED: GREEN,
+  READY: GREEN, DONE: GREEN, "ON POINT": GREEN, ANSWERED: GREEN, KEY: GREEN, CONFIRMED: GREEN,
   MODELED: GREEN, FACT: GREEN, APPROVED: GREEN, FAVOURS: GREEN, FAVORS: GREEN, WEAK: GREEN, SUPPORTS: GREEN,
   STATUTE: GOLD, ASSIGNED: GOLD, CITED: GOLD, NODE: GOLD, INFERENCE: GOLD, SHARED: GOLD, BRANCH: GOLD,
+  // A source was found for the row. That isn't a check that the fact is true, so it is neutral, not green.
+  "SOURCE LOCATED": GOLD, "FACT NOT YET VERIFIED": ORANGE, "SOURCE MISSING": RED,
 };
 // The Korean sample case's status words, toned the same way as their English counterparts above.
 Object.assign(TEXT_TONE, {
   높음: RED, 강함: RED, 직접: RED, 적대적: RED, 보류: RED, 중대: RED, 실패: RED, 불리: RED,
   중간: ORANGE, 보통: ORANGE, 대기: ORANGE, 미정: ORANGE, 미해결: ORANGE, 다툼: ORANGE, 작성중: ORANGE, "작성 중": ORANGE,
   "서면 준비": ORANGE, 진행: ORANGE, 일부: ORANGE, 미확보: ORANGE, 잠정: ORANGE, 갱신: ORANGE, "갱신 필요": ORANGE, 배제: ORANGE,
-  완료: GREEN, 확인: GREEN, 부합: GREEN, 대응: GREEN, 핵심: GREEN, 준비: GREEN, 산정: GREEN, 유리: GREEN, 약함: GREEN, 뒷받침: GREEN, 낮음: GREEN,
+  완료: GREEN, 부합: GREEN, 대응: GREEN, 핵심: GREEN, 준비: GREEN, 산정: GREEN, 유리: GREEN, 약함: GREEN, 뒷받침: GREEN, 낮음: GREEN,
   법령: GOLD, 노드: GOLD, 이론: GOLD,
+  "출처 있음": GOLD, "사실 미검증": ORANGE, "출처 없음": RED,
 });
-const BAR_TONE: Record<string, string> = { HIGH: "bg-red-400", MEDIUM: "bg-orange-400", 높음: "bg-red-400", 중간: "bg-orange-400" };
 
 function Badge({ value }: { value: string }) {
   return (
@@ -191,13 +194,9 @@ export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel;
               <div key={risk.text}>
                 <div className="flex justify-between">
                   <Badge value={risk.level} />
-                  <span className="text-white/50">{risk.percent}%</span>
+                  <span className="text-white/50">{m.riskBasis}</span>
                 </div>
                 <div className="mt-0.5 text-white">{risk.text}</div>
-                <div
-                  className={`mt-[3px] h-0.5 rounded-sm ${BAR_TONE[risk.level] ?? "bg-white/40"}`}
-                  style={{ width: `${risk.percent}%` }}
-                />
               </div>
             ))}
           </div>
