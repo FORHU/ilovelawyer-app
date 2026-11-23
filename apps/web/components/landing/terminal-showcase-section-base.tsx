@@ -165,7 +165,7 @@ function PanelCarousel({ panels, tenantCode }: { panels: LandingPanel[]; tenantC
     <div className="mx-auto mb-9 flex flex-wrap justify-center gap-2" role="group" aria-label={t("terminal.categories.all")}>
       {(["all", ...PANEL_CATEGORIES] as const).map((c) => {
         const active = c === category;
-        const count = c === "all" ? panels.length : panels.filter((p) => p.category === c).length;
+        const count = panels.filter((p) => !p.previewOnly && (c === "all" || p.category === c)).length;
         return (
           <button
             key={c}

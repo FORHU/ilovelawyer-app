@@ -22,7 +22,7 @@
       "line1_KR": "Where",
       "line2_KR": "cases get clarity",
       "subtext_KR": "AI research answers stream in as they're written, with cited Korean precedent and statute alongside.",
-      "subtext": "AI consultation streams in as it's written, with cited precedent alongside."
+      "subtext": "AI-assisted case intelligence for legal professionals. Research, organise evidence and explore strategy in one workspace. All outputs need professional verification."
     },
     "slideTwo": {
       "line1": "Your caseload,",
@@ -46,7 +46,7 @@
   },
   "capabilities": {
     "heading": "Every feature ilovelawyer ships",
-    "subheading": "No mockups, no roadmap items — sixteen capabilities live in the product today.",
+    "subheading": "Features shown illustrate the current product. Availability may vary by plan and release.",
     "tileTooltip": "Open this in the product",
     "items": [
       "Accounts & sign-in",
@@ -300,14 +300,14 @@
       "caseReconstruction": "A chronological narrative of the case, drafted by AI and editable.",
       "law": "The statutes, precedents and citations behind the case.",
       "legalIssues": "The legal questions and causes of action the case raises.",
-      "decisions": "The why behind each answer: the rule, evidence for and against, and what would change it.",
-      "procedure": "Deadlines and the filing checklist that keep the case on track.",
-      "mindMap": "The case strategy as a mind map, generated from the consultation.",
+      "decisions": "AI-generated reasoning behind each answer, for professional review: the rule, evidence for and against, and what would change it.",
+      "procedure": "A filing checklist and provisional deadlines for the responsible lawyer to confirm.",
+      "mindMap": "AI-generated strategy options as a mind map, for professional review.",
       "attackStrategy": "Affirmative moves to advance the case.",
       "defenseStrategy": "Moves to protect the case's position.",
       "theories": "Each lawyer's theory of the case side by side, never merged.",
       "audioOverview": "A two-host spoken discussion of the case, generated on demand.",
-      "redTeam": "Opposing counsel's likely attacks on the case, generated on demand.",
+      "redTeam": "AI-generated attacks opposing counsel might make, for professional review. May miss facts, local rules or later developments.",
       "weaknesses": "Points that hurt the case's persuasive strength.",
       "strengths": "Points that help the case's persuasive strength.",
       "damages": "Claimed damages and remedies by category, with a running total.",
@@ -577,7 +577,7 @@
         "intro": "Authorities for a claim by an adult child.",
         "rows": [
           { "title": "Inheritance (Provision for Family and Dependants) Act 1975, s 1(1)(c)", "note": "Claim by a child of the deceased", "status": "STATUTE" },
-          { "title": "Ilott v The Blood Foundation", "note": "[2017] UKSC 17", "status": "ON POINT" },
+          { "title": "Ilott v The Blue Cross and others", "note": "[2017] UKSC 17", "status": "ON POINT" },
           { "title": "Re Jennings", "note": "[1994] Ch 286", "status": "ADVERSE" }
         ]
       },
@@ -759,10 +759,10 @@
       { "initials": "JT", "name": "Jose Tan", "email": "jose@cruzpartners.ph", "role": "member", "you": false, "pending": true }
     ],
     "roster_UK": [
-      { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@sinclairwycombe.co.uk", "role": "owner", "you": true },
-      { "initials": "JP", "name": "James Pemberton", "email": "james@sinclairwycombe.co.uk", "role": "admin", "you": false },
-      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false },
-      { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@sinclairwycombe.co.uk", "role": "member", "you": false, "pending": true }
+      { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@example.co.uk", "role": "owner", "you": true },
+      { "initials": "JP", "name": "James Pemberton", "email": "james@example.co.uk", "role": "admin", "you": false },
+      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@example.co.uk", "role": "member", "you": false },
+      { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@example.co.uk", "role": "member", "you": false, "pending": true }
     ],
     "membersCard": {
       "title": "Members",

@@ -1136,28 +1136,28 @@
       {
         "initials": "CA",
         "name": "Charlotte Ashworth-Hale",
-        "email": "charlotte@sinclairwycombe.co.uk",
+        "email": "charlotte@example.co.uk",
         "role": "owner",
         "you": true
       },
       {
         "initials": "JP",
         "name": "James Pemberton",
-        "email": "james@sinclairwycombe.co.uk",
+        "email": "james@example.co.uk",
         "role": "admin",
         "you": false
       },
       {
         "initials": "EF",
         "name": "Eleanor Fairfax",
-        "email": "eleanor@sinclairwycombe.co.uk",
+        "email": "eleanor@example.co.uk",
         "role": "member",
         "you": false
       },
       {
         "initials": "OM",
         "name": "Oliver Marsh",
-        "email": "oliver@sinclairwycombe.co.uk",
+        "email": "oliver@example.co.uk",
         "role": "member",
         "you": false,
         "pending": true

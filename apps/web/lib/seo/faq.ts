@@ -33,7 +33,7 @@ const SHARED: FaqItem[] = [
   {
     question: "Can AI legal research be trusted? How does ilovelawyer prevent made-up citations?",
     answer:
-      "ilovelawyer checks every authority the assistant quotes against a real source document before showing it, which reduces hallucinated citations.",
+      "Citation checks help find references that match available source records, and each shows its status. A match doesn't confirm relevance or current authority. A qualified lawyer must verify every authority.",
     detail:
       "Related case law is listed alongside each answer with its title, citation, source link and excerpt, marked as vetted or unvetted. A contradiction scan also flags inconsistencies across a case's documents and testimony.",
   },
@@ -65,7 +65,7 @@ const SHARED: FaqItem[] = [
     question: "Which countries and jurisdictions does ilovelawyer cover?",
     answer:
       "ilovelawyer currently serves the Philippines, the United Kingdom and South Korea, as separate jurisdiction-specific sites: ph.ilovelawyer.com, uk.ilovelawyer.com and kr.ilovelawyer.com.",
-    detail: "The UK site covers England and Wales, Scotland and Northern Ireland.",
+    detail: "The UK site focuses on England and Wales; Scotland and Northern Ireland coverage is limited.",
   },
   {
     question: "Can ilovelawyer find contradictions in my case documents?",
@@ -95,7 +95,7 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
       question: "Is there AI legal research software built for Philippine lawyers?",
       answer:
         "Yes. ilovelawyer Philippines answers legal questions with cited Philippine jurisprudence and includes a Philippine statutory code library, so research stays grounded in Philippine sources.",
-      detail: "It also tracks case deadlines and calendars, and every quoted authority is checked against a real source document.",
+      detail: "It also tracks case deadlines and calendars. Citation checks show whether a reference matches a source record; a qualified lawyer must verify every authority.",
     },
     ...SHARED,
   ],
@@ -103,13 +103,13 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
     {
       question: "Is there AI legal research software for UK solicitors and barristers?",
       answer:
-        "Yes. ilovelawyer UK answers with cited UK precedent across England and Wales, Scotland and Northern Ireland, and searches live case law and legislation from TNA Find Case Law and legislation.gov.uk.",
+        "Yes. ilovelawyer UK focuses on England and Wales and answers with cited UK precedent. Coverage of Scotland and Northern Ireland is limited. Results come from configured official sources, such as TNA Find Case Law and legislation.gov.uk, subject to coverage limits.",
     },
     {
       question: "How does ilovelawyer handle Civil Procedure Rules (CPR) deadlines?",
       answer:
-        "ilovelawyer UK provides provisional CPR deadline tracking, and a deadline is not treated as final until two members of your team have confirmed it. In a solo or personal workspace, one confirmation is enough.",
-      detail: "This confirmation gate exists so that a calculated date is checked by a person before anyone relies on it.",
+        "ilovelawyer UK provides provisional, AI-assisted CPR deadline tracking. A team confirmation records that a person has reviewed a date; it doesn't certify the deadline, and the responsible lawyer controls filing dates.",
+      detail: "A date is marked reviewed once two members of your team confirm it (one in a solo or personal workspace).",
     },
     ...SHARED,
   ],

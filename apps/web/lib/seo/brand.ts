@@ -25,7 +25,7 @@ const DEVELOPER = {
 }
 
 export const BRAND_DESCRIPTION =
-  "ilovelawyer is an AI legal intelligence platform for lawyers: case management, AI consultation with cited case law, and a Legal Terminal. It is software, not a law firm."
+  "ilovelawyer is AI-assisted case intelligence for legal professionals: case management, cited AI research and a Legal Terminal. All outputs need professional verification. It is software, not a law firm."
 
 const ORGANIZATION_ID = `${BRAND_ORIGIN}/#organization`
 

@@ -141,10 +141,10 @@
       { "initials": "JT", "name": "Jose Tan", "email": "jose@cruzpartners.ph", "role": "member", "you": false, "pending": true }
     ],
     "roster_UK": [
-      { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@sinclairwycombe.co.uk", "role": "owner", "you": true },
-      { "initials": "JP", "name": "James Pemberton", "email": "james@sinclairwycombe.co.uk", "role": "admin", "you": false },
-      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false },
-      { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@sinclairwycombe.co.uk", "role": "member", "you": false, "pending": true }
+      { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@example.co.uk", "role": "owner", "you": true },
+      { "initials": "JP", "name": "James Pemberton", "email": "james@example.co.uk", "role": "admin", "you": false },
+      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@example.co.uk", "role": "member", "you": false },
+      { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@example.co.uk", "role": "member", "you": false, "pending": true }
     ],
     "membersCard": {
       "title": "Mga Miyembro",
