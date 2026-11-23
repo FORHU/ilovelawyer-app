@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import enLanding from "@/locales/en/landing.json";
 import koLanding from "@/locales/ko/landing.json";
+import tlLanding from "@/locales/tl/landing.json";
 import { cardKeyOf, panelsForTenant } from "@/components/landing/terminal-panel-cards";
 import { getTenantCodeConfig, tenantI18nContext } from "@/config/tenant-codes";
 
@@ -76,5 +77,49 @@ describe("KR tenant config", () => {
     expect(kr.defaultLanguage).toBe("ko");
     expect(kr.landingAssets.heroVideos).toBeUndefined();
     expect(kr.landingAssets.heroPosters).toHaveLength(3);
+  });
+});
+
+describe.each(LOCALES)("terminal sample wording (%s)", (_lang, landing) => {
+  const blocks = Object.entries(landing.terminal as Record<string, unknown>).filter(([key]) => /^(mocks|samples)(_|$)/.test(key));
+
+  const walk = (node: unknown, visit: (key: string, value: unknown) => void) => {
+    if (Array.isArray(node)) node.forEach((n) => walk(n, visit));
+    else if (node && typeof node === "object")
+      for (const [key, value] of Object.entries(node)) {
+        visit(key, value);
+        walk(value, visit);
+      }
+  };
+
+  it("finds the sample blocks it is meant to check", () => {
+    expect(blocks.length).toBeGreaterThan(0);
+  });
+
+  it("shows risk as a labelled level, never a percentage that looks like a probability", () => {
+    for (const [name, block] of blocks) {
+      walk(block, (key) => expect(key, `${name} has a "percent"`).not.toBe("percent"));
+    }
+    for (const [name, block] of blocks) {
+      const summary = (block as { caseSummary?: { riskBasis?: string } }).caseSummary;
+      if (summary) expect(summary.riskBasis, `${name}.caseSummary.riskBasis`).toBeTruthy();
+    }
+  });
+
+  it("doesn't badge a row VERIFIED when all we know is that a source was found", () => {
+    for (const [name, block] of blocks) {
+      walk(block, (key, value) => {
+        if (key === "status") expect(["VERIFIED", "확인"], `${name} has status ${String(value)}`).not.toContain(value);
+      });
+    }
+  });
+});
+
+describe.each([...LOCALES, ["tl", tlLanding as unknown as Landing] as [string, Landing]])("footer operator line (%s)", (_lang, landing) => {
+  it("names FORHU Inc. and where to reach it, the same on every site", () => {
+    const operator = (landing.footer as unknown as { operator?: string }).operator ?? "";
+    for (const fact of ["FORHU Inc.", "10371682", "Jungkwan Shin", "30 Wall Street, 8th Floor, New York, NY 10005, USA", "ilovelawyer@forhu.ai"]) {
+      expect(operator, fact).toContain(fact);
+    }
   });
 });

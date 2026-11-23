@@ -163,16 +163,15 @@
         "claims": "청구",
         "claimsValue": "부당해고 · 보복성 해고",
         "riskRegister": "위험 목록 · 3",
+        "riskBasis": "AI 잠정 평가",
         "add": "+ 추가",
         "risks": [
           {
             "level": "HIGH",
-            "percent": 78,
             "text": "답변서 제출 기한이 계산된 값이며 확인되지 않음"
           },
           {
             "level": "MEDIUM",
-            "percent": 54,
             "text": "8월 4일–11일 의뢰인의 서면 이의 없음"
           }
         ]
@@ -280,21 +279,19 @@
         "claims": "청구",
         "claimsValue": "부당해고 구제신청 · 보복성 해고",
         "riskRegister": "리스크 등록부 · 3",
+        "riskBasis": "AI 잠정 평가",
         "add": "+ 추가",
         "risks": [
           {
             "level": "높음",
-            "percent": 78,
             "text": "이유서 제출 기한이 계산만 되었을 뿐 노동위원회 확인 전"
           },
           {
             "level": "중간",
-            "percent": 54,
             "text": "8/4~8/11 이의 서면 없음"
           },
           {
             "level": "낮음",
-            "percent": 22,
             "text": "박 팀장 진술서 미확보"
           }
         ]
@@ -420,7 +417,7 @@
           {
             "title": "7월 28일 · 진정 접수",
             "note": "NLRC NCR No. 2026-0412",
-            "status": "VERIFIED"
+            "status": "출처 있음"
           },
           {
             "title": "8월 4일 · 직무 이탈 주장",
@@ -430,12 +427,12 @@
           {
             "title": "8월 6일 · 인사팀이 출근 요청",
             "note": "인사팀 이메일",
-            "status": "VERIFIED"
+            "status": "출처 있음"
           },
           {
             "title": "8월 11일 · 해고 효력 발생",
             "note": "통지서에 무단결근 기재",
-            "status": "VERIFIED"
+            "status": "출처 있음"
           }
         ]
       },
@@ -712,7 +709,7 @@
           {
             "title": "7/28 · 직장 내 괴롭힘 신고",
             "note": "HB-HR-000870",
-            "status": "확인"
+            "status": "출처 있음"
           },
           {
             "title": "8/4 · 무단결근 주장",
@@ -722,12 +719,12 @@
           {
             "title": "8/6 · 인사팀 면담 요청",
             "note": "HB-EM-004417",
-            "status": "확인"
+            "status": "출처 있음"
           },
           {
             "title": "8/11 · 해고 효력 발생",
             "note": "무단결근 사유",
-            "status": "확인"
+            "status": "출처 있음"
           }
         ]
       },
@@ -1220,6 +1217,7 @@
     }
   },
   "footer": {
+    "operator": "ilovelawyer는 FORHU Inc.(미국 델라웨어주 법인, File No. 10371682)가 운영합니다. 대표: Jungkwan Shin · 주소: 30 Wall Street, 8th Floor, New York, NY 10005, USA · 고객 문의: ilovelawyer@forhu.ai",
     "columns": {
       "product": {
         "heading": "제품",

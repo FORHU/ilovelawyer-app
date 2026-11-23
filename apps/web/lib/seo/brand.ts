@@ -12,7 +12,6 @@ export const BRAND_ALTERNATE_NAMES = ["I Love Lawyer"]
 export const BRAND_SAME_AS: string[] = []
 
 export const DEVELOPER_NAME = "Forhu AI"
-export const DEVELOPER_PAGE_URL = "https://forhu.ai/ilovelawyer"
 
 // Same @id as the Organization on forhu.ai (which lists ilovelawyer's ph. and uk. sites as
 // brands), so the relationship is stated from both sides.

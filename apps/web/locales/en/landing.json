@@ -113,11 +113,12 @@
         "claims": "Claims",
         "claimsValue": "Unfair dismissal remedy · retaliatory termination",
         "riskRegister": "Risk Register · 3",
+        "riskBasis": "Preliminary AI assessment",
         "add": "+ Add",
         "risks": [
-          {"level": "HIGH", "percent": 78, "text": "Reasons brief deadline is computed, not confirmed with the Commission"},
-          {"level": "MEDIUM", "percent": 54, "text": "No written objection, 4–11 Aug"},
-          {"level": "LOW", "percent": 22, "text": "Team lead Park statement outstanding"}
+          {"level": "HIGH", "text": "Reasons brief deadline is computed, not confirmed with the Commission"},
+          {"level": "MEDIUM", "text": "No written objection, 4–11 Aug"},
+          {"level": "LOW", "text": "Team lead Park statement outstanding"}
         ]
       },
       "evidenceTimeline": {
@@ -179,10 +180,10 @@
       "caseReconstruction": {
         "intro": "Assembled from produced documents and metadata.",
         "rows": [
-          {"title": "28 Jul · workplace bullying report", "note": "HB-HR-000870", "status": "VERIFIED"},
+          {"title": "28 Jul · workplace bullying report", "note": "HB-HR-000870", "status": "SOURCE LOCATED"},
           {"title": "04 Aug · absence alleged", "note": "Termination notice only", "status": "DISPUTED"},
-          {"title": "06 Aug · HR requests meeting", "note": "HB-EM-004417", "status": "VERIFIED"},
-          {"title": "11 Aug · dismissal effective", "note": "Cites unauthorised absence", "status": "VERIFIED"}
+          {"title": "06 Aug · HR requests meeting", "note": "HB-EM-004417", "status": "SOURCE LOCATED"},
+          {"title": "11 Aug · dismissal effective", "note": "Cites unauthorised absence", "status": "SOURCE LOCATED"}
         ]
       },
       "law": {
@@ -323,10 +324,11 @@
         "claims": "Claims",
         "claimsValue": "Illegal dismissal · retaliatory termination",
         "riskRegister": "Risk Register · 3",
+        "riskBasis": "Preliminary AI assessment",
         "add": "+ Add",
         "risks": [
-          { "level": "HIGH", "percent": 78, "text": "Position paper deadline is computed, not confirmed" },
-          { "level": "MEDIUM", "percent": 54, "text": "No written protest from client, 4–11 Aug" }
+          { "level": "HIGH", "text": "Position paper deadline is computed, not confirmed" },
+          { "level": "MEDIUM", "text": "No written protest from client, 4–11 Aug" }
         ]
       },
       "evidenceTimeline": {
@@ -385,10 +387,11 @@
         "claims": "Claims",
         "claimsValue": "Inheritance Act 1975 · reasonable financial provision",
         "riskRegister": "Risk Register · 3",
+        "riskBasis": "Preliminary AI assessment",
         "add": "+ Add",
         "risks": [
-          { "level": "HIGH", "percent": 78, "text": "Section 4 – six months from first grant of representation; earlier grant not yet ruled out" },
-          { "level": "MEDIUM", "percent": 54, "text": "Purpose of the 2019–2023 transfers unverified: maintenance or gifts" }
+          { "level": "HIGH", "text": "Section 4 – six months from first grant of representation; earlier grant not yet ruled out" },
+          { "level": "MEDIUM", "text": "Purpose of the 2019–2023 transfers unverified: maintenance or gifts" }
         ]
       },
       "evidenceTimeline": {
@@ -401,9 +404,9 @@
         ],
         "timeline": "Timeline",
         "events": [
-          { "date": "2019–23", "tone": "gold", "text": "Recurring payments to the claimant.", "source": "bank-statements-2019-2023.pdf · pp.14–37", "status": "VERIFIED" },
-          { "date": "12 MAR", "tone": "gold", "text": "Testator dies; will names a charity as sole beneficiary.", "source": "last-will-2019.pdf · p.2", "status": "VERIFIED" },
-          { "date": "02 SEP", "tone": "red", "text": "Grant of representation issued.", "source": "grant-of-probate.pdf · p.1", "status": "VERIFIED" }
+          { "date": "2019–23", "tone": "gold", "text": "Recurring payments to the claimant.", "source": "bank-statements-2019-2023.pdf · pp.14–37", "status": "SOURCE LOCATED" },
+          { "date": "12 MAR", "tone": "gold", "text": "Testator dies; will names a charity as sole beneficiary.", "source": "last-will-2019.pdf · p.2", "status": "SOURCE LOCATED" },
+          { "date": "02 SEP", "tone": "red", "text": "Grant of representation issued.", "source": "grant-of-probate.pdf · p.1", "status": "SOURCE LOCATED" }
         ]
       },
       "redTeam": {
@@ -450,10 +453,10 @@
       "caseReconstruction": {
         "intro": "Drafted from the case documents · editable",
         "rows": [
-          { "title": "28 Jul · complaint docketed", "note": "NLRC NCR No. 2026-0412", "status": "VERIFIED" },
+          { "title": "28 Jul · complaint docketed", "note": "NLRC NCR No. 2026-0412", "status": "SOURCE LOCATED" },
           { "title": "04 Aug · abandonment alleged", "note": "Termination letter only", "status": "DISPUTED" },
-          { "title": "06 Aug · HR asks her to report", "note": "HR email", "status": "VERIFIED" },
-          { "title": "11 Aug · termination effective", "note": "Letter cites AWOL", "status": "VERIFIED" }
+          { "title": "06 Aug · HR asks her to report", "note": "HR email", "status": "SOURCE LOCATED" },
+          { "title": "11 Aug · termination effective", "note": "Letter cites AWOL", "status": "SOURCE LOCATED" }
         ]
       },
       "law": {
@@ -790,6 +793,7 @@
     }
   },
   "footer": {
+    "operator": "ilovelawyer is operated by FORHU Inc., a Delaware corporation (File No. 10371682). Representative: Jungkwan Shin. 30 Wall Street, 8th Floor, New York, NY 10005, USA. Contact: ilovelawyer@forhu.ai.",
     "columns": {
       "product": {
         "heading": "Product",

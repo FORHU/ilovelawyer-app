@@ -11,9 +11,13 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH, UK and KR render the same footer shell (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files), but their column links genuinely differ
-// (different jurisdiction, different support email) —
+// (different jurisdiction) —
 // so, unlike the other merged sections, this one branches on real per-tenant data rather
 // than just an i18next context suffix.
+
+// FORHU Inc. runs every site, so one customer contact serves all three (confirmed 20–23 Nov 2026).
+// The operator line under the columns (`footer.operator`) carries the same details in each language.
+const CUSTOMER_CONTACT_HREF = "mailto:ilovelawyer@forhu.ai";
 
 const PH_COLUMNS = [
   {
@@ -39,7 +43,7 @@ const PH_COLUMNS = [
   {
     columnKey: "resources",
     links: [
-      { key: "helpCentre", href: "mailto:support@ilovelawyer.ph" },
+      { key: "helpCentre", href: CUSTOMER_CONTACT_HREF },
       { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
@@ -63,7 +67,7 @@ const UK_COLUMNS = [
   {
     columnKey: "resources",
     links: [
-      { key: "helpCentre", href: "mailto:support@uk.ilovelawyer.com" },
+      { key: "helpCentre", href: CUSTOMER_CONTACT_HREF },
       { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
@@ -71,7 +75,6 @@ const UK_COLUMNS = [
   PH_COLUMNS[4],
 ] as const;
 
-// No help-centre link on KR yet: there is no KR support address to point it at.
 const KR_COLUMNS = [
   PH_COLUMNS[0],
   PH_COLUMNS[1],
@@ -79,6 +82,7 @@ const KR_COLUMNS = [
   {
     columnKey: "resources",
     links: [
+      { key: "helpCentre", href: CUSTOMER_CONTACT_HREF },
       { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
@@ -125,6 +129,8 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               </div>
             ))}
           </div>
+
+          <p className="mb-6 max-w-[900px] text-pretty text-[13px] leading-[1.6] text-white/60">{t("footer.operator")}</p>
 
           <div className="pt-5 border-t border-white/[0.16] flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
             <div className="flex gap-2.5">
