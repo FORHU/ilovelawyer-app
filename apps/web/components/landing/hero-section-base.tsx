@@ -29,7 +29,7 @@ const HERO_H1: Record<TenantCode, { heading: string; lede: string }> = {
   },
   UK: {
     heading: "ilovelawyer UK: AI legal intelligence for lawyers",
-    lede: "Case management, AI consultation with cited UK precedent, and the Legal Terminal.",
+    lede: "AI-assisted case intelligence for legal professionals: case management, cited UK research and the Legal Terminal. All outputs need professional verification.",
   },
   KR: {
     heading: "ilovelawyer 코리아: 변호사를 위한 AI 리걸 인텔리전스",

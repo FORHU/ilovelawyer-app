@@ -32,7 +32,7 @@ const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
   UK: {
     title: "ilovelawyer UK — AI Legal Intelligence for Lawyers",
     description:
-      "Case management, AI consultation with cited UK precedent, and a Legal Terminal built for practicing lawyers.",
+      "AI-assisted case intelligence for legal professionals: case management, cited UK research and a Legal Terminal. All outputs need professional verification.",
   },
   PH: {
     title: "ilovelawyer — AI Legal Intelligence for Philippine Lawyers",
