@@ -78,3 +78,10 @@ describe("getTenantCodeConfig", () => {
     expect(kr.landingAssets.heroPosters.every((p) => p.startsWith("/landing/kr/"))).toBe(true)
   })
 })
+
+// KR clients pay lawyers directly (ilovelawyer-api#695, #694; app #1026): no earnings or payouts.
+describe("paysLawyerDirectly", () => {
+  it("is KR only", () => {
+    expect(TENANT_CODES.filter((code) => getTenantCodeConfig(code).paysLawyerDirectly)).toEqual(["KR"])
+  })
+})

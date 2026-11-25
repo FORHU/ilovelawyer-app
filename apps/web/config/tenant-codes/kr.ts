@@ -13,6 +13,8 @@ export const krTenantCodeConfig: TenantCodeConfig = {
   defaultLanguage: "ko",
   currency: "KRW",
   i18nContext: "KR",
+  // KR clients pay the lawyer directly: no quotation payments, platform fee, earnings or payouts.
+  paysLawyerDirectly: true,
   weekStartsOn: 0,
   // Agreed: KR gets the free trial. It's consultation-only, so it opens together with aiChat.
   trial: false,
