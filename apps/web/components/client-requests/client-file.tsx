@@ -9,7 +9,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import type { MessageAttachment } from "@/components/chat/message-attachments";
 import { useIntakePackageQuery } from "@/lib/client-requests/detail";
-import type { CaseIntake, IntakePackageDocument, IntakePackageMessage, IntakeSource } from "@/lib/client-requests/types";
+import type { CaseIntake, IntakePackageDocument, IntakePackageEvidence, IntakePackageMessage, IntakeSource } from "@/lib/client-requests/types";
 
 const CARD = "rounded-2xl border border-border bg-card p-5";
 const LABEL = "text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground";
@@ -89,7 +89,7 @@ export function ClientFile({ requestId }: { requestId: string }) {
 
       {data && tab === "intake" && <IntakeTab intake={data.intake} />}
       {data && tab === "conversation" && <ConversationTab transcript={data.transcript} />}
-      {data && tab === "documents" && <DocumentsTab documents={data.documents} />}
+      {data && tab === "documents" && <DocumentsTab documents={data.documents} evidence={data.evidence ?? []} />}
     </section>
   );
 }
@@ -240,40 +240,99 @@ function ConversationTab({ transcript }: { transcript: IntakePackageMessage[] })
   );
 }
 
-function DocumentsTab({ documents }: { documents: IntakePackageDocument[] }) {
+/** The case's documents, each with the client's note, and before them the proof the client was asked
+ * for in the evidence step: what they added, what's still to come, and what they said they don't
+ * have (worth asking about). */
+function DocumentsTab({ documents, evidence }: { documents: IntakePackageDocument[]; evidence: IntakePackageEvidence[] }) {
   const { t } = useTranslation("client-request");
   const [previewing, setPreviewing] = useState<MessageAttachment | null>(null);
-  if (documents.length === 0) {
+  if (documents.length === 0 && evidence.length === 0) {
     return <EmptyState icon={<FileText />} title={t("detail.file.documents.emptyTitle")} />;
   }
+  const nameOf = (id: string | null) => documents.find((d) => d.id === id)?.name;
   return (
-    <>
-      <ul className="flex flex-col overflow-hidden rounded-xl border border-border">
-        {documents.map((d) => (
-          <li key={d.id} className="flex items-center gap-3 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0">
-            <FileText className="size-4 shrink-0 text-brand-gold" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate">
-              {d.url ? (
-                <button
-                  type="button"
-                  onClick={() => setPreviewing({ id: d.id, name: d.name, url: d.url, mimeType: null })}
-                  title={t("detail.file.documents.view", { name: d.name })}
-                  className="max-w-full cursor-pointer truncate text-left text-foreground underline decoration-from-font underline-offset-2 hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                >
-                  {d.name}
-                </button>
-              ) : (
-                d.name
-              )}
-            </span>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {d.status === "READY" ? t("detail.file.documents.ready") : d.status === "FAILED" ? t("detail.file.documents.failed") : t("detail.file.documents.pending")}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="flex flex-col gap-4">
+      {evidence.length > 0 && <AskedFor evidence={evidence} nameOf={nameOf} />}
+      <div className="flex flex-col gap-1.5">
+        {evidence.length > 0 && <span className={LABEL}>{t("detail.file.documents.inCase")}</span>}
+        {documents.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">{t("detail.file.documents.emptyTitle")}</p>
+        ) : (
+          <ul className="flex flex-col overflow-hidden rounded-xl border border-border">
+            {documents.map((d) => (
+              <li key={d.id} className="flex flex-col gap-1.5 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0">
+                <div className="flex items-center gap-3">
+                  <FileText className="size-4 shrink-0 text-brand-gold" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {d.url ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewing({ id: d.id, name: d.name, url: d.url, mimeType: null })}
+                        title={t("detail.file.documents.view", { name: d.name })}
+                        className="max-w-full cursor-pointer truncate text-left text-foreground underline decoration-from-font underline-offset-2 hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      >
+                        {d.name}
+                      </button>
+                    ) : (
+                      d.name
+                    )}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {d.status === "READY" ? t("detail.file.documents.ready") : d.status === "FAILED" ? t("detail.file.documents.failed") : t("detail.file.documents.pending")}
+                  </span>
+                </div>
+                {d.note && (
+                  <div className="flex flex-col gap-0.5 pl-7">
+                    <p className="leading-relaxed text-foreground">{d.note}</p>
+                    <span className="text-[11px] text-muted-foreground">
+                      {d.noteBy === "CLIENT" ? t("detail.file.documents.noteByClient") : t("detail.file.documents.noteByAi")}
+                    </span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {/* Keyed by document so opening another file is a fresh preview, not the last one's zoom. */}
       {previewing && <FilePreviewModal key={previewing.id} attachment={previewing} onClose={() => setPreviewing(null)} />}
-    </>
+    </div>
+  );
+}
+
+function AskedFor({ evidence, nameOf }: { evidence: IntakePackageEvidence[]; nameOf: (id: string | null) => string | undefined }) {
+  const { t } = useTranslation("client-request");
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className={LABEL}>{t("detail.file.documents.askedFor")}</span>
+      <ul className="flex flex-col gap-1.5">
+        {evidence.map((e) => {
+          const name = nameOf(e.documentId);
+          return (
+            <li
+              key={e.id}
+              className={cn(
+                "flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-xl px-3 py-2 text-[13px] leading-relaxed",
+                e.state === "DISMISSED" ? "border border-amber-400/40 bg-amber-50 text-amber-900" : e.state === "OPEN" ? "border border-dashed border-border" : "bg-muted/40",
+              )}
+            >
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="font-medium">{e.title}</span>
+                {e.why && <span className={cn("text-[12px]", e.state === "DISMISSED" ? "text-amber-900/80" : "text-muted-foreground")}>{e.why}</span>}
+              </span>
+              <span className="shrink-0 text-[11.5px] font-medium">
+                {e.state === "ADDED"
+                  ? name
+                    ? t("detail.file.documents.addedNamed", { name })
+                    : t("detail.file.documents.added")
+                  : e.state === "DISMISSED"
+                    ? t("detail.file.documents.dismissed")
+                    : t("detail.file.documents.notAdded")}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

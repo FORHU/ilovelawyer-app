@@ -113,6 +113,20 @@ export interface IntakePackageDocument {
   status: "PENDING" | "READY" | "FAILED"
   category: string | null
   url: string | null
+  /** The client's note on it from the evidence step: in their words (CLIENT), or the AI's draft they
+   * left as it was (AI). Both null when it has none. */
+  note: string | null
+  noteBy: "AI" | "CLIENT" | null
+}
+
+/** A proof the client was asked for in the evidence step: added (documentId is one of the
+ * documents), still to add, or one they said they don't have. */
+export interface IntakePackageEvidence {
+  id: string
+  title: string
+  why: string
+  state: "ADDED" | "OPEN" | "DISMISSED"
+  documentId: string | null
 }
 
 export interface IntakePackageForLawyer {
@@ -130,6 +144,8 @@ export interface IntakePackageForLawyer {
   intake: CaseIntake
   transcript: IntakePackageMessage[]
   documents: IntakePackageDocument[]
+  /** Empty when the case never went through the evidence step (and from an API before it). */
+  evidence?: IntakePackageEvidence[]
 }
 
 export interface Quote {
