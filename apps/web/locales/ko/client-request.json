@@ -300,7 +300,15 @@
         "emptyTitle": "아직 문서가 없습니다",
         "ready": "준비됨",
         "failed": "이 파일을 읽을 수 없습니다",
-        "pending": "읽는 중…"
+        "pending": "읽는 중…",
+        "askedFor": "의뢰인에게 요청한 증거",
+        "inCase": "사건 문서",
+        "added": "추가됨",
+        "addedNamed": "추가됨: {{name}}",
+        "notAdded": "아직 추가 안 됨",
+        "dismissed": "의뢰인에게 없음",
+        "noteByClient": "의뢰인 메모",
+        "noteByAi": "AI 초안 (의뢰인이 수정하지 않음)"
       }
     },
     "lockedFile": "의뢰인이 견적을 수락하고 결제하면 문서와 전체 상담 내용을 볼 수 있습니다.",

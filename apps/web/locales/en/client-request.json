@@ -304,7 +304,15 @@
         "view": "Preview {{name}}",
         "ready": "Ready",
         "failed": "Couldn't read this file",
-        "pending": "Reading…"
+        "pending": "Reading…",
+        "askedFor": "Proof the client was asked for",
+        "inCase": "In the case",
+        "added": "Added",
+        "addedNamed": "Added: {{name}}",
+        "notAdded": "Not added",
+        "dismissed": "Client doesn't have this",
+        "noteByClient": "Client's note",
+        "noteByAi": "AI draft, left unchanged by the client"
       }
     },
     "lockedFile": "Documents and the full interview open once the client accepts and pays your quote.",
