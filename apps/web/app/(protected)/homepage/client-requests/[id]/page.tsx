@@ -112,7 +112,9 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
   const hasPreviewAmount = quoteAmountOk(amount, type, currency);
   // What the lawyer types is what the client pays; the platform fee comes out of it.
   const quotedMinor = hasPreviewAmount ? toMinor(previewAmount, currency) : 0;
-  const platformFeeMinor = platformFeeOf(quotedMinor, request.quoteTerms);
+  // Where the client pays the lawyer directly (KR) there's no platform fee to preview.
+  const direct = !!request.paysLawyerDirectly;
+  const platformFeeMinor = direct ? 0 : platformFeeOf(quotedMinor, request.quoteTerms);
   const expiresAt = endOfDayIso(expiry);
 
   function handleSubmit(e: React.FormEvent) {
@@ -224,19 +226,21 @@ function QuoteForm({ request }: { request: ClientRequestForLawyer }) {
             {hasPreviewAmount ? formatMoney(quotedMinor, currency) : t("detail.quote.amountPlaceholder")}
           </span>
           <div className="flex flex-col gap-1 text-[13px]">
-            <div className="flex justify-between gap-3 text-muted-foreground">
-              <span>
-                {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor, request.quoteTerms.minPlatformFee.currency) })}
-              </span>
-              <span>{hasPreviewAmount ? `−${formatMoney(platformFeeMinor, currency)}` : "—"}</span>
-            </div>
+            {!direct && (
+              <div className="flex justify-between gap-3 text-muted-foreground">
+                <span>
+                  {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor, request.quoteTerms.minPlatformFee.currency) })}
+                </span>
+                <span>{hasPreviewAmount ? `−${formatMoney(platformFeeMinor, currency)}` : "—"}</span>
+              </div>
+            )}
             <div className="flex justify-between gap-3 text-foreground">
-              <span>{t("detail.quote.yourFee")}</span>
+              <span>{direct ? t("detail.quote.yourFeeDirect") : t("detail.quote.yourFee")}</span>
               <span className="font-semibold">{hasPreviewAmount ? formatMoney(quotedMinor - platformFeeMinor, currency) : "—"}</span>
             </div>
           </div>
           {expiresAt && <span className="text-xs text-muted-foreground">{t("detail.quote.validUntil", { date: validUntil(expiresAt) })}</span>}
-          <span className="text-xs text-muted-foreground">{t("detail.quote.willSeeNote")}</span>
+          <span className="text-xs text-muted-foreground">{direct ? t("detail.quote.willSeeNoteDirect") : t("detail.quote.willSeeNote")}</span>
         </div>
       </form>
       <Tooltip>
@@ -324,12 +328,16 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
       <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.total.amountMinor ?? request.quote.amount.amountMinor, quotation?.total.currency ?? request.quote.amount.currency)}</div>
       {quotation && (
         <div className="mt-2 flex flex-col gap-1 text-[13px] text-muted-foreground">
-          <span>{t("detail.quote.youReceive", { amount: formatMoney(quotation.serviceFee.amountMinor, quotation.serviceFee.currency), fee: formatMoney(quotation.platformFee.amountMinor, quotation.platformFee.currency) })}</span>
+          <span>
+            {request.paysLawyerDirectly
+              ? t("detail.quote.youReceiveDirect", { amount: formatMoney(quotation.total.amountMinor, quotation.total.currency) })
+              : t("detail.quote.youReceive", { amount: formatMoney(quotation.serviceFee.amountMinor, quotation.serviceFee.currency), fee: formatMoney(quotation.platformFee.amountMinor, quotation.platformFee.currency) })}
+          </span>
           <span>{t("detail.quote.validUntil", { date: validUntil(quotation.expiresAt) })}</span>
         </div>
       )}
       {request.quote.message && <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{request.quote.message}</p>}
-      <p className="mt-3 text-[13px] text-muted-foreground">{t("detail.quote.sentDescription")}</p>
+      <p className="mt-3 text-[13px] text-muted-foreground">{request.paysLawyerDirectly ? t("detail.quote.sentDescriptionDirect") : t("detail.quote.sentDescription")}</p>
       {quotation?.status === "SENT" && request.status === "QUOTED" && (
         <Button type="button" variant="outline" className="mt-3" onClick={() => setConfirmingWithdraw(true)}>
           {t("detail.quote.withdraw")}
@@ -465,6 +473,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         <div className="mt-1 text-[15px] font-semibold text-foreground">{request.engagement.clientName}</div>
       </div>
       {engagement.completion && <CompletionBanner completion={engagement.completion} />}
+      {request.paysLawyerDirectly && <p className="rounded-2xl border border-border px-4 py-3 text-[13px] leading-relaxed text-muted-foreground">{t("detail.engaged.paidDirectly")}</p>}
       <EngagementAiMeter requestId={request.id} />
       <EngagementInvoice requestId={request.id} />
       <div className="flex flex-wrap gap-2">

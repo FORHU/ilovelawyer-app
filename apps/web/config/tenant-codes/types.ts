@@ -55,6 +55,10 @@ export interface TenantCodeConfig {
    * `key_KR` and falls back to the plain key when that variant isn't written. Null reads the
    * plain key (PH). */
   i18nContext: "UK" | "KR" | null
+  /** Clients pay the hired lawyer directly, never through ilovelawyer, and no platform fee is taken
+   * (ilovelawyer-api#695, #694): no earnings or payouts to show. The API's `paysLawyerDirectly` on a
+   * client request says the same; this is for screens with no request, like Earnings. */
+  paysLawyerDirectly: boolean
   /** First day of the week in calendars and date pickers (date-fns `weekStartsOn`). */
   weekStartsOn: 0 | 1
   /** Whether visitors can try a consultation before signing up (app/trial). The API decides too

@@ -67,6 +67,7 @@
     "noteHint": "ilovelawyer만 볼 수 있습니다. 의뢰인에게는 알리지 않습니다."
   },
   "feeNote": "회원님에게 청구되는 금액은 없습니다. 의뢰인이 견적 금액을 결제하며, ilovelawyer 플랫폼 수수료는 회원님이 받는 금액에서 공제됩니다.",
+  "feeNote_KR": "변호사님께 청구되는 금액은 없으며 ilovelawyer는 수수료를 받지 않습니다. 의뢰인은 견적한 업무에 대해 변호사님께 직접 보수를 지급합니다.",
   "noMatches": "이 필터에 맞는 요청이 없습니다.",
   "empty": {
     "inbox": {
@@ -190,18 +191,22 @@
       "sent": "견적을 보냈습니다.",
       "sentTitle": "견적 보냄",
       "sentDescription": "의뢰인이 수락 후 결제하거나 거절하기를 기다리고 있습니다.",
+      "sentDescriptionDirect": "의뢰인의 수락 또는 거절을 기다리고 있습니다. 수락하면 바로 수임되며, 보수는 의뢰인과 직접 협의해 받습니다.",
       "willSee": "의뢰인에게 표시되는 내용",
       "fixedQuote": "정액 수임료 견적",
       "consultationQuote": "첫 상담 견적",
       "willSeeNote": "회원님의 프로필과 위 메시지가 함께 표시되며 연락처는 표시되지 않습니다. 의뢰인은 이 금액을 그대로 결제하고, 플랫폼 수수료는 회원님이 받는 금액에서 공제됩니다. 회원님에게 청구되는 금액은 없습니다.",
+      "willSeeNoteDirect": "프로필과 위 메시지가 함께 표시되며 연락처는 표시되지 않습니다. 의뢰인은 협의한 대로 이 금액을 변호사님께 직접 지급합니다. ilovelawyer를 거치지 않으며 플랫폼 수수료도 없습니다.",
       "amountPlaceholder": "£—",
       "expiresAt": "유효 기한",
       "expiresHint": "의뢰인은 이 날짜가 끝나기 전에 수락하고 결제해야 합니다. 최대 {{days}}일 후까지 설정할 수 있습니다.",
       "expiryInvalid": "오늘부터 {{days}}일 후 사이의 날짜를 선택하세요.",
       "yourFee": "수령액",
+      "yourFeeDirect": "의뢰인이 지급할 금액",
       "platformFee": "ilovelawyer 플랫폼 수수료 공제 ({{rate}}, 최소 {{min}})",
       "validUntil": "{{date}}까지 유효",
       "youReceive": "플랫폼 수수료 {{fee}}를 제외하고 {{amount}}를 받습니다.",
+      "youReceiveDirect": "의뢰인이 {{amount}}을(를) 변호사님께 직접 지급합니다. ilovelawyer는 수수료를 받지 않습니다.",
       "withdraw": "견적 철회",
       "withdrawn": "견적을 철회했습니다. 요청이 다른 변호사에게 돌아갔습니다.",
       "withdrawTitle": "이 견적을 철회하시겠습니까?",
@@ -221,6 +226,7 @@
     "engaged": {
       "title": "수임 중",
       "client": "의뢰인",
+      "paidDirectly": "의뢰인은 견적에서 합의한 대로 변호사님께 보수를 직접 지급합니다. ilovelawyer는 보수를 대신 받거나 보관·지급하지 않으며 플랫폼 수수료도 받지 않습니다.",
       "openCase": "사건 열기",
       "copy": "내 작업 공간에 복사",
       "copying": "복사하는 중…",

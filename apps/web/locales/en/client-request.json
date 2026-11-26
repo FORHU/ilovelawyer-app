@@ -68,6 +68,7 @@
     "noteHint": "Only ilovelawyer can see this. The client is never told."
   },
   "feeNote": "Nothing is charged to you. The client pays your quote, and ilovelawyer’s platform fee is deducted from what you receive.",
+  "feeNote_KR": "Nothing is charged to you, and ilovelawyer takes no fee. Clients pay you directly for the work you quote.",
   "noMatches": "No requests match these filters.",
   "empty": {
     "inbox": {
@@ -193,18 +194,22 @@
       "sent": "Quote sent.",
       "sentTitle": "Quote sent",
       "sentDescription": "Waiting for the client to accept and pay, or decline.",
+      "sentDescriptionDirect": "Waiting for the client to accept or decline. Once they accept, you're engaged and arrange payment with them directly.",
       "willSee": "The client will see",
       "fixedQuote": "Fixed fee quote",
       "consultationQuote": "First consultation quote",
       "willSeeNote": "With your profile and the message above. No contact details. The client pays exactly this; the platform fee comes out of what you receive, and nothing is charged to you.",
+      "willSeeNoteDirect": "With your profile and the message above. No contact details. The client pays you this directly, as you agree with them: nothing goes through ilovelawyer and there's no platform fee.",
       "amountPlaceholder": "£—",
       "expiresAt": "Valid until",
       "expiresHint": "The client accepts and pays before the end of this day. Up to {{days}} days away.",
       "expiryInvalid": "Choose a date from today to {{days}} days away.",
       "yourFee": "You receive",
+      "yourFeeDirect": "The client pays you",
       "platformFee": "ilovelawyer platform fee, deducted ({{rate}}, at least {{min}})",
       "validUntil": "Valid until {{date}}",
       "youReceive": "You receive {{amount}}, after the {{fee}} platform fee.",
+      "youReceiveDirect": "The client pays you {{amount}} directly. ilovelawyer takes no fee.",
       "withdraw": "Withdraw quote",
       "withdrawn": "Quote withdrawn. The request went back to other lawyers.",
       "withdrawTitle": "Withdraw this quote?",
@@ -224,6 +229,7 @@
     "engaged": {
       "title": "Engaged",
       "client": "Client",
+      "paidDirectly": "The client pays you directly, as agreed in your quote. ilovelawyer doesn't collect, hold or pay out your fee, and takes no platform fee.",
       "openCase": "Open the case",
       "copy": "Copy to my workspace",
       "copying": "Copying…",

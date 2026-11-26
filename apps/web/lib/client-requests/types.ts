@@ -220,6 +220,9 @@ export interface ClientRequestForLawyer {
   quoteTerms: QuoteTerms
   /** The old introduction fee: only charged on requests the client confirmed before quotation payments. */
   perCaseFee: Money
+  /** The client pays this lawyer directly (KR): no quotation payment, earning or platform fee through
+   * ilovelawyer. Missing from an older API. */
+  paysLawyerDirectly?: boolean
   /** That per-case fee's charge, on those requests only. */
   charge: ChargeSummary | null
   engagement: Engagement | null

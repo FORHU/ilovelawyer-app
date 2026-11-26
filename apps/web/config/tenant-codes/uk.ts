@@ -9,6 +9,7 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
   defaultLanguage: "en",
   currency: "GBP",
   i18nContext: "UK",
+  paysLawyerDirectly: false,
   weekStartsOn: 1,
   trial: true,
   branding: {
