@@ -9,6 +9,7 @@ export const phTenantCodeConfig: TenantCodeConfig = {
   defaultLanguage: "en",
   currency: "PHP",
   i18nContext: null,
+  paysLawyerDirectly: false,
   weekStartsOn: 0,
   trial: false,
   branding: {

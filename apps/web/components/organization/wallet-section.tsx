@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import { ErrorState } from "@/components/error-state"
+import { useTenantCodeHint } from "@/components/tenant-code-provider"
+import { getTenantCodeConfig } from "@/config/tenant-codes"
 import { Pagination } from "@/components/ui/pagination"
 import { useDateLocale } from "@/lib/i18n/date-locale"
 import { generateId } from "@/lib/id"
@@ -56,6 +58,25 @@ function Tile({ label, value, note }: { label: string; value: string; note?: str
  * requireOrgRole(ADMIN); with OWN_WORKSPACE_ID it's a solo lawyer's own, on their profile.
  */
 export function WalletSection({ organizationId }: { organizationId: string }) {
+  // On a site where clients pay lawyers directly (KR) there's nothing to earn or pay out here.
+  if (getTenantCodeConfig(useTenantCodeHint()).paysLawyerDirectly) return <DirectPaymentNotice />
+  return <WalletDetails organizationId={organizationId} />
+}
+
+/** In place of Earnings where clients pay lawyers directly: says so, once. */
+function DirectPaymentNotice() {
+  const { t } = useTranslation("organization")
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 shadow-black/20 ring-black/5 dark:ring-white/[0.06]">
+      <div className="px-6 py-5 md:px-8">
+        <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t("wallet.direct.heading")}</h2>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{t("wallet.direct.body")}</p>
+      </div>
+    </section>
+  )
+}
+
+function WalletDetails({ organizationId }: { organizationId: string }) {
   const { t } = useTranslation("organization")
   const locale = useDateLocale()
   const router = useRouter()

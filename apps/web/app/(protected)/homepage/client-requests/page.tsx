@@ -7,6 +7,8 @@ import { FileText, Hourglass, ShieldAlert, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
+import { useTenantCodeHint } from "@/components/tenant-code-provider";
+import { tenantI18nContext } from "@/config/tenant-codes";
 import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
 import { ConfirmPassModal } from "@/components/client-requests/confirm-pass-modal";
 import { LAWYER_APPLICATION_SECTION_ID } from "@/components/account/client-requests-settings";
@@ -64,6 +66,8 @@ function RequestListSkeleton() {
 export default function ClientRequestsPage() {
   const { t } = useTranslation("client-request");
   const router = useRouter();
+  // The fee note has a KR version (feeNote_KR): there, clients pay lawyers directly.
+  const tenantCode = useTenantCodeHint();
 
   const [view, setView] = useState<ClientRequestInboxView>("inbox");
   const [page, setPage] = useState(1);
@@ -271,7 +275,7 @@ export default function ClientRequestsPage() {
                 )}
               </div>
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} labels={{ previous: t("pagination.previous"), next: t("pagination.next") }} className="mt-6" />
-              {view === "inbox" && <p className="mt-5 text-xs text-muted-foreground">{t("feeNote")}</p>}
+              {view === "inbox" && <p className="mt-5 text-xs text-muted-foreground">{t("feeNote", tenantI18nContext(tenantCode))}</p>}
             </>
           )}
         </div>

@@ -360,6 +360,10 @@
         "FAILED": "Failed",
         "REJECTED": "Refused"
       }
+    },
+    "direct": {
+      "heading": "Earnings",
+      "body": "Clients on this site pay you directly for the work you quote. ilovelawyer doesn't collect, hold or pay out your fees and takes no platform fee, so there are no earnings or payouts here."
     }
   }
 }
