@@ -255,6 +255,9 @@ function KrRegistrationFields({
 /** The fee field's label key and what it accepts: won are whole numbers. */
 const FEE_LABEL_KEY = { UK: "clientRequests.fields.feeUK", PH: "clientRequests.fields.feePH", KR: "clientRequests.fields.feeKR" } as const;
 
+/** The Languages hint, with examples from the form's own country. */
+const LANGUAGES_HELP_KEY = { UK: "clientRequests.fields.languagesHelpUK", PH: "clientRequests.fields.languagesHelpPH", KR: "clientRequests.fields.languagesHelpKR" } as const;
+
 /**
  * The Lawyer Application's fields, for the form's own country: the registration the admin checks
  * (UK: regulator, number, jurisdictions; PH: Roll number, IBP chapter and the optional IBP and MCLE
@@ -398,7 +401,7 @@ export function LawyerApplicationFields({
         <div className={pairs}>
           <TagInput
             label={t("clientRequests.fields.languages")}
-            helperText={t("clientRequests.fields.languagesHelp")}
+            helperText={t(LANGUAGES_HELP_KEY[country])}
             placeholder={t("clientRequests.fields.languagesPlaceholder")}
             value={form.languages}
             onChange={(languages) => set({ languages })}
