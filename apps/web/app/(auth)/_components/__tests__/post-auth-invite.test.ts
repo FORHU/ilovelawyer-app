@@ -2,9 +2,14 @@ import { describe, it, expect } from "vitest"
 import { resolvePostAuthDestination, resolveInviteBannerState, resolveRedeemableInviteToken } from "../post-auth-invite"
 
 describe("resolvePostAuthDestination", () => {
-  it("routes to the client request when the invite was redeemed", () => {
+  // No field on this response tells the frontend whether the lawyer's registration is VERIFIED
+  // (LawyerProfile.verificationStatus, ClientRequestLawyerSvc.assertVerifiedLawyer on the API) — a
+  // brand-new invited lawyer almost always isn't yet, and that route 403s for them. So redemption
+  // never earns a destination of its own any more: the caller's normal post-auth flow decides
+  // where to go, same as if there'd been no invite token at all.
+  it("reports redeemed without a destination, so the caller's normal flow decides where to go", () => {
     const decision = resolvePostAuthDestination({ requestId: "req-1", caseId: "case-1" })
-    expect(decision).toEqual({ kind: "redeemed", destination: "/homepage/client-requests/req-1" })
+    expect(decision).toEqual({ kind: "redeemed" })
   })
 
   it("reports failure without a destination when redemption errored", () => {

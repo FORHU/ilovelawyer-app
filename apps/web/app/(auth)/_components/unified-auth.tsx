@@ -169,22 +169,19 @@ function UnifiedAuthContent() {
     router.replace(query ? `/login?${query}` : "/login", { scroll: false });
   }
 
-  /** A redeemed `caseInviteToken` (requestId/caseId) takes the user straight to that client
-   * request instead of wherever auth would otherwise have sent them — it's the whole reason
-   * they followed the invite link. A failed redemption never blocks the auth that just
-   * succeeded; it only swaps the success toast for an explanatory one. Returns whether it
-   * redirected, so callers skip their own navigation when it did. */
-  function handlePostAuthInvite(caseLawyerInvite: CaseLawyerInviteOutcome | undefined): boolean {
+  /** A redeemed `caseInviteToken` (requestId/caseId) never redirects on its own any more — see
+   * resolvePostAuthDestination's doc comment: this response has no way to tell whether the
+   * lawyer is verified yet, and /homepage/client-requests/* 403s until they are, so the normal
+   * post-auth flow (same destination as with no invite token) is left to run instead, and the
+   * reassuring toast says the case will be visible once verification clears. A failed redemption
+   * never blocks the auth that just succeeded either; it only shows an explanatory toast. */
+  function handlePostAuthInvite(caseLawyerInvite: CaseLawyerInviteOutcome | undefined): void {
     const decision = resolvePostAuthDestination(caseLawyerInvite ?? null);
     if (decision.kind === "redeemed") {
       toast.success(t("caseInvite.redeemedToast"));
-      router.push(decision.destination);
-      return true;
-    }
-    if (decision.kind === "failed") {
+    } else if (decision.kind === "failed") {
       toast.error(t("caseInvite.failedToast"));
     }
-    return false;
   }
 
   /** A Google user with no organization yet (new, or one who abandoned onboarding) goes
@@ -197,7 +194,7 @@ function UnifiedAuthContent() {
     caseLawyerInvite?: CaseLawyerInviteOutcome;
   }) {
     googleTokenRef.current = null;
-    if (handlePostAuthInvite(data.caseLawyerInvite)) return;
+    handlePostAuthInvite(data.caseLawyerInvite);
     if (data.organizationStatus === "none") {
       setName(data.user.name ?? "");
       setWorkspaceStep(true);
@@ -214,7 +211,7 @@ function UnifiedAuthContent() {
     organizationStatus: OrganizationStatus;
     caseLawyerInvite?: CaseLawyerInviteOutcome;
   }) {
-    if (handlePostAuthInvite(data.caseLawyerInvite)) return;
+    handlePostAuthInvite(data.caseLawyerInvite);
     if (data.organizationStatus !== "none") return;
     setName(data.user.name ?? "");
     setWorkspaceStep(true);
@@ -449,7 +446,7 @@ function UnifiedAuthContent() {
       { email: signupEmail, code: otpDigits.join(""), caseInviteToken: redeemableInviteToken },
       {
         onSuccess: (data) => {
-          if (handlePostAuthInvite(data.caseLawyerInvite)) return;
+          handlePostAuthInvite(data.caseLawyerInvite);
           // An invite approves the account (see AuthSvc.autoApproveIfEnabled), so there's no
           // workspace to set up — they go accept it.
           if (data.organizationStatus === "invited") {

@@ -5,16 +5,27 @@ import type { CaseLawyerInviteLookup } from "@/lib/auth/case-lawyer-invite"
  * `caseLawyerInvite` field (Task 11's CaseLawyerInviteOutcome). Pulled out as a pure function so
  * it can be unit-tested without the component-rendering harness this repo doesn't have (see
  * vitest.config.ts's top comment) — the component itself just calls this and reacts.
- *   - `requestId`/`caseId` present: the redemption succeeded — go to that client request
- *     instead of wherever auth would otherwise have sent them.
+ *
+ * `redeemed` never carries a destination of its own: nothing in this response says whether the
+ * lawyer's registration is VERIFIED (that's LawyerProfile.verificationStatus on the API, checked
+ * by ClientRequestLawyerSvc.assertVerifiedLawyer — a different, pre-existing gate from
+ * `organizationStatus`/`approvalStatus`, neither of which this response's shape exposes either).
+ * A brand-new lawyer who just signed up through an invite link is almost never verified yet, and
+ * `/homepage/client-requests/*` 403s for them — so routing there on success would send them
+ * straight at an error page. Safer for everyone: the caller's normal post-auth flow (same
+ * destination as if there'd been no invite token at all) decides where to go, and the caller
+ * shows a reassuring "you'll see the case once verified" message instead of the plain success
+ * toast. This is slightly suboptimal for the rare already-verified existing lawyer (who could
+ * have gone straight there), but correct for the common new-lawyer case.
+ *   - `requestId`/`caseId` present: the redemption succeeded.
  *   - `error` present: the redemption failed, but auth itself still completed — let the
  *     caller's normal flow continue; only the toast differs.
  *   - `null`: no `caseInviteToken` was ever sent — nothing to do here. */
-export type PostAuthRouteDecision = { kind: "redeemed"; destination: string } | { kind: "failed" } | { kind: "none" }
+export type PostAuthRouteDecision = { kind: "redeemed" } | { kind: "failed" } | { kind: "none" }
 
 export function resolvePostAuthDestination(caseLawyerInvite: CaseLawyerInviteOutcome): PostAuthRouteDecision {
   if (caseLawyerInvite && "requestId" in caseLawyerInvite) {
-    return { kind: "redeemed", destination: `/homepage/client-requests/${caseLawyerInvite.requestId}` }
+    return { kind: "redeemed" }
   }
   if (caseLawyerInvite && "error" in caseLawyerInvite) {
     return { kind: "failed" }
