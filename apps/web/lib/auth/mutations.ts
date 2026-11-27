@@ -23,6 +23,13 @@ interface AuthTokensResponse {
  * the created request/case ids on success. Consumed by Task 12's post-auth banner, not here. */
 export type CaseLawyerInviteOutcome = { requestId: string; caseId: string } | { error: string } | null
 
+/** Whether an auth response carries a successfully redeemed invite. Takes any response shape
+ * since the forced-password-update flow (no caseLawyerInvite field) shares the same completion. */
+function redeemedCaseLawyerInvite(data: object): boolean {
+  const invite = (data as { caseLawyerInvite?: CaseLawyerInviteOutcome }).caseLawyerInvite
+  return !!invite && "requestId" in invite
+}
+
 /** Signing back in during the deletion grace period restores the account on the API side —
  * tell the user. sonner's Toaster lives in Providers, so the toast survives the redirect that
  * follows a sign-in. */
@@ -154,7 +161,12 @@ function useCompletePasswordAuth() {
     // until the tab is refreshed, even though the user just "freshly" logged in.
     queryClient.invalidateQueries({ queryKey: chatKeys.session() })
     const organizationStatus = await hydrateActiveOrganization(setOrganization)
-    if (organizationStatus !== "none") router.push(sanitizeNextPath(searchParams.get("next")))
+    // A redeemed case-lawyer invite sends the caller to that client request instead (see
+    // unified-auth.tsx's handlePostAuthInvite) — pushing `next` first would only leave an extra
+    // history entry behind.
+    if (organizationStatus !== "none" && !redeemedCaseLawyerInvite(data)) {
+      router.push(sanitizeNextPath(searchParams.get("next")))
+    }
     announceIfRestored(data)
     return { ...data, organizationStatus }
   }

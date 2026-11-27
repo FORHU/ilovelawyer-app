@@ -22,8 +22,9 @@ vi.mock("@/lib/store/auth.store", () => ({
   ownWorkspace: vi.fn(),
 }))
 
+const routerPush = vi.fn()
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: routerPush, replace: vi.fn() }),
   useSearchParams: () => ({ get: () => null }),
 }))
 
@@ -46,6 +47,7 @@ beforeEach(() => {
   apiFetch.mockReset()
   authState.setAuth.mockReset()
   authState.setOrganization.mockReset()
+  routerPush.mockReset()
 })
 
 describe("useVerifyOtpMutation", () => {
@@ -129,5 +131,40 @@ describe("useGoogleAuthMutation", () => {
 
     const [, options] = apiFetch.mock.calls[0] as [string, { body: string }]
     expect(JSON.parse(options.body)).not.toHaveProperty("caseInviteToken")
+  })
+})
+
+// The mutation's own `next` navigation would be followed by unified-auth.tsx's push to the
+// redeemed client request — skipping it avoids the extra history entry (the old double-push).
+describe("useLoginMutation navigation", () => {
+  it("navigates to `next` itself when no invite was redeemed", async () => {
+    mockPrimaryResponseThenOrgLookupFailure({ accessToken: "token", user: { id: "u1" }, caseLawyerInvite: null })
+
+    const { mutationFn } = useLoginMutation() as MutationConfig
+    await mutationFn({ email: "a@b.com", password: "pw", remember: false })
+
+    expect(routerPush).toHaveBeenCalledTimes(1)
+  })
+
+  it("still navigates when the invite failed to redeem", async () => {
+    mockPrimaryResponseThenOrgLookupFailure({ accessToken: "token", user: { id: "u1" }, caseLawyerInvite: { error: "INVITE_EXPIRED" } })
+
+    const { mutationFn } = useLoginMutation() as MutationConfig
+    await mutationFn({ email: "a@b.com", password: "pw", remember: false, caseInviteToken: "tok" })
+
+    expect(routerPush).toHaveBeenCalledTimes(1)
+  })
+
+  it("leaves navigation to the caller when the invite was redeemed", async () => {
+    mockPrimaryResponseThenOrgLookupFailure({
+      accessToken: "token",
+      user: { id: "u1" },
+      caseLawyerInvite: { requestId: "req-1", caseId: "case-1" },
+    })
+
+    const { mutationFn } = useLoginMutation() as MutationConfig
+    await mutationFn({ email: "a@b.com", password: "pw", remember: false, caseInviteToken: "tok" })
+
+    expect(routerPush).not.toHaveBeenCalled()
   })
 })
