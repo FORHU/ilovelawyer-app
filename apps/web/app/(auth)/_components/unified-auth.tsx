@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
@@ -15,9 +16,12 @@ import { isPasswordValid } from "@/lib/auth/password-policy";
 import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup, type WorkspaceSetupStep } from "./workspace-setup";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { useCaseLawyerInviteLookupQuery } from "@/lib/auth/case-lawyer-invite";
+import { resolveInviteBannerState, resolvePostAuthDestination, resolveRedeemableInviteToken } from "./post-auth-invite";
 
 import {
   sanitizeNextPath,
+  type CaseLawyerInviteOutcome,
   type OrganizationStatus,
   useCancelSignupMutation,
   useForgotPasswordMutation,
@@ -51,6 +55,23 @@ function UnifiedAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const legacySignupSuccess = searchParams.get("signup") === "success";
+
+  // A case-lawyer invite link (?caseInviteToken=) — looked up to show the banner below, and to
+  // vet the token before the auth mutations (which redeem it server-side) ever carry it: only a
+  // token the lookup resolved is sent, so a mangled link can't fail the sign-in/sign-up request.
+  const caseInviteToken = searchParams.get("caseInviteToken") ?? undefined;
+  const inviteLookup = useCaseLawyerInviteLookupQuery(caseInviteToken);
+  const inviteBannerState = resolveInviteBannerState({
+    hasToken: !!caseInviteToken,
+    isLoading: inviteLookup.isLoading,
+    isError: inviteLookup.isError,
+    lookup: inviteLookup.data,
+  });
+  const redeemableInviteToken = resolveRedeemableInviteToken({
+    token: caseInviteToken,
+    isError: inviteLookup.isError,
+    lookup: inviteLookup.data,
+  });
 
   const [tab, setTab] = useState<Tab>(() => tabFromParam(searchParams.get("tab")));
   const [error, setError] = useState<string | null>(null);
@@ -148,12 +169,32 @@ function UnifiedAuthContent() {
     router.replace(query ? `/login?${query}` : "/login", { scroll: false });
   }
 
+  /** A redeemed `caseInviteToken` (requestId/caseId) never redirects on its own any more — see
+   * resolvePostAuthDestination's doc comment: this response has no way to tell whether the
+   * lawyer is verified yet, and /homepage/client-requests/* 403s until they are, so the normal
+   * post-auth flow (same destination as with no invite token) is left to run instead, and the
+   * reassuring toast says the case will be visible once verification clears. A failed redemption
+   * never blocks the auth that just succeeded either; it only shows an explanatory toast. */
+  function handlePostAuthInvite(caseLawyerInvite: CaseLawyerInviteOutcome | undefined): void {
+    const decision = resolvePostAuthDestination(caseLawyerInvite ?? null);
+    if (decision.kind === "redeemed") {
+      toast.success(t("caseInvite.redeemedToast"));
+    } else if (decision.kind === "failed") {
+      toast.error(t("caseInvite.failedToast"));
+    }
+  }
+
   /** A Google user with no organization yet (new, or one who abandoned onboarding) goes
    * through the same WorkspaceSetup step as a freshly-verified password signup; everyone else
    * continues to `next`, or to the Organization page when an invite is waiting. "unknown" (the
    * org lookup failed) also continues — the protected layout re-checks from there. */
-  function finishGoogleAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
+  function finishGoogleAuth(data: {
+    user: { name?: string | null };
+    organizationStatus: OrganizationStatus;
+    caseLawyerInvite?: CaseLawyerInviteOutcome;
+  }) {
     googleTokenRef.current = null;
+    handlePostAuthInvite(data.caseLawyerInvite);
     if (data.organizationStatus === "none") {
       setName(data.user.name ?? "");
       setWorkspaceStep(true);
@@ -165,7 +206,12 @@ function UnifiedAuthContent() {
   /** Password sign-in counterpart of finishGoogleAuth — the mutation already navigated
    * unless the user has no organization, in which case they get the
    * WorkspaceSetup step. */
-  function finishPasswordAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
+  function finishPasswordAuth(data: {
+    user: { name?: string | null };
+    organizationStatus: OrganizationStatus;
+    caseLawyerInvite?: CaseLawyerInviteOutcome;
+  }) {
+    handlePostAuthInvite(data.caseLawyerInvite);
     if (data.organizationStatus !== "none") return;
     setName(data.user.name ?? "");
     setWorkspaceStep(true);
@@ -174,7 +220,7 @@ function UnifiedAuthContent() {
   function submitGoogle(idToken: string, acceptedTerms: boolean) {
     setError(null);
     googleMutation.mutate(
-      { idToken, remember: googleRememberRef.current, acceptedTerms },
+      { idToken, remember: googleRememberRef.current, acceptedTerms, caseInviteToken: redeemableInviteToken },
       {
         onSuccess: finishGoogleAuth,
         onError: (err) => {
@@ -276,7 +322,7 @@ function UnifiedAuthContent() {
     e.preventDefault();
     setError(null);
     loginMutation.mutate(
-      { email: signinEmail, password: signinPassword, remember },
+      { email: signinEmail, password: signinPassword, remember, caseInviteToken: redeemableInviteToken },
       {
         onSuccess: finishPasswordAuth,
         onError: (err) => {
@@ -397,9 +443,10 @@ function UnifiedAuthContent() {
   function handleVerifyOtp() {
     setError(null);
     verifyOtpMutation.mutate(
-      { email: signupEmail, code: otpDigits.join("") },
+      { email: signupEmail, code: otpDigits.join(""), caseInviteToken: redeemableInviteToken },
       {
         onSuccess: (data) => {
+          handlePostAuthInvite(data.caseLawyerInvite);
           // An invite approves the account (see AuthSvc.autoApproveIfEnabled), so there's no
           // workspace to set up — they go accept it.
           if (data.organizationStatus === "invited") {
@@ -490,6 +537,28 @@ function UnifiedAuthContent() {
         </div>
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
+          {inviteBannerState.kind === "valid" && (
+            <div className="border border-brand-gold bg-accent px-4 py-3">
+              <p className="text-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                {/* One interpolated sentence (not prefix + name + suffix) so each locale can put
+                    the name and case wherever its word order needs them. */}
+                <Trans
+                  t={t}
+                  i18nKey="caseInvite.valid"
+                  values={{ name: inviteBannerState.clientFirstName, caseName: inviteBannerState.caseName }}
+                  components={{ bold: <span className="font-semibold" /> }}
+                />
+              </p>
+            </div>
+          )}
+          {inviteBannerState.kind === "unavailable" && (
+            <div className="border border-border bg-accent/40 px-4 py-3">
+              <p className="text-muted-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("caseInvite.unavailable")}
+              </p>
+            </div>
+          )}
+
           {otpStep ? (
             <>
               <div className="flex flex-col gap-1 pt-20">

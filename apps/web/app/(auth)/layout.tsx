@@ -6,6 +6,7 @@ import { apiFetch, refreshAccessToken } from "@/lib/fetch"
 import { normalizeEmail, sanitizeNextPath } from "@/lib/auth/mutations"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { PageTransition } from "@/components/page-transition"
+import { resolveSignedInAuthPageAction } from "./_components/signed-in-auth-page"
 
 // Pages a user shouldn't see once already signed in elsewhere (this tab, or
 // logged in from another tab sharing the same refreshToken cookie).
@@ -31,11 +32,19 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     const params = new URLSearchParams(window.location.search)
     refreshAccessToken()
       .then(async () => {
+        const action = resolveSignedInAuthPageAction(params)
+        // A case-lawyer invite link (?caseInviteToken=) is only redeemed by signing in/up with
+        // the token, so a signed-in lawyer gets the form too — see resolveSignedInAuthPageAction.
+        if (action === "show-form") {
+          clearAuth()
+          setChecking(false)
+          return
+        }
         // An org-invite sign-up link (?email=) is meant for that address. Opened in a browser
         // where someone else is signed in (often the inviter), show the form instead of
         // carrying on as them — signing up then replaces that session.
-        const invitedEmail = params.get("email")
-        if (invitedEmail) {
+        if (action === "check-invited-email") {
+          const invitedEmail = params.get("email") as string
           const me = await apiFetch<{ email: string }>("/api/users/me")
           if (normalizeEmail(me.email) !== normalizeEmail(invitedEmail)) {
             clearAuth()

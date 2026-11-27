@@ -17,6 +17,12 @@ interface AuthTokensResponse {
   deletionCancelled?: boolean
 }
 
+/** What redeeming a `caseInviteToken` alongside verify-otp/login/google did — mirrors the API's
+ * CaseLawyerInviteRedemptionSvc result shape (Task 8 on ilovelawyer-api): `null` when no token was
+ * sent, `{ error }` for any redemption failure (not just the enumerated invite status codes), or
+ * the created request/case ids on success. Consumed by Task 12's post-auth banner, not here. */
+export type CaseLawyerInviteOutcome = { requestId: string; caseId: string } | { error: string } | null
+
 /** Signing back in during the deletion grace period restores the account on the API side —
  * tell the user. sonner's Toaster lives in Providers, so the toast survives the redirect that
  * follows a sign-in. */
@@ -29,6 +35,7 @@ function announceIfRestored(data: { deletionCancelled?: boolean }) {
 // the Tenant auto-approved the account at verification (see AuthSvc.autoApproveIfEnabled).
 interface VerifyOtpResponse extends AuthTokensResponse {
   user: AuthUser & { approvalStatus: "PENDING" | "ACTIVE" | "DENIED" | "BLOCKED" }
+  caseLawyerInvite: CaseLawyerInviteOutcome
 }
 
 interface SignupResponse {
@@ -139,7 +146,7 @@ function useCompletePasswordAuth() {
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
-  return async (data: AuthTokensResponse): Promise<PasswordAuthResult> => {
+  return async <T extends AuthTokensResponse>(data: T): Promise<T & PasswordAuthResult> => {
     setAuth({ accessToken: data.accessToken, user: data.user })
     // Chat Wonder session_id is cached with staleTime: Infinity (see useChatSessionQuery)
     // and survives client-side login/logout since it's just an SPA route change, not a
@@ -147,21 +154,41 @@ function useCompletePasswordAuth() {
     // until the tab is refreshed, even though the user just "freshly" logged in.
     queryClient.invalidateQueries({ queryKey: chatKeys.session() })
     const organizationStatus = await hydrateActiveOrganization(setOrganization)
-    if (organizationStatus !== "none") router.push(sanitizeNextPath(searchParams.get("next")))
+    // A redeemed case-lawyer invite no longer sends the caller anywhere special (see
+    // post-auth-invite.ts's resolvePostAuthDestination) — this response has no way to tell
+    // whether the lawyer is verified yet, and the client-requests route 403s until they are, so
+    // navigation always follows the normal rule here, same as with no invite token at all.
+    if (organizationStatus !== "none") {
+      router.push(sanitizeNextPath(searchParams.get("next")))
+    }
     announceIfRestored(data)
     return { ...data, organizationStatus }
   }
+}
+
+interface LoginResponse extends AuthTokensResponse {
+  caseLawyerInvite: CaseLawyerInviteOutcome
 }
 
 export function useLoginMutation() {
   const completePasswordAuth = useCompletePasswordAuth()
 
   return useMutation({
-    mutationFn: async ({ email, password, remember }: { email: string; password: string; remember: boolean }) =>
+    mutationFn: async ({
+      email,
+      password,
+      remember,
+      caseInviteToken,
+    }: {
+      email: string
+      password: string
+      remember: boolean
+      caseInviteToken?: string
+    }) =>
       completePasswordAuth(
-        await apiFetch<AuthTokensResponse>("/api/auth/login", {
+        await apiFetch<LoginResponse>("/api/auth/login", {
           method: "POST",
-          body: JSON.stringify({ email: normalizeEmail(email), password, remember }),
+          body: JSON.stringify({ email: normalizeEmail(email), password, remember, ...(caseInviteToken ? { caseInviteToken } : {}) }),
           skipAuthRefresh: true,
         })
       ),
@@ -247,10 +274,10 @@ export function useVerifyOtpMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ email, code }: { email: string; code: string }) => {
+    mutationFn: async ({ email, code, caseInviteToken }: { email: string; code: string; caseInviteToken?: string }) => {
       const data = await apiFetch<VerifyOtpResponse>("/api/auth/verify-otp", {
         method: "POST",
-        body: JSON.stringify({ email: normalizeEmail(email), code }),
+        body: JSON.stringify({ email: normalizeEmail(email), code, ...(caseInviteToken ? { caseInviteToken } : {}) }),
         skipAuthRefresh: true,
       })
       setAuth({ accessToken: data.accessToken, user: data.user })
@@ -273,7 +300,7 @@ function useCompleteGoogleAuth() {
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
-  return async (data: AuthTokensResponse): Promise<GoogleAuthResult> => {
+  return async <T extends AuthTokensResponse>(data: T): Promise<T & GoogleAuthResult> => {
     setAuth({ accessToken: data.accessToken, user: data.user })
     queryClient.invalidateQueries({ queryKey: chatKeys.session() })
     const organizationStatus = await hydrateActiveOrganization(setOrganization)
@@ -288,15 +315,34 @@ function useCompleteGoogleAuth() {
  * `remember` is the sign-in tab's checkbox (the sign-up tab sends true, matching verify-otp).
  * `acceptedTerms` is only needed when this call would create the account — without it the API
  * answers 428 TERMS_ACCEPTANCE_REQUIRED and creates nothing. */
+interface GoogleAuthResponse extends AuthTokensResponse {
+  caseLawyerInvite: CaseLawyerInviteOutcome
+}
+
 export function useGoogleAuthMutation() {
   const completeGoogleAuth = useCompleteGoogleAuth()
 
   return useMutation({
-    mutationFn: async ({ idToken, remember, acceptedTerms }: { idToken: string; remember: boolean; acceptedTerms?: boolean }) =>
+    mutationFn: async ({
+      idToken,
+      remember,
+      acceptedTerms,
+      caseInviteToken,
+    }: {
+      idToken: string
+      remember: boolean
+      acceptedTerms?: boolean
+      caseInviteToken?: string
+    }) =>
       completeGoogleAuth(
-        await apiFetch<AuthTokensResponse>("/api/auth/google", {
+        await apiFetch<GoogleAuthResponse>("/api/auth/google", {
           method: "POST",
-          body: JSON.stringify({ idToken, remember, ...(acceptedTerms ? { acceptedTerms: true } : {}) }),
+          body: JSON.stringify({
+            idToken,
+            remember,
+            ...(acceptedTerms ? { acceptedTerms: true } : {}),
+            ...(caseInviteToken ? { caseInviteToken } : {}),
+          }),
           skipAuthRefresh: true,
         })
       ),
