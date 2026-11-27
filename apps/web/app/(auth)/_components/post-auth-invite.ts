@@ -35,12 +35,31 @@ export type InviteBannerState =
 export function resolveInviteBannerState(params: {
   hasToken: boolean
   isLoading: boolean
+  isError: boolean
   lookup: CaseLawyerInviteLookup | undefined
 }): InviteBannerState {
   if (!params.hasToken) return { kind: "none" }
+  // A settled lookup error (a 404 for a mangled/truncated token, or a 5xx) never produces data —
+  // without this it would sit in "loading" forever and the user would see no banner at all.
+  if (params.isError) return { kind: "unavailable" }
   if (params.isLoading || !params.lookup) return { kind: "loading" }
   if (params.lookup.status === "valid") {
     return { kind: "valid", clientFirstName: params.lookup.clientFirstName, caseName: params.lookup.caseName }
   }
   return { kind: "unavailable" }
+}
+
+/** The `caseInviteToken` the auth mutations may actually send: only one the public lookup has
+ * already resolved (any status — the server stays the authority on whether it can still be
+ * redeemed). A token the lookup rejected, or hasn't answered for yet, is dropped so the user
+ * gets a plain sign-in/sign-up: a malformed value the API's request validation would reject
+ * must never block authentication itself. `lookup` comes from a query keyed on this exact
+ * token, so a resolved lookup always belongs to the token being sent. */
+export function resolveRedeemableInviteToken(params: {
+  token: string | undefined
+  isError: boolean
+  lookup: CaseLawyerInviteLookup | undefined
+}): string | undefined {
+  if (!params.token || params.isError || !params.lookup) return undefined
+  return params.token
 }

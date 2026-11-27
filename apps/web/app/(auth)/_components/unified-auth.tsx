@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -17,7 +17,7 @@ import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup, type WorkspaceSetupStep } from "./workspace-setup";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { useCaseLawyerInviteLookupQuery } from "@/lib/auth/case-lawyer-invite";
-import { resolveInviteBannerState, resolvePostAuthDestination } from "./post-auth-invite";
+import { resolveInviteBannerState, resolvePostAuthDestination, resolveRedeemableInviteToken } from "./post-auth-invite";
 
 import {
   sanitizeNextPath,
@@ -56,13 +56,20 @@ function UnifiedAuthContent() {
   const searchParams = useSearchParams();
   const legacySignupSuccess = searchParams.get("signup") === "success";
 
-  // A case-lawyer invite link (?caseInviteToken=) — looked up purely to show the banner below;
-  // the token itself is handed to the auth mutations, which redeem it server-side.
+  // A case-lawyer invite link (?caseInviteToken=) — looked up to show the banner below, and to
+  // vet the token before the auth mutations (which redeem it server-side) ever carry it: only a
+  // token the lookup resolved is sent, so a mangled link can't fail the sign-in/sign-up request.
   const caseInviteToken = searchParams.get("caseInviteToken") ?? undefined;
   const inviteLookup = useCaseLawyerInviteLookupQuery(caseInviteToken);
   const inviteBannerState = resolveInviteBannerState({
     hasToken: !!caseInviteToken,
     isLoading: inviteLookup.isLoading,
+    isError: inviteLookup.isError,
+    lookup: inviteLookup.data,
+  });
+  const redeemableInviteToken = resolveRedeemableInviteToken({
+    token: caseInviteToken,
+    isError: inviteLookup.isError,
     lookup: inviteLookup.data,
   });
 
@@ -216,7 +223,7 @@ function UnifiedAuthContent() {
   function submitGoogle(idToken: string, acceptedTerms: boolean) {
     setError(null);
     googleMutation.mutate(
-      { idToken, remember: googleRememberRef.current, acceptedTerms, caseInviteToken },
+      { idToken, remember: googleRememberRef.current, acceptedTerms, caseInviteToken: redeemableInviteToken },
       {
         onSuccess: finishGoogleAuth,
         onError: (err) => {
@@ -318,7 +325,7 @@ function UnifiedAuthContent() {
     e.preventDefault();
     setError(null);
     loginMutation.mutate(
-      { email: signinEmail, password: signinPassword, remember, caseInviteToken },
+      { email: signinEmail, password: signinPassword, remember, caseInviteToken: redeemableInviteToken },
       {
         onSuccess: finishPasswordAuth,
         onError: (err) => {
@@ -439,7 +446,7 @@ function UnifiedAuthContent() {
   function handleVerifyOtp() {
     setError(null);
     verifyOtpMutation.mutate(
-      { email: signupEmail, code: otpDigits.join(""), caseInviteToken },
+      { email: signupEmail, code: otpDigits.join(""), caseInviteToken: redeemableInviteToken },
       {
         onSuccess: (data) => {
           if (handlePostAuthInvite(data.caseLawyerInvite)) return;
@@ -536,9 +543,14 @@ function UnifiedAuthContent() {
           {inviteBannerState.kind === "valid" && (
             <div className="border border-brand-gold bg-accent px-4 py-3">
               <p className="text-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-                {t("caseInvite.validPrefix")}{" "}
-                <span className="font-semibold">{inviteBannerState.clientFirstName}</span>{" "}
-                {t("caseInvite.validSuffix")}
+                {/* One interpolated sentence (not prefix + name + suffix) so each locale can put
+                    the name and case wherever its word order needs them. */}
+                <Trans
+                  t={t}
+                  i18nKey="caseInvite.valid"
+                  values={{ name: inviteBannerState.clientFirstName, caseName: inviteBannerState.caseName }}
+                  components={{ bold: <span className="font-semibold" /> }}
+                />
               </p>
             </div>
           )}

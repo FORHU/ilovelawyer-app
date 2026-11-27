@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolvePostAuthDestination, resolveInviteBannerState } from "../post-auth-invite"
+import { resolvePostAuthDestination, resolveInviteBannerState, resolveRedeemableInviteToken } from "../post-auth-invite"
 
 describe("resolvePostAuthDestination", () => {
   it("routes to the client request when the invite was redeemed", () => {
@@ -20,20 +20,20 @@ describe("resolvePostAuthDestination", () => {
 
 describe("resolveInviteBannerState", () => {
   it("shows nothing when there is no token", () => {
-    expect(resolveInviteBannerState({ hasToken: false, isLoading: false, lookup: undefined })).toEqual({ kind: "none" })
+    expect(resolveInviteBannerState({ hasToken: false, isLoading: false, isError: false, lookup: undefined })).toEqual({ kind: "none" })
   })
 
   it("shows loading while the lookup is in flight", () => {
-    expect(resolveInviteBannerState({ hasToken: true, isLoading: true, lookup: undefined })).toEqual({ kind: "loading" })
+    expect(resolveInviteBannerState({ hasToken: true, isLoading: true, isError: false, lookup: undefined })).toEqual({ kind: "loading" })
   })
 
   it("shows loading when data hasn't arrived yet even if isLoading is already false", () => {
-    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, lookup: undefined })).toEqual({ kind: "loading" })
+    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, isError: false, lookup: undefined })).toEqual({ kind: "loading" })
   })
 
   it("shows the client's name and case when the invite is valid", () => {
     const lookup = { status: "valid" as const, clientFirstName: "Jamie", caseName: "Doe v. Roe", email: null }
-    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, lookup })).toEqual({
+    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, isError: false, lookup })).toEqual({
       kind: "valid",
       clientFirstName: "Jamie",
       caseName: "Doe v. Roe",
@@ -42,6 +42,36 @@ describe("resolveInviteBannerState", () => {
 
   it.each(["expired", "revoked", "accepted"] as const)("shows unavailable when the invite is %s", (status) => {
     const lookup = { status, clientFirstName: "Jamie", caseName: "Doe v. Roe", email: null }
-    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, lookup })).toEqual({ kind: "unavailable" })
+    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, isError: false, lookup })).toEqual({ kind: "unavailable" })
+  })
+
+  it("shows unavailable (not loading forever) when the lookup errored, e.g. a malformed token's 404", () => {
+    expect(resolveInviteBannerState({ hasToken: true, isLoading: false, isError: true, lookup: undefined })).toEqual({
+      kind: "unavailable",
+    })
+  })
+})
+
+describe("resolveRedeemableInviteToken", () => {
+  const lookup = { status: "valid" as const, clientFirstName: "Jamie", caseName: "Doe v. Roe", email: null }
+
+  it("sends nothing when there is no token", () => {
+    expect(resolveRedeemableInviteToken({ token: undefined, isError: false, lookup: undefined })).toBeUndefined()
+  })
+
+  it("drops the token while the lookup hasn't answered yet", () => {
+    expect(resolveRedeemableInviteToken({ token: "tok", isError: false, lookup: undefined })).toBeUndefined()
+  })
+
+  it("drops a token the lookup rejected, so a malformed value can never block sign-in", () => {
+    expect(resolveRedeemableInviteToken({ token: "garbage%20tok", isError: true, lookup: undefined })).toBeUndefined()
+  })
+
+  it("sends a token the lookup resolved as valid", () => {
+    expect(resolveRedeemableInviteToken({ token: "tok", isError: false, lookup })).toBe("tok")
+  })
+
+  it.each(["expired", "revoked", "accepted"] as const)("still sends a resolved %s token and lets the server decide", (status) => {
+    expect(resolveRedeemableInviteToken({ token: "tok", isError: false, lookup: { ...lookup, status } })).toBe("tok")
   })
 })
