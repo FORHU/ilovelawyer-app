@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
@@ -15,9 +16,12 @@ import { isPasswordValid } from "@/lib/auth/password-policy";
 import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup, type WorkspaceSetupStep } from "./workspace-setup";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { useCaseLawyerInviteLookupQuery } from "@/lib/auth/case-lawyer-invite";
+import { resolveInviteBannerState, resolvePostAuthDestination } from "./post-auth-invite";
 
 import {
   sanitizeNextPath,
+  type CaseLawyerInviteOutcome,
   type OrganizationStatus,
   useCancelSignupMutation,
   useForgotPasswordMutation,
@@ -51,6 +55,16 @@ function UnifiedAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const legacySignupSuccess = searchParams.get("signup") === "success";
+
+  // A case-lawyer invite link (?caseInviteToken=) — looked up purely to show the banner below;
+  // the token itself is handed to the auth mutations, which redeem it server-side.
+  const caseInviteToken = searchParams.get("caseInviteToken") ?? undefined;
+  const inviteLookup = useCaseLawyerInviteLookupQuery(caseInviteToken);
+  const inviteBannerState = resolveInviteBannerState({
+    hasToken: !!caseInviteToken,
+    isLoading: inviteLookup.isLoading,
+    lookup: inviteLookup.data,
+  });
 
   const [tab, setTab] = useState<Tab>(() => tabFromParam(searchParams.get("tab")));
   const [error, setError] = useState<string | null>(null);
@@ -148,12 +162,35 @@ function UnifiedAuthContent() {
     router.replace(query ? `/login?${query}` : "/login", { scroll: false });
   }
 
+  /** A redeemed `caseInviteToken` (requestId/caseId) takes the user straight to that client
+   * request instead of wherever auth would otherwise have sent them — it's the whole reason
+   * they followed the invite link. A failed redemption never blocks the auth that just
+   * succeeded; it only swaps the success toast for an explanatory one. Returns whether it
+   * redirected, so callers skip their own navigation when it did. */
+  function handlePostAuthInvite(caseLawyerInvite: CaseLawyerInviteOutcome | undefined): boolean {
+    const decision = resolvePostAuthDestination(caseLawyerInvite ?? null);
+    if (decision.kind === "redeemed") {
+      toast.success(t("caseInvite.redeemedToast"));
+      router.push(decision.destination);
+      return true;
+    }
+    if (decision.kind === "failed") {
+      toast.error(t("caseInvite.failedToast"));
+    }
+    return false;
+  }
+
   /** A Google user with no organization yet (new, or one who abandoned onboarding) goes
    * through the same WorkspaceSetup step as a freshly-verified password signup; everyone else
    * continues to `next`, or to the Organization page when an invite is waiting. "unknown" (the
    * org lookup failed) also continues — the protected layout re-checks from there. */
-  function finishGoogleAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
+  function finishGoogleAuth(data: {
+    user: { name?: string | null };
+    organizationStatus: OrganizationStatus;
+    caseLawyerInvite?: CaseLawyerInviteOutcome;
+  }) {
     googleTokenRef.current = null;
+    if (handlePostAuthInvite(data.caseLawyerInvite)) return;
     if (data.organizationStatus === "none") {
       setName(data.user.name ?? "");
       setWorkspaceStep(true);
@@ -165,7 +202,12 @@ function UnifiedAuthContent() {
   /** Password sign-in counterpart of finishGoogleAuth — the mutation already navigated
    * unless the user has no organization, in which case they get the
    * WorkspaceSetup step. */
-  function finishPasswordAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
+  function finishPasswordAuth(data: {
+    user: { name?: string | null };
+    organizationStatus: OrganizationStatus;
+    caseLawyerInvite?: CaseLawyerInviteOutcome;
+  }) {
+    if (handlePostAuthInvite(data.caseLawyerInvite)) return;
     if (data.organizationStatus !== "none") return;
     setName(data.user.name ?? "");
     setWorkspaceStep(true);
@@ -174,7 +216,7 @@ function UnifiedAuthContent() {
   function submitGoogle(idToken: string, acceptedTerms: boolean) {
     setError(null);
     googleMutation.mutate(
-      { idToken, remember: googleRememberRef.current, acceptedTerms },
+      { idToken, remember: googleRememberRef.current, acceptedTerms, caseInviteToken },
       {
         onSuccess: finishGoogleAuth,
         onError: (err) => {
@@ -276,7 +318,7 @@ function UnifiedAuthContent() {
     e.preventDefault();
     setError(null);
     loginMutation.mutate(
-      { email: signinEmail, password: signinPassword, remember },
+      { email: signinEmail, password: signinPassword, remember, caseInviteToken },
       {
         onSuccess: finishPasswordAuth,
         onError: (err) => {
@@ -397,9 +439,10 @@ function UnifiedAuthContent() {
   function handleVerifyOtp() {
     setError(null);
     verifyOtpMutation.mutate(
-      { email: signupEmail, code: otpDigits.join("") },
+      { email: signupEmail, code: otpDigits.join(""), caseInviteToken },
       {
         onSuccess: (data) => {
+          if (handlePostAuthInvite(data.caseLawyerInvite)) return;
           // An invite approves the account (see AuthSvc.autoApproveIfEnabled), so there's no
           // workspace to set up — they go accept it.
           if (data.organizationStatus === "invited") {
@@ -490,6 +533,23 @@ function UnifiedAuthContent() {
         </div>
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
+          {inviteBannerState.kind === "valid" && (
+            <div className="border border-brand-gold bg-accent px-4 py-3">
+              <p className="text-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("caseInvite.validPrefix")}{" "}
+                <span className="font-semibold">{inviteBannerState.clientFirstName}</span>{" "}
+                {t("caseInvite.validSuffix")}
+              </p>
+            </div>
+          )}
+          {inviteBannerState.kind === "unavailable" && (
+            <div className="border border-border bg-accent/40 px-4 py-3">
+              <p className="text-muted-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("caseInvite.unavailable")}
+              </p>
+            </div>
+          )}
+
           {otpStep ? (
             <>
               <div className="flex flex-col gap-1 pt-20">
